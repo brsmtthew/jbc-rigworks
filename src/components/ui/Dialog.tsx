@@ -42,7 +42,7 @@ export function Dialog({ title, children, onClose, drawer = false, wide = false 
           <h2 id={titleId}>{title}</h2>
           <button type="button" className="icon-button" onClick={onClose} aria-label={`Close ${title}`}><X size={20} /></button>
         </div>
-        {children}
+        <div className="dialog-body">{children}</div>
       </div>
     </dialog>
   )

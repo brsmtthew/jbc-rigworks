@@ -19,7 +19,7 @@
 .price-fieldset legend { padding-inline: 6px; color: var(--navy); font-size: 13px; font-weight: 700; }
 .service-section { margin-bottom: 28px; }
 .service-section > h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; font-size: 19px; font-weight: 700; }
-.service-grid, .preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .service-price-card { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 24px; border: 1.5px solid var(--line); border-radius: 12px; background: white; }
 .service-price-card h3 { font-size: 18px; font-weight: 750; }
 .service-price-card p { color: #526b85; font-size: 12px; line-height: 1.7; }
@@ -34,13 +34,6 @@
 .identifier-rules p { margin-block: 9px; font-size: 12px; color: #355673; line-height: 1.7; }
 .settings-fields details summary { font-size: 12px; cursor: pointer; }
 .settings-fields details p { margin-top: 12px; }
-.preset-grid { margin-bottom: 24px; }
-.preset-card { display: flex; align-items: center; text-align: left; gap: 12px; padding: 20px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--navy); background: white; }
-.preset-card:hover { background: #edf4fd; border-color: var(--blue); }
-.preset-card > span { flex: 1; min-width: 0; }
-.preset-card strong, .preset-card small { display: block; }
-.preset-card strong { font-size: 13px; }
-.preset-card small { margin-top: 6px; font-size: 11px; line-height: 1.6; color: #526b85; }
 .part-form { display: block; }
 .part-form select { width: 100%; text-overflow: ellipsis; }
 .part-selection { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 15px; }
@@ -98,14 +91,10 @@
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media (max-width: 1200px) {
   .pos-layout { grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; }
-  .preset-card { padding: 16px; }
-  .preset-card > svg:last-child { display: none; }
 }
 @media (max-width: 900px) {
   .pos-layout { grid-template-columns: 1fr; }
   .settings-grid { gap: 18px; }
-  .preset-grid { grid-template-columns: 1fr; gap: 10px; }
-  .preset-card { padding: 15px 18px; }
   .service-grid { grid-template-columns: 1fr; }
   .service-price-card { display: grid; grid-template-columns: 42px 1fr; gap: 12px 18px; }
   .service-price-card > p, .service-price-card > strong, .service-price-card > a { grid-column: 2; }

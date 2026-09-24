@@ -29,7 +29,7 @@ export type CustomPcRequest = {
   customerEmail?: string
   shopId?: string
   id: string
-  parts?: { component: ComponentType; model: string; source: 'Stock' | 'Custom' }[]
+  parts?: { component: ComponentType; model: string; source: 'Stock' | 'Custom'; brand?: string; specs?: string; price?: number; inventoryId?: string }[]
   tier?: Tier | 'Unclassified'
   useCase: string
   budget: string
@@ -38,7 +38,8 @@ export type CustomPcRequest = {
   memory: string
   storage: string
   notes: string
-  status: 'Under review' | 'Quoted' | 'Approved'
+  status: 'Under review' | 'Quoted' | 'Approved' | 'Declined'
+  quote?: { amount: number; message: string; createdAt: string }
   createdAt: string
 }
 
@@ -53,6 +54,8 @@ export type Job = {
   quote: number
   status: JobStatus
 }
+
+export type SalePayment = { id: string; date: string; amount: number; method: string; cashTendered?: number; change?: number }
 
 export type Sale = {
   id: string
@@ -75,6 +78,8 @@ export type Sale = {
   contact?: string
   paymentMethod?: string
   notes?: string
+  serviceJobId?: string
+  paymentHistory?: SalePayment[]
 }
 
 export type Tier = 'Low' | 'Mid' | 'High'
@@ -101,6 +106,15 @@ export type InventoryItem = {
   warrantyMonths?: string
   warrantyTerms?: string
   memoryType?: string
+  cores?: number
+  memoryGb?: number
+  vramGb?: number
+  /** Product class used to control what can be sold and built from this record. */
+  kind?: 'part' | 'product' | 'asset' | 'consumable'
+  brand?: string
+  model?: string
+  assetTag?: string
+  location?: string
 }
 
 export type Expense = {

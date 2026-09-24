@@ -1,6 +1,7 @@
 import { DirectoriesPage } from './features/directories/DirectoriesPage'
 import { useWorkspace } from './lib/workspaceStorage'
 import { PcBuildingPage } from './features/builder/PcBuildingPage'
+import { PcPartsDirectoryPage } from './features/builder/PcPartsDirectoryPage'
 import { PosPage } from './features/pos/PosPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ServicesPage } from './features/services/ServicesPage'
@@ -22,6 +23,7 @@ import { JobsPage } from './features/jobs/JobsPage'
 import { ReportsPage } from './features/reports/ReportsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { AuthPage } from './features/auth/AuthPage'
+import { ConfirmationProvider } from './components/ui/ConfirmationProvider'
 import { BookServicePage } from './features/customer/BookServicePage'
 import { CustomerHomePage } from './features/customer/CustomerHomePage'
 import { AuthProvider } from './lib/auth'
@@ -34,6 +36,7 @@ import './styles/directories.css'
 
 function Workspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => { try { return localStorage.getItem('jbc-rigworks:sidebar-collapsed') === 'true' } catch { return false } })
   const [entry, setEntry] = useState<EntryType | 'choose' | null>(null)
   const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null)
   const location = useLocation()
@@ -68,9 +71,10 @@ function Workspace() {
 
   if (!user) return null
 
-  return <div className={`app-shell ${preferences.compact ? 'density-compact' : ''} ${preferences.reduceMotion ? 'reduce-motion' : ''}`}>
+  function toggleSidebar() { setSidebarCollapsed(value => { const next = !value; try { localStorage.setItem('jbc-rigworks:sidebar-collapsed', String(next)) } catch { /* Sidebar preference is optional. */ } return next }) }
+  return <div className={`app-shell ${preferences.compact ? 'density-compact' : ''} ${preferences.reduceMotion ? 'reduce-motion' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
     <a className="skip-link" href="#main-content">Skip to main content</a>
-    <aside className="app-sidebar"><Sidebar /></aside>
+    <aside className="app-sidebar"><Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} /></aside>
     {sidebarOpen && <Dialog title="Navigation" drawer onClose={() => setSidebarOpen(false)}><Sidebar onNavigate={() => setSidebarOpen(false)} /></Dialog>}
     <div className="app-main">
       <Topbar title={title} onMenu={() => setSidebarOpen(true)} menuOpen={sidebarOpen} />
@@ -98,14 +102,14 @@ function Workspace() {
             </> : <>
               <Route path="/dashboard" element={<DashboardPage />} /><Route path="/overview" element={<Navigate to={"/dashboard" + location.search} replace />} />
               <Route path="/jobs" element={<JobsPage onCreate={() => setEntry('job')} />} />
-              <Route path="/sales" element={<SalesPage onCreate={() => setEntry('sale')} />} />
+              <Route path="/sales" element={<SalesPage />} />
               <Route path="/inventory" element={<InventoryPage onCreate={() => setEntry('item')} />} />
               <Route path="/expenses" element={<ExpensesPage onCreate={() => setEntry('expense')} />} />
-              <Route path="/pc-directory" element={<Navigate to="/pc-building" replace />} />
+              <Route path="/pc-directory" element={<PcPartsDirectoryPage />} />
               <Route path="/pc-building" element={<PcBuildingPage />} />
               <Route path="/pos" element={<PosPage />} />
               <Route path="/services" element={<Navigate to="/pc-identifier" replace />} /><Route path="/directories" element={<DirectoriesPage />} />
-              <Route path="/pc-identifier" element={<PcBuildingPage identify />} />
+              <Route path="/pc-identifier" element={<Navigate to="/pc-building?mode=identify" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="*" element={<Navigate to="/overview" replace />} />
@@ -126,5 +130,5 @@ function AppRoutes() {
   return <Routes><Route path="*" element={<Workspace />} /></Routes>
 }
 
-export default function App() { return <ErrorBoundary><AuthProvider><BrowserRouter><AppRoutes /></BrowserRouter></AuthProvider></ErrorBoundary> }
+export default function App() { return <ErrorBoundary><AuthProvider><ConfirmationProvider><BrowserRouter><AppRoutes /></BrowserRouter></ConfirmationProvider></AuthProvider></ErrorBoundary> }
 

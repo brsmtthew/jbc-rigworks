@@ -21,7 +21,7 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
   const categories = [...new Set(expenses.map(expense => expense.category))]
   const filtered = expenses.filter(expense => filters.matches([expense.description, expense.id, expense.method].join(' ')) && (filters.filter === 'all' || expense.category === filters.filter))
   return <>
-    <PageHeader eyebrow="MONEY OUT" title="Expenses" description="See where your money goes, down to the last peso."><button className="primary-button" onClick={onCreate} title="Record expense" aria-label="Record expense"><Plus size={20} /></button></PageHeader>
+    <PageHeader eyebrow="MONEY OUT" title="Expenses" description="See where your money goes, down to the last peso."><button className="primary-button" onClick={onCreate}><Plus size={18} />Record expense</button></PageHeader>
     <StatStrip stats={[{ label: 'Recorded expenses', value: formatPHP(summary.spent, true) }, { label: 'Entries', value: expenses.length }, { label: 'Categories', value: categories.length }, { label: 'Payment methods', value: new Set(expenses.map(expense => expense.method)).size }]} />
     <ListToolbar {...filters} label="Search expenses" count={filtered.length} onReset={filters.reset}
       options={[{ value: 'all', label: 'All categories' }, ...categories.map(value => ({ value, label: value }))]}

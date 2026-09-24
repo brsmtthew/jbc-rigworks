@@ -39,6 +39,6 @@ export function useShopSettings() {
 export function readShopSettings(): ShopSettings {
   try { return normalizeShop(JSON.parse(localStorage.getItem(shopKey) ?? '{}')) } catch { return defaultShop }
 }
-export type AccountSettings = { name: string; contactEmail: string; phone: string; address: string; compact: boolean; reduceMotion: boolean }
-export const defaultAccount: AccountSettings = { name: '', contactEmail: '', phone: '', address: '', compact: false, reduceMotion: false }
+export type AccountSettings = { name: string; contactEmail: string; phone: string; address: string; compact: boolean; reduceMotion: boolean; photo: string }
+export const defaultAccount: AccountSettings = { name: '', contactEmail: '', phone: '', address: '', compact: false, reduceMotion: false, photo: '' }
 export const accountKey = (id: string) => `jbc-rigworks:account:v1:${id}`

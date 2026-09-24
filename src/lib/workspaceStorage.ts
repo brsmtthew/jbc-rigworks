@@ -1,10 +1,11 @@
 import { qualifyingBundle, transportation, warrantyFor } from './fulfillment'
 import { useSyncExternalStore } from 'react'
 import { useAuth } from './auth-context'
-import type { Expense, InventoryItem, Job, Sale, ProductBundle } from '../types/business'
+import type { Expense, InventoryItem, Job, Sale, SalePayment, ProductBundle } from '../types/business'
 import type { InvoiceCharges, InvoiceLine, Tier } from '../types/business'
 import { invoiceTotals, money } from './commerce'
 import { readShopSettings } from './preferences'
+import { isPcPart, isSellable } from './pc'
 
 export type WorkspaceData = { jobs: Job[]; sales: Sale[]; inventory: InventoryItem[]; expenses: Expense[]; bundles: ProductBundle[] }
 const empty: WorkspaceData = { jobs: [], sales: [], inventory: [], expenses: [], bundles: [] }
@@ -13,12 +14,24 @@ function validRows(name: string, rows: unknown): boolean {
   if (!Array.isArray(rows)) return false
   const strings: Record<string, string[]> = { jobs: ['id', 'customer', 'device', 'service', 'due', 'status'], sales: ['id', 'customer', 'detail', 'date', 'status'], inventory: ['id', 'name', 'sku', 'category'], expenses: ['id', 'description', 'category', 'date', 'method'], bundles: ['id', 'name'] }
   const numbers: Record<string, string[]> = { jobs: ['quote'], sales: ['total', 'paid', 'cost'], inventory: ['stock', 'minimum', 'price', 'cost'], expenses: ['amount'], bundles: [] }
-  return rows.every(row => row && typeof row === 'object' && strings[name].every(field => typeof row[field] === 'string') && numbers[name].every(field => Number.isFinite(row[field]) && row[field] >= 0) && (name !== 'bundles' || (Array.isArray(row.items) && row.items.every((item: { inventoryId: string; quantity: number }) => item && typeof item.inventoryId === 'string' && Number.isSafeInteger(item.quantity) && item.quantity > 0))))
+  return rows.every(row => {
+    if (!row || typeof row !== 'object' || !strings[name].every(field => typeof row[field] === 'string') || !numbers[name].every(field => Number.isFinite(row[field]) && row[field] >= 0)) return false
+    if (name === 'inventory') {
+      const kinds = ['part', 'product', 'asset', 'consumable']
+      const optionalText = ['kind', 'brand', 'model', 'assetTag', 'location', 'specs', 'component', 'tier', 'socket', 'memoryType']
+      if (row.kind !== undefined && !kinds.includes(row.kind)) return false
+      if (optionalText.some(field => row[field] !== undefined && typeof row[field] !== 'string')) return false
+      if (row.tier && !['Low', 'Mid', 'High'].includes(row.tier)) return false
+      const ranges: Record<string, [number, number]> = { cores: [1, 256], memoryGb: [1, 4096], vramGb: [0, 256] }
+      if (Object.entries(ranges).some(([field, [minimum, maximum]]) => row[field] !== undefined && (!Number.isSafeInteger(row[field]) || row[field] < minimum || row[field] > maximum))) return false
+    }
+    return name !== 'bundles' || (Array.isArray(row.items) && row.items.every((item: { inventoryId: string; quantity: number }) => item && typeof item.inventoryId === 'string' && Number.isSafeInteger(item.quantity) && item.quantity > 0))
+  })
 }
 const cache = new Map<string, { raw: string | null; data: WorkspaceData }>()
 const eventName = 'jbc-workspace-change'
 const ownerKey = 'jbc-rigworks:shop-owner:v1'
-export type CheckoutDraft = { cashTendered?: number; fulfillment?: { mode: 'Pickup' | 'Delivery'; address: string; distanceKm: number }; bundleId?: string; pcSet?: boolean; customer: string; contact: string; channel: 'Walk-in' | 'Online'; paymentMethod: string; paid: number; lines: { id: string; quantity: number }[]; charges: Omit<InvoiceCharges, 'tax' | 'subtotal'>; notes: string }
+export type CheckoutDraft = { cashTendered?: number; fulfillment?: { mode: 'Pickup' | 'Delivery'; address: string; distanceKm: number }; bundleId?: string; pcSet?: boolean; jobId?: string; customServices?: { id: string; description: string; unitPrice: number }[]; customer: string; contact: string; channel: 'Walk-in' | 'Online'; paymentMethod: string; paid: number; lines: { id: string; quantity: number }[]; charges: Omit<InvoiceCharges, 'tax' | 'subtotal'>; notes: string }
 function read(key: string): WorkspaceData {
   try {
     const raw = localStorage.getItem(key)
@@ -68,11 +81,23 @@ export function useWorkspace() {
       const current = read(key)
       const settings = readShopSettings()
       if (!user || !draft.lines.length || !draft.customer.trim()) throw new Error('Add a customer and at least one item.')
+      if (draft.jobId) {
+        const job = current.jobs.find(value => value.id === draft.jobId)
+        if (user.role !== 'admin' || !job || job.status !== 'Ready') throw new Error('Only a ready service job can be sent to checkout.')
+        if (current.sales.some(sale => sale.serviceJobId === job.id)) throw new Error('This job already has a POS invoice.')
+      }
       const ids = new Set<string>()
       const lines: InvoiceLine[] = draft.lines.map(line => {
         if (ids.has(line.id) || !Number.isSafeInteger(line.quantity) || line.quantity < 1) throw new Error('Check the item quantities.')
         ids.add(line.id)
+        const customService = draft.customServices?.find(service => service.id === line.id)
+        if (customService) {
+          if (user.role === 'customer') throw new Error('Services must be booked through the service and booking page.')
+          if (!customService.description.trim() || !Number.isFinite(customService.unitPrice) || customService.unitPrice < 0) throw new Error('This service line has invalid details.')
+          return { id: line.id, description: customService.description.trim(), quantity: line.quantity, unitPrice: money(customService.unitPrice), unitCost: 0 }
+        }
         if (line.id.startsWith('clean:')) {
+          if (user.role === 'customer') throw new Error('Services must be booked through the service and booking page.')
           const [, device, tier] = line.id.split(':')
           if (!['Desktop', 'Laptop'].includes(device) || !['Low', 'Mid', 'High'].includes(tier)) throw new Error('Unknown service.')
           const price = settings.cleaning[device as 'Desktop' | 'Laptop'][tier as Tier]
@@ -80,6 +105,7 @@ export function useWorkspace() {
           return { id: line.id, description: `${device} deep clean - ${tier} specs`, quantity: line.quantity, unitPrice: Number(price), unitCost: 0 }
         }
         const item = current.inventory.find(item => item.id === line.id)
+        if (item && (!isSellable(item) || (user.role === 'customer' && !isPcPart(item)))) throw new Error('Only sellable PC parts can be ordered from the customer shop.')
         if (!item || item.stock < line.quantity) throw new Error(`${item?.name ?? 'An item'} no longer has enough stock. Update the cart.`)
         return { id: line.id, inventoryId: item.id, description: item.name, quantity: line.quantity, unitPrice: item.price, unitCost: item.cost, warranty: warrantyFor(item, settings, today()) }
       })
@@ -98,14 +124,34 @@ export function useWorkspace() {
       const paid = user.role === 'customer' ? 0 : money(draft.paid)
       if (paid > totals.total) throw new Error('Payment exceeds the invoice total.')
       if (draft.cashTendered !== undefined && (!Number.isFinite(draft.cashTendered) || draft.cashTendered < paid || draft.cashTendered > 1e12)) throw new Error('Recalculate the cash payment.')
-      const sale: Sale = { cashTendered: user.role === 'admin' ? draft.cashTendered : undefined, change: user.role === 'admin' && draft.cashTendered !== undefined ? money(draft.cashTendered - paid) : undefined, orderStatus: 'Requested', fulfillment: { ...fulfillment, freeDelivery: !!bundleName, bundleName: bundleName ?? undefined, baseFee: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportBase) : 0, perKm: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportPerKm) : 0 }, id: `${settings.prefix || 'INV'}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customer: draft.customer.trim(), contact: draft.contact.trim(), customerId: user.role === 'customer' ? user.id : undefined, channel: user.role === 'customer' ? 'Online' : draft.channel, date: today(), detail: lines.map(line => line.description).join(', '), lines, charges: { ...charges, subtotal: totals.subtotal, tax: totals.tax }, seller: { name: settings.name, address: settings.address, phone: settings.phone, email: settings.email, footer: settings.footer }, total: totals.total, paid, cost: money(lines.reduce((sum, line) => sum + line.unitCost * line.quantity, 0)), status: paid === totals.total ? 'Paid' : paid ? 'Partial' : 'Unpaid', paymentMethod: user.role === 'customer' ? 'Pay at workshop' : draft.paymentMethod, notes: draft.notes }
+      const initialPayment: SalePayment[] = paid > 0 ? [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount: paid, method: user.role === 'customer' ? 'Pay at workshop' : draft.paymentMethod, ...(user.role === 'admin' && draft.cashTendered !== undefined ? { cashTendered: draft.cashTendered, change: money(draft.cashTendered - paid) } : {}) }] : []
+      const sale: Sale = { cashTendered: user.role === 'admin' ? draft.cashTendered : undefined, change: user.role === 'admin' && draft.cashTendered !== undefined ? money(draft.cashTendered - paid) : undefined, orderStatus: 'Requested', fulfillment: { ...fulfillment, freeDelivery: !!bundleName, bundleName: bundleName ?? undefined, baseFee: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportBase) : 0, perKm: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportPerKm) : 0 }, id: `${settings.prefix || 'INV'}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customer: draft.customer.trim(), contact: draft.contact.trim(), customerId: user.role === 'customer' ? user.id : undefined, channel: user.role === 'customer' ? 'Online' : draft.channel, date: today(), detail: lines.map(line => line.description).join(', '), lines, charges: { ...charges, subtotal: totals.subtotal, tax: totals.tax }, seller: { name: settings.name, address: settings.address, phone: settings.phone, email: settings.email, footer: settings.footer }, total: totals.total, paid, cost: money(lines.reduce((sum, line) => sum + line.unitCost * line.quantity, 0)), status: paid === totals.total ? 'Paid' : paid ? 'Partial' : 'Unpaid', paymentMethod: user.role === 'customer' ? 'Pay at workshop' : draft.paymentMethod, notes: draft.notes, serviceJobId: draft.jobId, paymentHistory: initialPayment }
       const inventory = current.inventory.map(item => { const quantity = lines.find(line => line.inventoryId === item.id)?.quantity ?? 0; return quantity ? { ...item, stock: item.stock - quantity, stockHistory: [...(item.stockHistory || []), { date: new Date().toISOString(), before: item.stock, after: item.stock - quantity, reason: 'Sale ' + sale.id }] } : item })
-      write({ ...current, inventory, sales: [sale, ...current.sales] })
+      const jobs = draft.jobId ? current.jobs.map(job => job.id === draft.jobId ? { ...job, status: 'Completed' as const } : job) : current.jobs
+      write({ ...current, jobs, inventory, sales: [sale, ...current.sales] })
       return sale
     }
     return navigator.locks ? navigator.locks.request(`jbc-checkout:${key}`, commit) : commit()
   }
-  return { ...data, storageError: storageIssues.get(key), sales: user?.role === 'customer' ? data.sales.filter(sale => sale.customerId === user.id) : data.sales, save, remove, checkout }
+  async function collectPayment(saleId: string, amount: number, paymentMethod: string, cashTendered?: number) {
+    const commit = () => {
+      if (user?.role !== 'admin') throw new Error('Only the workshop can collect payments.')
+      const current = read(key)
+      const sale = current.sales.find(value => value.id === saleId)
+      if (!sale) throw new Error('Invoice unavailable. Refresh the Sales page and try again.')
+      const balance = money(sale.total - sale.paid)
+      if (!Number.isFinite(amount) || amount <= 0 || amount > balance) throw new Error('Enter a payment greater than zero and no more than the invoice balance.')
+      if (!paymentMethod.trim()) throw new Error('Choose a payment method.')
+      if (cashTendered !== undefined && (!Number.isFinite(cashTendered) || cashTendered < amount || cashTendered > 1e12)) throw new Error('Cash received must cover the payment amount.')
+      const paid = money(sale.paid + amount)
+      const payment: SalePayment = { id: crypto.randomUUID(), date: new Date().toISOString(), amount: money(amount), method: paymentMethod, ...(cashTendered !== undefined ? { cashTendered: money(cashTendered), change: money(cashTendered - amount) } : {}) }
+      const updated: Sale = { ...sale, paid, status: paid >= sale.total ? 'Paid' : 'Partial', paymentMethod, cashTendered: payment.cashTendered, change: payment.change, paymentHistory: [...(sale.paymentHistory ?? []), payment] }
+      write({ ...current, sales: current.sales.map(value => value.id === saleId ? updated : value) })
+      return updated
+    }
+    return navigator.locks ? navigator.locks.request(`jbc-checkout:${key}`, commit) : commit()
+  }
+  return { ...data, storageError: storageIssues.get(key), sales: user?.role === 'customer' ? data.sales.filter(sale => sale.customerId === user.id) : data.sales, save, remove, checkout, collectPayment }
 }
 
 export const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())

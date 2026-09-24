@@ -16,26 +16,36 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { DataTable } from '../../components/ui/DataTable'
 import { ListToolbar } from '../../components/ui/ListToolbar'
 import { StatStrip } from '../../components/ui/StatStrip'
+import { inventoryKind } from '../../lib/pc'
 
 export function InventoryPage({ onCreate }: { onCreate: () => void }) {
   const [scanner, setScanner] = useState<InventoryItem | true | null>(null), [detail, setDetail] = useState<InventoryItem | null>(null)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [kindFilter, setKindFilter] = useState('all')
   const workspace = useWorkspace()
   const { inventory } = workspace
   const lowStock = inventory.filter(item => item.stock <= item.minimum)
   const stockValue = inventory.reduce((sum, item) => sum + item.stock * item.cost, 0)
   const filters = useListFilters()
   const categories = [...new Set(inventory.map(item => item.category))]
-  const filtered = inventory.filter(item => filters.matches([item.name, item.sku, item.category].join(' ')) && (filters.filter === 'all' || (filters.filter === 'low' ? item.stock <= item.minimum : item.category === filters.filter)))
+  const filtered = inventory.filter(item => filters.matches([item.name, item.brand, item.model, item.sku, item.category, item.assetTag, item.location].join(' ')) && (filters.filter === 'all' || (filters.filter === 'low' && item.stock <= item.minimum)) && (categoryFilter === 'all' || item.category === categoryFilter) && (kindFilter === 'all' || inventoryKind(item) === kindFilter))
+  const kindLabel = (kind: string) => ({ part: 'PC part', product: 'Retail product', asset: 'Tool / equipment', consumable: 'Consumable' }[kind] || kind)
   return <>
-    <PageHeader eyebrow="STOCK CONTROL" title="Inventory" description="The right parts, ready for the next job."><button className="primary-button" onClick={onCreate} title="Add item" aria-label="Add item"><Plus size={20} /></button><ActionButton label="Scan inventory QR" onClick={() => setScanner(true)}><ScanLine size={21}/></ActionButton></PageHeader>
+    <PageHeader eyebrow="STOCK CONTROL" title="Inventory" description="The right parts, ready for the next job."><button className="primary-button" onClick={onCreate}><Plus size={18} />Add item</button><ActionButton variant="labeled" label="Scan inventory QR" onClick={() => setScanner(true)}><ScanLine size={18}/></ActionButton></PageHeader>
     <StatStrip stats={[{ label: 'Stock value at cost', value: formatPHP(stockValue, true) }, { label: 'Unique items', value: inventory.length }, { label: 'Low-stock items', value: lowStock.length }, { label: 'Categories', value: categories.length }]} />
-    <ListToolbar {...filters} label="Search inventory" count={filtered.length} onReset={filters.reset}
-      options={[{ value: 'all', label: 'All inventory' }, { value: 'low', label: 'Low stock' }, ...categories.map(value => ({ value, label: value }))]}
-      onExport={() => prepareExcel('inventory', [['SKU', 'Item', 'Category', 'Stock', 'Minimum', 'Price PHP'], ...filtered.map(item => [item.sku, item.name, item.category, item.stock, item.minimum, item.price])])} />
-    <Panel title="Parts & supplies" subtitle="Your workshop inventory at a glance">
-      <DataTable filtered={!!filters.query || filters.filter !== 'all'} rows={filtered} label="Inventory" columns={[
-        { label: 'Item / SKU', sortValue: item => item.name, render: item => <div className="item-cell"><span className="stock-icon"><Package size={20} /></span><span><strong>{item.name}</strong><small>{item.sku}</small></span></div> },
+    <div className="inventory-filter-toolbar">
+      <ListToolbar {...filters} label="Search inventory" count={filtered.length} onReset={() => { filters.reset(); setCategoryFilter('all'); setKindFilter('all') }}
+        options={[{ value: 'all', label: 'All stock statuses' }, { value: 'low', label: 'Low stock' }]}
+        onExport={() => prepareExcel('inventory', [['Role', 'SKU', 'Brand', 'Model', 'Item', 'Category', 'Stock', 'Minimum', 'Cost PHP', 'Price PHP', 'Asset tag', 'Location'], ...filtered.map(item => [kindLabel(inventoryKind(item)), item.sku, item.brand || '', item.model || '', item.name, item.category, item.stock, item.minimum, item.cost, item.price, item.assetTag || '', item.location || ''])])} />
+      <label className="inventory-category-filter"><span>Inventory role</span><select aria-label="Filter by inventory role" value={kindFilter} onChange={event => setKindFilter(event.target.value)}><option value="all">All roles</option><option value="part">PC parts</option><option value="product">Retail products</option><option value="asset">Tools & equipment</option><option value="consumable">Consumables</option></select></label>
+      <label className="inventory-category-filter">Part category<select aria-label="Filter by part category" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">All categories</option>{categories.map(value => <option value={value} key={value}>{value}</option>)}</select></label>
+      {(categoryFilter !== 'all' || kindFilter !== 'all') && <button className="text-button inventory-filter-reset" onClick={() => { setCategoryFilter('all'); setKindFilter('all') }}>Clear filters</button>}
+    </div>
+    <Panel title="Inventory" subtitle="Parts, products, equipment, and consumables">
+      <DataTable filtered={!!filters.query || filters.filter !== 'all' || categoryFilter !== 'all' || kindFilter !== 'all'} rows={filtered} label="Inventory" columns={[
+        { label: 'Item / SKU', sortValue: item => item.name, render: item => <div className="item-cell"><span className="stock-icon"><Package size={20} /></span><span><strong>{item.brand ? `${item.brand} ${item.model || item.name}` : item.model || item.name}</strong><small>{item.sku}{item.assetTag ? ` · ${item.assetTag}` : ''}</small></span></div> },
+        { label: 'Role', sortValue: item => kindLabel(inventoryKind(item)), render: item => <span>{kindLabel(inventoryKind(item))}</span> },
         { label: 'Category', sortValue: item => item.category, render: item => item.category },
         { label: 'Available', sortValue: item => item.stock, render: item => <><strong>{item.stock} units</strong><small>Minimum {item.minimum}</small></> },
         { label: 'Stock status', sortValue: item => item.stock <= item.minimum ? 0 : 1, render: item => <StatusBadge tone={item.stock <= item.minimum ? 'amber' : 'green'}>{item.stock <= item.minimum ? 'Low stock' : 'In stock'}</StatusBadge> },

@@ -237,7 +237,7 @@ dialog::backdrop { background: #071e3a75; backdrop-filter: blur(4px); }
 .search-results span { flex: 1; }
 .search-results strong { display: block; color: #355775; font-size: 13px; }
 .search-results small { display: block; color: #526b85; font-size: 11px; margin-top: 4px; }
-.drawer-dialog { position: fixed; inset: 0 auto 0 0; margin: 0; width: min(310px,90vw); max-width: 90vw; max-height: 100dvh; height: 100dvh; background: var(--navy); color: white; overscroll-behavior: contain; }
+.drawer-dialog { position: fixed; inset: 0 auto 0 0; margin: 0; width: min(310px,90vw); max-width: 90vw; max-height: 100dvh; height: 100dvh; overflow-y: auto; background: var(--navy); color: white; overscroll-behavior: contain; }
 .drawer-dialog .dialog-inner { padding: 0; }
 .drawer-dialog .dialog-heading { padding: 14px 18px 0; margin: 0; }
 .drawer-dialog .dialog-heading h2 { font-size: 13px; color: #bdd0e4; }

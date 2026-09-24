@@ -55,7 +55,7 @@
 .auth-form-wrap { padding: 30px; border: 1.5px solid var(--line); border-radius: 14px; background: white; width: min(490px, 100%); }
 .auth-form-wrap h2 { font-size: clamp(25px, 2.5vw, 34px); font-weight: 700; }
 .auth-brand-copy h1 { font-size: clamp(42px, 5vw, 72px); }
-.auth-brand-panel > a { width: min(350px, 100%); }
+.auth-brand-panel > a { width: min(470px, 100%); }
 .auth-trust { color: #c3d6e9; }
 .build-intro { display: flex; align-items: center; gap: 20px; padding: 24px; margin-bottom: 26px; border: 1px solid var(--navy); border-radius: 12px; background: var(--navy); color: white; }
 .build-intro-icon { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid #547b9f; border-radius: 12px; }

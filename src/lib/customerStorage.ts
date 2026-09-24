@@ -27,6 +27,29 @@ function write<T>(key: string, value: T[]) {
 export const getAppointments = (user: AppUser) => read<CustomerAppointment>(appointmentsKey(user.id))
 export const getPcRequests = (user: AppUser) => read<CustomPcRequest>(requestsKey(user.id))
 
+export function savePcQuote(user: AppUser, customerId: string, requestId: string, quote: { amount: number; message: string }) {
+  if (user.role !== 'admin') throw new Error('Only the workshop can prepare a quote.')
+  if (!Number.isFinite(quote.amount) || quote.amount < 0 || !quote.message.trim()) throw new Error('Enter a valid quote amount and message.')
+  const key = requestsKey(customerId)
+  const current = read<CustomPcRequest>(key)
+  const request = current.find(item => item.id === requestId)
+  if (!request || !['Under review', 'Quoted'].includes(request.status)) throw new Error('This request is no longer available for quoting.')
+  const updated: CustomPcRequest = { ...request, quote: { ...quote, message: quote.message.trim(), createdAt: new Date().toISOString() }, status: 'Quoted' }
+  write(key, current.map(item => item.id === requestId ? updated : item))
+  return updated
+}
+
+export function respondToPcQuote(user: AppUser, requestId: string, response: 'Approved' | 'Declined') {
+  if (user.role !== 'customer') throw new Error('Only the customer can respond to this quote.')
+  const key = requestsKey(user.id)
+  const current = read<CustomPcRequest>(key)
+  const request = current.find(item => item.id === requestId)
+  if (!request || request.status !== 'Quoted' || !request.quote) throw new Error('This quote is no longer available. Refresh your records and try again.')
+  const updated = { ...request, status: response }
+  write(key, current.map(item => item.id === requestId ? updated : item))
+  return updated
+}
+
 export function saveAppointment(user: AppUser, appointment: Omit<CustomerAppointment, 'id' | 'createdAt' | 'status'>) {
   if (!appointment.device.trim() || !appointment.preferredTime || !/^\d{4}-\d{2}-\d{2}$/.test(appointment.preferredDate) || appointment.preferredDate < today()) throw new Error('Enter a device and a valid current or future appointment date and time.')
   if (appointment.visit) {

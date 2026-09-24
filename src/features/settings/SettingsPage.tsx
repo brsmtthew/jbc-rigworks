@@ -1,13 +1,15 @@
 import { Dialog } from '../../components/ui/Dialog'
 import { useState, type FormEvent } from 'react'
-import { Pencil, X, ArrowRight, BrushCleaning, Building2, Save, Settings2, ShieldCheck, Truck, UserRound } from 'lucide-react'
+import { Pencil, ArrowRight, BrushCleaning, Building2, Save, Settings2, ShieldCheck, Truck, UserRound } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { tiers } from '../../lib/pc'
+import { useConfirmation } from '../../components/ui/confirmation-context'
 
 export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
   const { user, updateProfile } = useAuth()
+  const { confirm } = useConfirmation()
   const [shop, saveShop] = useShopSettings()
   const [account, saveAccount] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [business, setBusiness] = useState(shop)
@@ -16,9 +18,11 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState('')
   const [section, setSection] = useState<number | null>(null)
   const admin = user?.role === 'admin'
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault(); setError(''); setMessage('')
     if (!profile.name.trim()) { setError('Enter your display name.'); return }
+    const confirmed = await confirm({ title: 'Save changes?', message: `Save your changes to ${areas[section ?? 0].title.toLowerCase()}?`, confirmLabel: 'Save changes' })
+    if (!confirmed) return
     try {
       if (admin && section !== 0 && section !== 1) {
         if (!business.name.trim() || !/^[A-Za-z0-9-]{1,12}$/.test(business.prefix)) throw new Error('Enter a business name and an invoice prefix of up to 12 letters, numbers, or hyphens.')
@@ -33,20 +37,30 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
     } catch (err) { setError((err as Error).message || 'Unable to save settings on this device.') }
   }
   const areas = [
-    { title: 'Account & contact', description: 'Name, email, phone, and address', icon: UserRound },
+    { title: 'Profile & contact', description: 'Photo, name, email, phone, and address', icon: UserRound },
     { title: 'Display & account access', description: 'Comfortable density and motion preferences', icon: Settings2 },
     { title: 'Business & invoices', description: 'Business details, billing, and tax defaults', icon: Building2 },
     { title: 'Home service, delivery & warranty', description: 'Distance fees and purchase coverage', icon: Truck },
     { title: 'Deep-clean price catalog', description: 'Desktop and laptop service prices', icon: BrushCleaning },
   ]
   function open(index: number) { setBusiness(shop); setProfile({ ...account, name: account.name || user!.name, contactEmail: account.contactEmail || user!.email }); setError(''); setMessage(''); setSection(index) }
+  function choosePhoto(file?: File) {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Choose a JPG, PNG, or WebP image.'); return }
+    if (file.size > 1024 * 1024) { setError('Profile images must be 1 MB or smaller.'); return }
+    const reader = new FileReader()
+    reader.onload = () => { if (typeof reader.result === 'string') setProfile(current => ({ ...current, photo: reader.result as string })) }
+    reader.onerror = () => setError('Unable to read this image. Choose another file.')
+    reader.readAsDataURL(file)
+  }
   return <>
     {!embedded && <PageHeader eyebrow={admin ? 'WORKSPACE' : 'MY ACCOUNT'} title={admin ? 'Workspace settings' : 'My settings'} description="Your profile and preferences, with controls grouped by purpose." />}
-    <section className="profile-card"><div className="profile-symbol"><UserRound size={34} /></div><div><span className="eyebrow">{admin ? 'ADMINISTRATOR' : 'CUSTOMER'}</span><h2>{account.name || user?.name}</h2><p>{account.contactEmail || user?.email}</p><p>{account.phone || 'Add a contact number'}{account.address ? ' / ' + account.address : ''}</p></div><button type="button" className="secondary-button" onClick={() => open(0)} title="Edit profile" aria-label="Edit profile"><Pencil size={20}/></button></section>
+    <section className="profile-card"><div className="profile-symbol">{account.photo ? <img src={account.photo} alt="" /> : <UserRound size={34} />}</div><div><span className="eyebrow">{admin ? 'ADMINISTRATOR' : 'CUSTOMER'}</span><h2>{account.name || user?.name}</h2><p>{account.contactEmail || user?.email}</p><p>{account.phone || 'Add a contact number'}{account.address ? ' / ' + account.address : ''}</p></div><button type="button" className="secondary-button" onClick={() => open(0)} title="Edit profile" aria-label="Edit profile"><Pencil size={20}/><span>Edit profile</span></button></section>
     {message && <p role="status" className="save-message settings-feedback">{message}</p>}
     <div className="settings-menu">{areas.slice(0, admin ? areas.length : 2).map((area, index) => <button type="button" className="settings-tile" key={area.title} onClick={() => open(index)}><span className="service-icon"><area.icon size={24} /></span><span><strong>{area.title}</strong><small>{area.description}</small></span><ArrowRight size={20} /></button>)}</div>
     {section !== null && <Dialog title={areas[section].title} wide={section === 2 || section === 4} onClose={() => setSection(null)}><form id="workspace-settings" onSubmit={save}>
       {section === 0 && <div className="portal-form settings-fields">
+        <div className="profile-photo-field"><span>Profile photo</span><div className="profile-photo-actions">{profile.photo ? <img className="profile-photo-preview" src={profile.photo} alt="Profile preview" /> : <span className="profile-photo-preview profile-photo-placeholder"><UserRound size={27}/></span>}<input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload a JPG, PNG, or WebP profile photo" onChange={e => choosePhoto(e.target.files?.[0])} />{profile.photo && <button type="button" className="secondary-button" onClick={() => setProfile({ ...profile, photo: '' })}>Remove photo</button>}</div><small className="storage-caption">JPG, PNG, or WebP, up to 1 MB.</small></div>
         <label>Display name<input required maxLength={80} value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} /></label>
         <label>Sign-in email<input value={user?.email} readOnly /><small className="storage-caption">Account identifier. Contact email below can be changed.</small></label>
         <label>Contact email<input type="email" value={profile.contactEmail} onChange={e => setProfile({ ...profile, contactEmail: e.target.value })} /></label>
@@ -74,7 +88,7 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
           <p className="storage-caption">Blank prices are unavailable at checkout. Prices are shared with the customer catalog in this browser.</p>
         </div>}
       {error && <p role="alert" className="form-error">{error}</p>}
-      <div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setSection(null)} title="Cancel" aria-label="Cancel"><X size={19}/></button><button className="primary-button" type="submit" title="Save settings" aria-label="Save settings"><Save size={20} /></button></div>
+      <div className="dialog-actions"><button type="button" className="secondary-button" onClick={() => setSection(null)}>Cancel</button><button className="primary-button" type="submit"><Save size={18} />Save changes</button></div>
     </form></Dialog>}
   </>
 }

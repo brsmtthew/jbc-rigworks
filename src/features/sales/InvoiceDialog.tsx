@@ -27,7 +27,7 @@ export function InvoiceDialog({ sale, onClose }: { sale: Sale; onClose: () => vo
   const [shop] = useShopSettings()
   const seller = sale.seller ?? shop
   return <>
-    <Dialog title={`Invoice ${sale.id}`} onClose={onClose}><div className="invoice-actions"><button className="primary-button" onClick={() => window.print()} title="Print invoice" aria-label="Print invoice"><Printer size={20} /></button><span className="storage-caption">Choose a printer or Save as PDF.</span></div><Invoice sale={sale} seller={seller} /></Dialog>
+    <Dialog title={`Invoice ${sale.id}`} onClose={onClose}><div className="invoice-actions"><button className="primary-button" onClick={() => window.print()}><Printer size={18} />Print invoice</button><span className="storage-caption">Choose a printer or Save as PDF.</span></div><Invoice sale={sale} seller={seller} /></Dialog>
     {createPortal(<div className="invoice-print-root"><Invoice sale={sale} seller={seller} /></div>, document.body)}
   </>
 }
