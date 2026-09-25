@@ -9,7 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 export function ServicesPage() {
   const { user } = useAuth()
   const [shop] = useShopSettings()
-  const base = user?.role === 'customer' ? '/customer' : ''
+  const base = user?.role === 'user' ? '/customer' : ''
   return <>
     <PageHeader eyebrow="SERVICE CATALOG" title={base ? "Services & booking" : "Deep-clean pricing"} description="Choose your device and spec tier to see its service price.">{base && <Link className="primary-button" to="/customer/book"><CalendarPlus size={16} />Book a service</Link>}<Link className="secondary-button" to={`${base}/pc-identifier`}><Cpu size={16} />Identify my PC</Link>{!base && <Link className="primary-button" to="/settings">Edit prices</Link>}</PageHeader>
     {(['Desktop', 'Laptop'] as const).map(device => <section className="service-section" key={device}>

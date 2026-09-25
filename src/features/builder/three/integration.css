@@ -1,0 +1,59 @@
+.pc-3d-builder { min-width:0; margin-bottom:24px; container-type:inline-size }
+.pc-3d-builder .jbc-pc { font-family:inherit; border-radius:14px }
+.pc-3d-feedback { padding:24px; border:1px solid #b5c8df; border-radius:14px; background:#f3f6fa; color:#344f6c }
+.pc-3d-builder .jbc-pc__eyebrow,
+.pc-3d-builder .jbc-pc__header p,
+.pc-3d-builder .jbc-pc__card small,
+.pc-3d-builder .jbc-pc__description,
+.pc-3d-builder .jbc-pc__progress,
+.pc-3d-builder .jbc-pc__list-title,
+.pc-3d-builder .jbc-pc__product small,
+.pc-3d-builder .jbc-pc__total span,
+.pc-3d-builder .jbc-pc__total small,
+.pc-3d-builder .jbc-pc__footer { color:#50677e }
+.pc-3d-builder .jbc-pc__stock,
+.pc-3d-builder .jbc-pc__product-top { color:#36715d }
+.pc-3d-builder .jbc-pc__part-icon { color:#146bc0 }
+.pc-3d-builder .jbc-pc__toolbar { max-width:calc(100% - 16px); flex-wrap:wrap; justify-content:center; width:max-content }
+.pc-3d-builder .jbc-pc__hint { padding:0 10px; line-height:1.5 }
+.pc-build-tools { display:grid; gap:12px; margin:16px 0 24px; padding:14px 16px; border:1px solid #c4d3e3; border-radius:12px; background:#fff }
+.pc-build-tools-top { display:grid; grid-template-columns:minmax(220px,1fr) auto minmax(170px,auto); align-items:center; gap:14px }
+.pc-parts-editor { min-width:0 }
+.pc-parts-editor>summary { display:flex; width:max-content; max-width:100%; align-items:center; gap:8px; padding:9px 12px; border:1px solid #c4d3e3; border-radius:8px; color:#164873; background:#f8fbff; font-size:13px; font-weight:600; cursor:pointer }
+.pc-parts-editor-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 20px; margin-top:12px; border-top:1px solid #e1e9f0 }
+.pc-part-editor-row { display:flex; min-width:0; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #e1e9f0 }
+.pc-part-editor-row>span { display:grid; flex:1; min-width:0; gap:3px }
+.pc-part-editor-row>span strong { color:#153d66; font-size:12px }
+.pc-part-editor-row>span small { overflow:hidden; color:#50677e; font-size:11px; text-overflow:ellipsis; white-space:nowrap }
+.pc-part-editor-row>.secondary-button { min-height:34px; padding:6px 10px; font-size:12px }
+.pc-build-details-button { max-width:240px; overflow:hidden }
+.pc-build-details-button span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.pc-build-total { display:grid; min-width:0; gap:3px; text-align:right }
+.pc-build-total>span,.pc-build-total>small { color:#50677e; font-size:11px }
+.pc-build-total>strong { color:#12385f; font-size:21px; font-variant-numeric:tabular-nums }
+.pc-build-actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px }
+.pc-build-actions .primary-button,.pc-build-actions .secondary-button { min-height:38px; padding:8px 12px; font-size:12px }
+.pc-build-feedback:empty { display:none }
+.pc-build-feedback { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px }
+.pc-build-feedback>* { margin:0 }
+@media(max-width:640px) {
+  .pc-build-tools { padding:12px }
+  .pc-build-tools-top { grid-template-columns:minmax(0,1fr) auto; gap:10px }
+  .pc-parts-editor { grid-column:1/-1 }
+  .pc-parts-editor-list { grid-template-columns:minmax(0,1fr) }
+  .pc-build-total { text-align:left }
+  .pc-build-actions { gap:7px }
+  .pc-build-actions .primary-button,.pc-build-actions .secondary-button { flex:1 1 auto }
+}
+@container (max-width:760px) {
+  .pc-3d-builder .jbc-pc__layout { display:flex; flex-direction:column }
+  .pc-3d-builder .jbc-pc__aside { border-left:0; border-top:1px solid var(--jbc-line) }
+  .pc-3d-builder .jbc-pc__cards { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .pc-3d-builder .jbc-pc__footer { flex-direction:column }
+}
+@container (max-width:400px) {
+  .pc-3d-builder .jbc-pc__header { padding:18px }
+  .pc-3d-builder .jbc-pc__left { padding:8px }
+  .pc-3d-builder .jbc-pc__toolbar { bottom:55px }
+  .pc-3d-builder .jbc-pc__toolbar button { padding:0 6px; min-width:26px }
+}

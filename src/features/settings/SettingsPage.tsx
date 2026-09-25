@@ -31,7 +31,10 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
         if (business.warrantyMonths !== '' && (!Number.isSafeInteger(Number(business.warrantyMonths)) || Number(business.warrantyMonths) > 120)) throw new Error('Warranty must be a whole number from 0 to 120 months.')
         saveShop(business)
       }
-      if (section === 0 || section === 1) { saveAccount({ ...profile, name: profile.name.trim() }); updateProfile(profile.name.trim()) }
+      if (section === 0 || section === 1) {
+        await updateProfile(profile.name.trim())
+        saveAccount({ ...profile, name: profile.name.trim() })
+      }
       setSection(null)
       setMessage('Settings saved.')
     } catch (err) { setError((err as Error).message || 'Unable to save settings on this device.') }
@@ -55,7 +58,7 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
   }
   return <>
     {!embedded && <PageHeader eyebrow={admin ? 'WORKSPACE' : 'MY ACCOUNT'} title={admin ? 'Workspace settings' : 'My settings'} description="Your profile and preferences, with controls grouped by purpose." />}
-    <section className="profile-card"><div className="profile-symbol">{account.photo ? <img src={account.photo} alt="" /> : <UserRound size={34} />}</div><div><span className="eyebrow">{admin ? 'ADMINISTRATOR' : 'CUSTOMER'}</span><h2>{account.name || user?.name}</h2><p>{account.contactEmail || user?.email}</p><p>{account.phone || 'Add a contact number'}{account.address ? ' / ' + account.address : ''}</p></div><button type="button" className="secondary-button" onClick={() => open(0)} title="Edit profile" aria-label="Edit profile"><Pencil size={20}/><span>Edit profile</span></button></section>
+    <section className="profile-card"><div className="profile-symbol">{account.photo ? <img src={account.photo} alt="" /> : <UserRound size={34} />}</div><div><span className="eyebrow">{admin ? 'ADMINISTRATOR' : 'USER'}</span><h2>{account.name || user?.name}</h2><p>{account.contactEmail || user?.email}</p><p>{account.phone || 'Add a contact number'}{account.address ? ' / ' + account.address : ''}</p></div><button type="button" className="secondary-button" onClick={() => open(0)} title="Edit profile" aria-label="Edit profile"><Pencil size={20}/><span>Edit profile</span></button></section>
     {message && <p role="status" className="save-message settings-feedback">{message}</p>}
     <div className="settings-menu">{areas.slice(0, admin ? areas.length : 2).map((area, index) => <button type="button" className="settings-tile" key={area.title} onClick={() => open(index)}><span className="service-icon"><area.icon size={24} /></span><span><strong>{area.title}</strong><small>{area.description}</small></span><ArrowRight size={20} /></button>)}</div>
     {section !== null && <Dialog title={areas[section].title} wide={section === 2 || section === 4} onClose={() => setSection(null)}><form id="workspace-settings" onSubmit={save}>
@@ -70,8 +73,8 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
       {section === 1 && <div className="portal-form settings-fields">
         <label className="check-row"><input type="checkbox" checked={profile.compact} onChange={e => setProfile({ ...profile, compact: e.target.checked })} /><span>Compact tables and cards</span></label>
         <label className="check-row"><input type="checkbox" checked={profile.reduceMotion} onChange={e => setProfile({ ...profile, reduceMotion: e.target.checked })} /><span>Reduce animations</span></label>
-        <dl className="detail-list"><div><dt>Account role</dt><dd>{admin ? 'Administrator' : 'Customer'}</dd></div><div><dt>Currency</dt><dd>PHP</dd></div><div><dt>Timezone</dt><dd>Asia/Manila</dd></div><div><dt>Storage</dt><dd>This browser</dd></div></dl>
-        <p className="storage-caption"><ShieldCheck size={16} /> Password changes and verified sign-in will be available when account authentication is connected.</p>
+        <dl className="detail-list"><div><dt>Account role</dt><dd>{admin ? 'Administrator' : 'User'}</dd></div><div><dt>Currency</dt><dd>PHP</dd></div><div><dt>Timezone</dt><dd>Asia/Manila</dd></div><div><dt>Storage</dt><dd>This browser</dd></div></dl>
+        <p className="storage-caption"><ShieldCheck size={16} /> Your password and sign-in are managed by Firebase Authentication.</p>
       </div>}
       {section === 2 && <div className="portal-form settings-fields">
           {(['name', 'address', 'phone', 'email', 'prefix', 'footer'] as const).map(field => <label key={field}>{{ name: 'Business name', address: 'Business address', phone: 'Business phone', email: 'Business email', prefix: 'Invoice prefix', footer: 'Invoice footer' }[field]}<input required={field === 'name' || field === 'prefix'} type={field === 'email' ? 'email' : 'text'} maxLength={field === 'prefix' ? 12 : 250} value={business[field]} onChange={e => setBusiness({ ...business, [field]: e.target.value })} /></label>)}

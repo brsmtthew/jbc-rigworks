@@ -1,11 +1,12 @@
-export type View = 'directories' |  'dashboard' | 'overview' | 'jobs' | 'sales' | 'inventory' | 'expenses' | 'reports' | 'appointments' | 'pc-requests' | 'pc-directory' | 'pc-building' | 'pos' | 'services' | 'pc-identifier' | 'settings'
+export type View = 'directories' | 'dashboard' | 'overview' | 'jobs' | 'sales' | 'inventory' | 'expenses' | 'reports' | 'appointments' | 'pc-requests' | 'pc-directory' | 'pc-building' | 'pos' | 'services' | 'pc-identifier' | 'settings' | 'users'
 
-export type UserRole = 'admin' | 'customer'
+export type UserRole = 'admin' | 'user'
 
 export type AppUser = {
   id: string
   name: string
   email: string
+  emailVerified: boolean
   role: UserRole
 }
 

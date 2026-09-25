@@ -54,8 +54,9 @@ test('parts directory, customer shop, component picker, and asset exclusion shar
   await page.keyboard.press('Escape')
 
   await page.goto('/customer/pc-building')
-  await page.getByRole('button', { name: 'Rotate PC case view' }).click()
-  await expect(page.locator('.pc-model-rotate')).toHaveAttribute('style', /rotateY\(12deg\)/)
+  await expect(page.locator('.jbc-pc__canvas canvas')).toBeVisible()
+  await page.getByRole('button', { name: 'Auto rotate', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Auto rotate', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Select Processor', exact: true }).click()
   await page.getByLabel('Processor from stock').selectOption('part-0')
   await page.getByRole('button', { name: 'Use component' }).click()
@@ -76,14 +77,13 @@ test('parts directory, customer shop, component picker, and asset exclusion shar
   await expect(page.getByText('Precision screwdriver set')).toHaveCount(0)
 })
 
-test('PC set summary remains sticky on desktop and chart stays within mobile viewport', async ({ page }) => {
+test('PC build controls stay compact and chart stays within mobile viewport', async ({ page }) => {
   await setup(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/pc-building')
-  const summary = page.locator('.build-summary')
-  const top = (await summary.boundingBox())!.y
-  await page.locator('#main-content').evaluate(element => { element.scrollTop = 550 })
-  await expect.poll(async () => (await summary.boundingBox())!.y).toBeLessThanOrEqual(top)
+  const controls = page.locator('.pc-build-tools')
+  await expect(controls).toContainText('Save build')
+  await expect(controls.locator('.build-summary')).toHaveCount(0)
   await page.setViewportSize({ width: 360, height: 780 })
   await page.goto('/dashboard?period=2026-03')
   await expect(page.locator('.daily-chart-day')).toHaveCount(31)

@@ -40,7 +40,7 @@ export function savePcQuote(user: AppUser, customerId: string, requestId: string
 }
 
 export function respondToPcQuote(user: AppUser, requestId: string, response: 'Approved' | 'Declined') {
-  if (user.role !== 'customer') throw new Error('Only the customer can respond to this quote.')
+  if (user.role !== 'user') throw new Error('Only the customer can respond to this quote.')
   const key = requestsKey(user.id)
   const current = read<CustomPcRequest>(key)
   const request = current.find(item => item.id === requestId)

@@ -1,12 +1,16 @@
 import { createContext, useContext } from 'react'
-import type { AppUser, UserRole } from '../types/business'
+import type { AppUser } from '../types/business'
 
 export type AuthContextValue = {
   user: AppUser | null
-  signIn: (email: string, password: string, role: UserRole) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
-  updateProfile: (name: string) => void
-  signOut: () => void
+  loading: boolean
+  accountError: string
+  signIn: (email: string, password: string) => Promise<AppUser>
+  register: (name: string, email: string, password: string) => Promise<AppUser>
+  refreshAccount: () => Promise<AppUser>
+  resendVerificationEmail: () => Promise<void>
+  updateProfile: (name: string) => Promise<void>
+  signOut: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

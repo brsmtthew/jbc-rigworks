@@ -53,7 +53,7 @@ function subscribe(callback: () => void) {
 export function useWorkspace() {
   const { user } = useAuth()
   const owner = useSyncExternalStore(subscribe, () => { try { return localStorage.getItem(ownerKey) ?? '' } catch { return '' } })
-  const key = `jbc-rigworks:workspace:v1:${user?.role === 'customer' ? owner || 'unconfigured-shop' : user?.id ?? 'guest'}`
+  const key = `jbc-rigworks:workspace:v1:${user?.role === 'user' ? owner || 'unconfigured-shop' : user?.id ?? 'guest'}`
   const data = useSyncExternalStore(subscribe, () => read(key))
   const write = (next: WorkspaceData) => {
     if (storageIssues.has(key)) throw new Error(storageIssues.get(key))
@@ -92,12 +92,12 @@ export function useWorkspace() {
         ids.add(line.id)
         const customService = draft.customServices?.find(service => service.id === line.id)
         if (customService) {
-          if (user.role === 'customer') throw new Error('Services must be booked through the service and booking page.')
+          if (user.role === 'user') throw new Error('Services must be booked through the service and booking page.')
           if (!customService.description.trim() || !Number.isFinite(customService.unitPrice) || customService.unitPrice < 0) throw new Error('This service line has invalid details.')
           return { id: line.id, description: customService.description.trim(), quantity: line.quantity, unitPrice: money(customService.unitPrice), unitCost: 0 }
         }
         if (line.id.startsWith('clean:')) {
-          if (user.role === 'customer') throw new Error('Services must be booked through the service and booking page.')
+          if (user.role === 'user') throw new Error('Services must be booked through the service and booking page.')
           const [, device, tier] = line.id.split(':')
           if (!['Desktop', 'Laptop'].includes(device) || !['Low', 'Mid', 'High'].includes(tier)) throw new Error('Unknown service.')
           const price = settings.cleaning[device as 'Desktop' | 'Laptop'][tier as Tier]
@@ -105,7 +105,7 @@ export function useWorkspace() {
           return { id: line.id, description: `${device} deep clean - ${tier} specs`, quantity: line.quantity, unitPrice: Number(price), unitCost: 0 }
         }
         const item = current.inventory.find(item => item.id === line.id)
-        if (item && (!isSellable(item) || (user.role === 'customer' && !isPcPart(item)))) throw new Error('Only sellable PC parts can be ordered from the customer shop.')
+        if (item && (!isSellable(item) || (user.role === 'user' && !isPcPart(item)))) throw new Error('Only sellable PC parts can be ordered from the customer shop.')
         if (!item || item.stock < line.quantity) throw new Error(`${item?.name ?? 'An item'} no longer has enough stock. Update the cart.`)
         return { id: line.id, inventoryId: item.id, description: item.name, quantity: line.quantity, unitPrice: item.price, unitCost: item.cost, warranty: warrantyFor(item, settings, today()) }
       })
@@ -116,16 +116,16 @@ export function useWorkspace() {
       if (fulfillment.mode === 'Delivery' && !lines.some(line => line.inventoryId)) throw new Error('Delivery is available for products. Book home service for cleaning visits.')
       const deliveryFee = fulfillment.mode === 'Pickup' ? 0 : bundleName ? 0 : transportation(settings, fulfillment.distanceKm)
       if (deliveryFee === null) throw new Error('Delivery rates are not configured. Choose pickup or ask the workshop to set transportation rates.')
-      const baseCharges = user.role === 'customer' ? { labor: settings.labor, delivery: 0, other: 0, otherLabel: '', discount: 0, taxRate: settings.taxRate } : draft.charges
+      const baseCharges = user.role === 'user' ? { labor: settings.labor, delivery: 0, other: 0, otherLabel: '', discount: 0, taxRate: settings.taxRate } : draft.charges
       const charges = { ...baseCharges, delivery: deliveryFee }
       if ([charges.labor, charges.delivery, charges.other, charges.discount, charges.taxRate, draft.paid].some(value => !Number.isFinite(value) || value < 0) || charges.taxRate > 100) throw new Error('Enter valid charges and payment amounts.')
       const totals = invoiceTotals(lines, charges)
       if (totals.total < 0 || charges.discount > totals.subtotal + charges.labor + charges.delivery + charges.other) throw new Error('Discount exceeds the charges.')
-      const paid = user.role === 'customer' ? 0 : money(draft.paid)
+      const paid = user.role === 'user' ? 0 : money(draft.paid)
       if (paid > totals.total) throw new Error('Payment exceeds the invoice total.')
       if (draft.cashTendered !== undefined && (!Number.isFinite(draft.cashTendered) || draft.cashTendered < paid || draft.cashTendered > 1e12)) throw new Error('Recalculate the cash payment.')
-      const initialPayment: SalePayment[] = paid > 0 ? [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount: paid, method: user.role === 'customer' ? 'Pay at workshop' : draft.paymentMethod, ...(user.role === 'admin' && draft.cashTendered !== undefined ? { cashTendered: draft.cashTendered, change: money(draft.cashTendered - paid) } : {}) }] : []
-      const sale: Sale = { cashTendered: user.role === 'admin' ? draft.cashTendered : undefined, change: user.role === 'admin' && draft.cashTendered !== undefined ? money(draft.cashTendered - paid) : undefined, orderStatus: 'Requested', fulfillment: { ...fulfillment, freeDelivery: !!bundleName, bundleName: bundleName ?? undefined, baseFee: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportBase) : 0, perKm: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportPerKm) : 0 }, id: `${settings.prefix || 'INV'}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customer: draft.customer.trim(), contact: draft.contact.trim(), customerId: user.role === 'customer' ? user.id : undefined, channel: user.role === 'customer' ? 'Online' : draft.channel, date: today(), detail: lines.map(line => line.description).join(', '), lines, charges: { ...charges, subtotal: totals.subtotal, tax: totals.tax }, seller: { name: settings.name, address: settings.address, phone: settings.phone, email: settings.email, footer: settings.footer }, total: totals.total, paid, cost: money(lines.reduce((sum, line) => sum + line.unitCost * line.quantity, 0)), status: paid === totals.total ? 'Paid' : paid ? 'Partial' : 'Unpaid', paymentMethod: user.role === 'customer' ? 'Pay at workshop' : draft.paymentMethod, notes: draft.notes, serviceJobId: draft.jobId, paymentHistory: initialPayment }
+      const initialPayment: SalePayment[] = paid > 0 ? [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount: paid, method: user.role === 'user' ? 'Pay at workshop' : draft.paymentMethod, ...(user.role === 'admin' && draft.cashTendered !== undefined ? { cashTendered: draft.cashTendered, change: money(draft.cashTendered - paid) } : {}) }] : []
+      const sale: Sale = { cashTendered: user.role === 'admin' ? draft.cashTendered : undefined, change: user.role === 'admin' && draft.cashTendered !== undefined ? money(draft.cashTendered - paid) : undefined, orderStatus: 'Requested', fulfillment: { ...fulfillment, freeDelivery: !!bundleName, bundleName: bundleName ?? undefined, baseFee: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportBase) : 0, perKm: fulfillment.mode === 'Delivery' && !bundleName ? Number(settings.transportPerKm) : 0 }, id: `${settings.prefix || 'INV'}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, customer: draft.customer.trim(), contact: draft.contact.trim(), customerId: user.role === 'user' ? user.id : undefined, channel: user.role === 'user' ? 'Online' : draft.channel, date: today(), detail: lines.map(line => line.description).join(', '), lines, charges: { ...charges, subtotal: totals.subtotal, tax: totals.tax }, seller: { name: settings.name, address: settings.address, phone: settings.phone, email: settings.email, footer: settings.footer }, total: totals.total, paid, cost: money(lines.reduce((sum, line) => sum + line.unitCost * line.quantity, 0)), status: paid === totals.total ? 'Paid' : paid ? 'Partial' : 'Unpaid', paymentMethod: user.role === 'user' ? 'Pay at workshop' : draft.paymentMethod, notes: draft.notes, serviceJobId: draft.jobId, paymentHistory: initialPayment }
       const inventory = current.inventory.map(item => { const quantity = lines.find(line => line.inventoryId === item.id)?.quantity ?? 0; return quantity ? { ...item, stock: item.stock - quantity, stockHistory: [...(item.stockHistory || []), { date: new Date().toISOString(), before: item.stock, after: item.stock - quantity, reason: 'Sale ' + sale.id }] } : item })
       const jobs = draft.jobId ? current.jobs.map(job => job.id === draft.jobId ? { ...job, status: 'Completed' as const } : job) : current.jobs
       write({ ...current, jobs, inventory, sales: [sale, ...current.sales] })
@@ -151,7 +151,7 @@ export function useWorkspace() {
     }
     return navigator.locks ? navigator.locks.request(`jbc-checkout:${key}`, commit) : commit()
   }
-  return { ...data, storageError: storageIssues.get(key), sales: user?.role === 'customer' ? data.sales.filter(sale => sale.customerId === user.id) : data.sales, save, remove, checkout, collectPayment }
+  return { ...data, storageError: storageIssues.get(key), sales: user?.role === 'user' ? data.sales.filter(sale => sale.customerId === user.id) : data.sales, save, remove, checkout, collectPayment }
 }
 
 export const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())

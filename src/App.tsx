@@ -4,6 +4,7 @@ import { PcBuildingPage } from './features/builder/PcBuildingPage'
 import { PcPartsDirectoryPage } from './features/builder/PcPartsDirectoryPage'
 import { PosPage } from './features/pos/PosPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { UsersPage } from './features/users/UsersPage'
 import { ServicesPage } from './features/services/ServicesPage'
 import { HeaderHost } from './components/ui/header-context'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
@@ -40,8 +41,10 @@ function Workspace() {
   const [entry, setEntry] = useState<EntryType | 'choose' | null>(null)
   const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null)
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, accountError, refreshAccount, resendVerificationEmail } = useAuth()
   const { storageError } = useWorkspace()
+  const [verificationMessage, setVerificationMessage] = useState('')
+  const [verificationError, setVerificationError] = useState('')
   const [preferences] = useStoredValue(accountKey(user?.id ?? ''), defaultAccount)
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -51,8 +54,8 @@ function Workspace() {
   const main = useRef<HTMLElement>(null)
   const previousPath = useRef(location.pathname)
   const customerTitles: Record<string, string> = { '/customer/records': 'My records', '/customer/pc-building': 'PC builder', '/customer/shop': 'Shop & order', '/customer/orders': 'My orders', '/customer/services': 'Services & booking', '/customer/pc-identifier': 'PC identifier', '/customer/settings': 'My settings', '/customer': 'Dashboard', '/customer/book': 'Book a service', '/customer/build': 'Custom PC request', '/customer/appointments': 'My appointments', '/customer/requests': 'My PC requests' }
-  const isCustomer = user?.role === 'customer'
-  const title = isCustomer ? customerTitles[location.pathname] ?? 'Customer portal' : navigation.find(item => location.pathname === '/' + item.id)?.label ?? (location.pathname === '/settings' ? 'Workspace settings' : 'Dashboard')
+  const isCustomer = user?.role === 'user'
+  const title = isCustomer ? customerTitles[location.pathname] ?? 'User portal' : navigation.find(item => location.pathname === '/' + item.id)?.label ?? (location.pathname === '/settings' ? 'Workspace settings' : 'Dashboard')
 
   useEffect(() => {
     document.title = title + ' · JBC RigWorks'
@@ -81,6 +84,22 @@ function Workspace() {
       <div className="page-header-host" role="region" aria-label="Page heading" ref={setHeaderHost} />
       <HeaderHost.Provider value={headerHost}>
       <main id="main-content" tabIndex={0} aria-label="Page content" ref={main} className="page-content">
+        {user && !user.emailVerified && <div className="verification-banner">
+          <p role="status">Check {user.email} for a verification link. Your profile appears in the user directory after verification.</p>
+          <button type="button" className="secondary-button" onClick={async () => {
+            setVerificationMessage(''); setVerificationError('')
+            try { await resendVerificationEmail(); setVerificationMessage('Verification email sent.') }
+            catch (error) { setVerificationError(error instanceof Error ? error.message : 'Could not send a verification email.') }
+          }}>Send verification email</button>
+          <button type="button" className="secondary-button" onClick={async () => {
+            setVerificationMessage(''); setVerificationError('')
+            try { await refreshAccount(); setVerificationMessage('Account refreshed.') }
+            catch (error) { setVerificationError(error instanceof Error ? error.message : 'Could not refresh your account.') }
+          }}>I verified my email</button>
+          {verificationMessage && <span role="status">{verificationMessage}</span>}
+          {verificationError && <span role="alert">{verificationError}</span>}
+        </div>}
+        {accountError && <div className="verification-banner account-error-banner" role="alert"><p>{accountError}</p>{user?.emailVerified && <button type="button" className="secondary-button" onClick={() => { void refreshAccount().catch(() => { /* The banner stays visible until access recovers. */ }) }}>Retry</button>}</div>}
         {storageError && <p role="alert" className="form-error settings-feedback">{storageError}</p>}
         <div className="page-transition" key={location.pathname}>
           <Routes>
@@ -111,12 +130,13 @@ function Workspace() {
               <Route path="/services" element={<Navigate to="/pc-identifier" replace />} /><Route path="/directories" element={<DirectoriesPage />} />
               <Route path="/pc-identifier" element={<Navigate to="/pc-building?mode=identify" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/users" element={<UsersPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="*" element={<Navigate to="/overview" replace />} />
             </>}
           </Routes>
         </div>
-        <footer className="page-footer"><span>JBC RIGWORKS <i /> {isCustomer ? 'Customer Portal' : 'Business Hub'}</span><span>PHP / Asia/Manila</span></footer>
+        <footer className="page-footer"><span>JBC RIGWORKS <i /> {isCustomer ? 'User Portal' : 'Business Hub'}</span><span>PHP / Asia/Manila</span></footer>
       </main>
       </HeaderHost.Provider>
     </div>
@@ -125,7 +145,8 @@ function Workspace() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <main className="auth-loading" role="status">Loading your workspace…</main>
   if (!user) return <Routes><Route path="/login" element={<AuthPage mode="login" />} /><Route path="/register" element={<AuthPage mode="register" />} /><Route path="*" element={<Navigate to="/login" replace />} /></Routes>
   return <Routes><Route path="*" element={<Workspace />} /></Routes>
 }

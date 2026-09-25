@@ -385,6 +385,11 @@ dialog::backdrop { background: #071e3a75; backdrop-filter: blur(4px); }
 .auth-trust svg { flex-shrink: 0; color: #73cdbb; }
 .auth-form-panel { display: grid; place-items: center; padding: 34px; background: #f8fafd; }
 .auth-form-wrap { width: min(430px, 100%); }
+.auth-mode-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 28px; padding: 4px; border: 1px solid #dce7f3; border-radius: 10px; background: #eef4fb; }
+.auth-mode-nav a { display: grid; min-height: 42px; place-items: center; border-radius: 7px; color: #496b88; font-size: 13px; font-weight: 700; text-decoration: none; }
+.auth-mode-nav a:hover, .auth-mode-nav a:focus-visible { color: var(--blue); }
+.auth-mode-nav a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.auth-mode-nav a.is-selected { color: var(--brand-navy); background: white; box-shadow: 0 2px 8px #14385f12; }
 .auth-mobile-mark { display: none; }
 .auth-form-wrap > .eyebrow { color: #50739a; }
 .auth-form-wrap h2 { color: var(--brand-navy); font-size: clamp(27px, 3vw, 39px); line-height: 1.08; letter-spacing: -.05em; }
@@ -404,6 +409,11 @@ dialog::backdrop { background: #071e3a75; backdrop-filter: blur(4px); }
 .auth-switch { margin-top: 25px; color: #506b84; font-size: 12px; text-align: center; }
 .auth-switch a { color: var(--blue); font-weight: 700; }
 .auth-local-note { margin-top: 30px; color: #526a7e; font-size: 10px; line-height: 1.6; text-align: center; }
+.auth-loading { display: grid; min-height: 100dvh; place-items: center; color: var(--brand-navy); background: var(--brand-mist); font-size: 14px; }
+.verification-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 18px; padding: 13px 16px; border: 1px solid #e7c980; border-radius: 10px; color: #694d12; background: #fff8e7; font-size: 12px; line-height: 1.5; }
+.verification-banner p { flex: 1 1 280px; margin: 0; }
+.verification-banner span { flex-basis: 100%; }
+.account-error-banner { border-color: #e6b7bd; color: #913f4c; background: #fff5f5; }
 .customer-hero-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 23px; }
 .customer-action-card { display: flex; align-items: center; gap: 15px; min-width: 0; padding: 21px; border: 1px solid var(--line); border-radius: var(--radius); color: #315776; background: white; box-shadow: var(--shadow); }
 .customer-action-card:hover { border-color: #93b9df; box-shadow: 0 10px 28px #0d355b0d; transform: translateY(-2px); }

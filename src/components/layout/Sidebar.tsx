@@ -8,7 +8,7 @@ export function Sidebar({ onNavigate, collapsed = false, onToggle }: { onNavigat
   const location = useLocation()
   const { user } = useAuth()
   if (!user) return null
-  const isCustomer = user.role === 'customer'
+  const isCustomer = user.role === 'user'
   const items = isCustomer ? customerNavigation : navigation
   const homePath = isCustomer ? '/customer' : '/dashboard'
   return <>
@@ -16,7 +16,7 @@ export function Sidebar({ onNavigate, collapsed = false, onToggle }: { onNavigat
       <NavLink to={homePath} className="brand-lockup" onClick={onNavigate} aria-label="JBC RigWorks home">
         <BrandLogo variant={collapsed ? 'mark' : 'primary'} />
       </NavLink>
-      <div className="workspace-role">{isCustomer ? 'Customer portal' : 'Workshop workspace'}</div>
+      <div className="workspace-role">{isCustomer ? 'User portal' : 'Workshop workspace'}</div>
       <div className="sidebar-label">{isCustomer ? 'My account' : 'Workspace'}</div>
       <nav className="sidebar-nav" aria-label="Main navigation">{items.map(({ id, label, icon: Icon }) => (
         <NavLink end key={id} to={'/' + id} onClick={onNavigate} aria-label={label} title={collapsed ? label : undefined} className={({ isActive }) => 'nav-item ' + (isActive || (id === 'customer/services' && location.pathname === '/customer/book') ? 'is-active' : '')}>

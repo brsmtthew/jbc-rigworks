@@ -15,7 +15,7 @@ export function Topbar({ title, onMenu, menuOpen }: { title: string; onMenu: () 
   return <><header className="topbar">
     <div className="topbar-context">
       <button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={menuOpen} aria-haspopup="dialog" onClick={onMenu}><Menu size={21} /></button>
-      <div className="topbar-title-block"><span>{user?.role === 'customer' ? 'CUSTOMER PORTAL' : 'WORKSHOP WORKSPACE'}</span><strong>{title}</strong></div>
+      <div className="topbar-title-block"><span>{user?.role === 'user' ? 'USER PORTAL' : 'WORKSHOP WORKSPACE'}</span><strong>{title}</strong></div>
     </div>
     <div className="topbar-actions">
       <time className="workspace-clock" dateTime={now.toISOString()} aria-label={date + ', ' + time + ', Philippine time'}>
@@ -23,10 +23,10 @@ export function Topbar({ title, onMenu, menuOpen }: { title: string; onMenu: () 
       </time>
       <button className="topbar-account" title="Account and settings" aria-label="Account and settings" aria-haspopup="dialog" onClick={() => setAccountOpen(true)}>
         <span className="topbar-avatar">{account.photo ? <img src={account.photo} alt="" /> : <UserRound size={18} />}</span>
-        <span className="topbar-account-meta"><strong>{account.name || user?.name || 'Account'}</strong><small>{user?.role === 'admin' ? 'Workshop admin' : 'Customer account'}</small></span>
+        <span className="topbar-account-meta"><strong>{account.name || user?.name || 'Account'}</strong><small>{user?.role === 'admin' ? 'Workshop admin' : 'User account'}</small></span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
-      <button type="button" className="topbar-signout secondary-button" onClick={signOut} aria-label="Sign out"><LogOut size={17}/><span>Sign out</span></button>
+      <button type="button" className="topbar-signout secondary-button" onClick={() => { void signOut() }} aria-label="Sign out"><LogOut size={17}/><span>Sign out</span></button>
     </div>
   </header>{accountOpen && <Dialog title="Profile & settings" wide onClose={() => setAccountOpen(false)}><SettingsPage embedded /></Dialog>}</>
 }

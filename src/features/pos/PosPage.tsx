@@ -27,7 +27,7 @@ export function PosPage() {
   const [productDetail, setProductDetail] = useState<InventoryItem | null>(null)
   const { user } = useAuth()
   const { confirm } = useConfirmation()
-  const customerMode = user?.role === 'customer'
+  const customerMode = user?.role === 'user'
   const workspace = useWorkspace()
   const location = useLocation()
   const [shop] = useShopSettings()

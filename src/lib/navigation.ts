@@ -1,4 +1,4 @@
-import { FolderCog, ShoppingCart, ClipboardList, BrushCleaning, Cpu, BarChart3, CreditCard, LayoutDashboard, Package, ReceiptText, Wrench } from 'lucide-react'
+import { FolderCog, ShoppingCart, ClipboardList, BrushCleaning, Cpu, BarChart3, CreditCard, LayoutDashboard, Package, ReceiptText, UsersRound, Wrench } from 'lucide-react'
 import type { View } from '../types/business'
 
 export const navigation = [
@@ -12,6 +12,7 @@ export const navigation = [
   { id: 'expenses', label: 'Expenses', icon: ReceiptText },
   { id: 'directories', label: 'Directories', icon: FolderCog },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'users', label: 'Users', icon: UsersRound },
 ] satisfies { id: View; label: string; icon: typeof Wrench }[]
 
 export const customerNavigation = [
