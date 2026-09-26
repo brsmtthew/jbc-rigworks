@@ -55,7 +55,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <button className="primary-button auth-submit" type="submit" disabled={busy}>{busy ? 'Opening workspace…' : isRegister ? 'Create account' : 'Continue'} <ArrowRight size={16} /></button>
         </form>
         <p className="auth-switch">{isRegister ? 'Already have an account?' : 'Need a user account?'} <Link to={isRegister ? '/login' : '/register'} state={{ from: location.pathname }}>{isRegister ? 'Sign in' : 'Create one'}</Link></p>
-        <p className="auth-local-note">{isRegister ? 'Public signup creates a user account. The company admin signs in with its existing account.' : 'The company admin uses the same sign-in form.'}</p>
+        <p className="auth-local-note">{isRegister ? 'Every new account starts as a user account.' : 'Administrators use the same sign-in form.'}</p>
       </div>
     </section>
   </main>

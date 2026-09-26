@@ -12,6 +12,8 @@ dist
 dist-ssr
 playwright-report
 test-results
+tmp/
+.firebase/
 *.local
 .env
 .env.*

@@ -9,7 +9,8 @@ import { ServicesPage } from './features/services/ServicesPage'
 import { HeaderHost } from './components/ui/header-context'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { RecordsPage } from './features/customer/RecordsPage'
-import { accountKey, defaultAccount, useStoredValue } from './lib/preferences'
+import { accountKey, defaultAccount, useShopSettings, useStoredValue } from './lib/preferences'
+import { useDirectories } from './lib/directories'
 import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
@@ -34,6 +35,7 @@ import './styles/workspace.css'
 import './styles/commerce.css'
 import './styles/workflows.css'
 import './styles/directories.css'
+import './styles/payments.css'
 
 function Workspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -42,15 +44,13 @@ function Workspace() {
   const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null)
   const location = useLocation()
   const { user, accountError, refreshAccount, resendVerificationEmail } = useAuth()
-  const { storageError } = useWorkspace()
+  const { storageError, loading: recordsLoading } = useWorkspace()
   const [verificationMessage, setVerificationMessage] = useState('')
   const [verificationError, setVerificationError] = useState('')
-  const [preferences] = useStoredValue(accountKey(user?.id ?? ''), defaultAccount)
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      try { localStorage.setItem('jbc-rigworks:shop-owner:v1', user.id); window.dispatchEvent(new Event('jbc-workspace-change')) } catch { /* The forms report storage failures when saving. */ }
-    }
-  }, [user?.id, user?.role])
+  const [preferences, , preferenceStatus] = useStoredValue(accountKey(user?.id ?? ''), defaultAccount)
+  const [, , shopStatus] = useShopSettings()
+  const [, , directoryStatus] = useDirectories()
+  const databaseError = storageError || preferenceStatus.error || shopStatus.error || directoryStatus.error
   const main = useRef<HTMLElement>(null)
   const previousPath = useRef(location.pathname)
   const customerTitles: Record<string, string> = { '/customer/records': 'My records', '/customer/pc-building': 'PC builder', '/customer/shop': 'Shop & order', '/customer/orders': 'My orders', '/customer/services': 'Services & booking', '/customer/pc-identifier': 'PC identifier', '/customer/settings': 'My settings', '/customer': 'Dashboard', '/customer/book': 'Book a service', '/customer/build': 'Custom PC request', '/customer/appointments': 'My appointments', '/customer/requests': 'My PC requests' }
@@ -84,8 +84,8 @@ function Workspace() {
       <div className="page-header-host" role="region" aria-label="Page heading" ref={setHeaderHost} />
       <HeaderHost.Provider value={headerHost}>
       <main id="main-content" tabIndex={0} aria-label="Page content" ref={main} className="page-content">
-        {user && !user.emailVerified && <div className="verification-banner">
-          <p role="status">Check {user.email} for a verification link. Your profile appears in the user directory after verification.</p>
+        {user.adminVerificationRequired && <div className="verification-banner">
+          <p role="status">Your account has been assigned an admin role. Verify {user.email} to open the admin workspace.</p>
           <button type="button" className="secondary-button" onClick={async () => {
             setVerificationMessage(''); setVerificationError('')
             try { await resendVerificationEmail(); setVerificationMessage('Verification email sent.') }
@@ -99,8 +99,9 @@ function Workspace() {
           {verificationMessage && <span role="status">{verificationMessage}</span>}
           {verificationError && <span role="alert">{verificationError}</span>}
         </div>}
-        {accountError && <div className="verification-banner account-error-banner" role="alert"><p>{accountError}</p>{user?.emailVerified && <button type="button" className="secondary-button" onClick={() => { void refreshAccount().catch(() => { /* The banner stays visible until access recovers. */ }) }}>Retry</button>}</div>}
-        {storageError && <p role="alert" className="form-error settings-feedback">{storageError}</p>}
+        {accountError && <div className="verification-banner account-error-banner" role="alert"><p>{accountError}</p><button type="button" className="secondary-button" onClick={() => { void refreshAccount().catch(() => { /* The banner stays visible until access recovers. */ }) }}>Retry</button></div>}
+        {databaseError && <p role="alert" className="form-error settings-feedback">{databaseError}</p>}
+        {!databaseError && recordsLoading && <p role="status" className="storage-caption">Loading records…</p>}
         <div className="page-transition" key={location.pathname}>
           <Routes>
             {isCustomer ? <>

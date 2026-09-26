@@ -7,10 +7,12 @@ export type AppUser = {
   name: string
   email: string
   emailVerified: boolean
+  adminVerificationRequired: boolean
   role: UserRole
 }
 
 export type CustomerAppointment = {
+  customerId?: string
   customerName?: string
   customerEmail?: string
   shopId?: string
@@ -26,6 +28,7 @@ export type CustomerAppointment = {
 }
 
 export type CustomPcRequest = {
+  customerId?: string
   customerName?: string
   customerEmail?: string
   shopId?: string
@@ -56,7 +59,11 @@ export type Job = {
   status: JobStatus
 }
 
-export type SalePayment = { id: string; date: string; amount: number; method: string; cashTendered?: number; change?: number }
+export type SalePayment = { id: string; date: string; amount: number; method: string; cashTendered?: number; change?: number; reference?: string; proofId?: string }
+
+export type PaymentAccount = { id: string; kind: 'Bank transfer' | 'E-wallet'; name: string; accountName: string; accountNumber: string; qrImage: string; enabled: boolean }
+export type PaymentProof = { id: string; orderId: string; customerId: string; accountId: string; method: string; amount: number; reference: string; image: string; submittedAt: string; status: 'Pending' | 'Verified' | 'Rejected'; reviewNote?: string; reviewedAt?: string; reviewedBy?: string }
+export type TransactionReceipt = { id: string; orderId: string; customerId: string; recipientEmail: string; issuedAt: string; cashierId: string; payment: SalePayment; sale: Sale }
 
 export type Sale = {
   id: string
@@ -69,8 +76,8 @@ export type Sale = {
   status: 'Paid' | 'Partial' | 'Unpaid'
   cashTendered?: number
   change?: number
-  orderStatus?: 'Requested' | 'Processing' | 'Ready' | 'Completed'
-  fulfillment?: { mode: 'Pickup' | 'Delivery'; address: string; distanceKm: number; freeDelivery: boolean; bundleName?: string; baseFee: number; perKm: number }
+  orderStatus?: 'Requested' | 'Processing' | 'Ready' | 'Completed' | 'Declined'
+  fulfillment?: { mode: 'Pickup' | 'Delivery'; address: string; distanceKm: number; freeDelivery: boolean; bundleName?: string; bundleId?: string; pcSet?: boolean; baseFee: number; perKm: number }
   lines?: InvoiceLine[]
   charges?: InvoiceCharges
   seller?: Seller
@@ -81,6 +88,8 @@ export type Sale = {
   notes?: string
   serviceJobId?: string
   paymentHistory?: SalePayment[]
+  receiptEmail?: string
+  lastReceiptId?: string
 }
 
 export type Tier = 'Low' | 'Mid' | 'High'

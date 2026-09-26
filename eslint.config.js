@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'JBC-RIGWORKS-Source', 'test-results', 'playwright-report']),
+  globalIgnores(['dist', 'JBC-RIGWORKS-Source', 'test-results', 'playwright-report', 'tmp', '.firebase']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

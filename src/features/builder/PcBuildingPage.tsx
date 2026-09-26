@@ -3,7 +3,7 @@ import { FolderOpen, Info, Pencil } from 'lucide-react'
 import { Dialog } from '../../components/ui/Dialog'
 import { ExcelButton } from '../../components/ui/ExcelButton'
 import { savePcRequest } from '../../lib/customerStorage'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Cpu, Monitor, Save, ShoppingCart, Trash2 } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -16,33 +16,13 @@ import type { ComponentType, InventoryItem, Tier } from '../../types/business'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Pc3dBuilder } from './Pc3dBuilder'
 import { PcPartEditor } from './PcPartEditor'
+import { deleteDoc, setDoc } from 'firebase/firestore'
+import { firestoreData, recordRef, useLiveCollection } from '../../lib/database'
 
 type Selection = Partial<Record<ComponentType, string>>
 type CustomPart = { model: string; capacity: string; socket: string; memoryType: string }
 type CustomParts = Partial<Record<ComponentType, CustomPart>>
 type Plan = { id: string; name: string; budget: string; selection: Selection; custom?: CustomParts; legacyNotes?: string }
-function readPlans(key: string, legacyKey: string, inventory: InventoryItem[]): Plan[] {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) ?? '[]')
-    const current: Plan[] = Array.isArray(value) ? value.filter(plan => plan && typeof plan.id === 'string' && typeof plan.name === 'string' && typeof plan.budget === 'string' && plan.selection && typeof plan.selection === 'object') : []
-    const legacy = JSON.parse(localStorage.getItem(legacyKey) ?? '[]')
-    if (!Array.isArray(legacy)) return current
-    for (const old of legacy) {
-      if (!old || typeof old.id !== 'string' || current.some(plan => plan.id === old.id) || !old.parts) continue
-      const selection: Selection = {}
-      const notes: string[] = []
-      for (const [index, code] of ['cpu', 'board', 'ram', 'gpu', 'storage', 'psu', 'case', 'cooler'].entries()) {
-        const part = old.parts[code]
-        if (typeof part?.model !== 'string' || !part.model.trim()) continue
-        notes.push(`${components[index].name}: ${part.model} (previous estimate: ${part.price || '0'} PHP)`)
-        const match = inventory.find(item => item.name.toLowerCase() === part.model.toLowerCase() && componentOf(item) === components[index].name)
-        if (match) selection[components[index].name] = match.id
-      }
-      current.push({ id: old.id, name: old.name || 'Previous build', budget: String(old.budget || ''), selection, legacyNotes: notes.join('\n') })
-    }
-    return current
-  } catch { return [] }
-}
 export function PcBuildingPage({ identify = false }: { identify?: boolean }) {
   const [directory] = useDirectories()
   const [planOpen, setPlanOpen] = useState(false), [editingPart, setEditingPart] = useState<ComponentType | null>(null), [partEditorOpen, setPartEditorOpen] = useState(false)
@@ -55,10 +35,11 @@ export function PcBuildingPage({ identify = false }: { identify?: boolean }) {
   const [mode, setMode] = useState(identify || params.get('mode') === 'identify' ? 'identify' : 'build')
   const [custom, setCustom] = useState<CustomParts>({})
   const [useCase, setUseCase] = useState('Gaming'), [requestNotes, setRequestNotes] = useState(''), [requested, setRequested] = useState(false)
-  const key = `jbc-rigworks:stock-builds:v1:${user!.id}`
-  const [plans, setPlans] = useState(() => readPlans(key, `jbc-rigworks:builds:v1:${user!.id}`, inventory))
+  const plansPath = `users/${user!.id}/plans`
+  const { rows: plans, error: plansError } = useLiveCollection<Plan>(plansPath, !!user)
   const [selection, setSelection] = useState<Selection>({}), [name, setName] = useState(''), [budget, setBudget] = useState(''), [id, setId] = useState('')
   const [message, setMessage] = useState(''), [error, setError] = useState(''), [dirty, setDirty] = useState(false)
+  const saving = useRef(false)
   const selectedIds = Object.values(selection).filter((id): id is string => typeof id === 'string' && id.length > 0 && id !== '__custom')
   const stockSelected = selectedIds.map(id => inventory.find(item => item.id === id)).filter((item): item is InventoryItem => !!item && isPcPart(item))
   const customSelected: InventoryItem[] = components.flatMap(part => {
@@ -78,15 +59,19 @@ export function PcBuildingPage({ identify = false }: { identify?: boolean }) {
   const unavailable = selectedIds.some(id => !inventory.some(item => item.id === id && isPcPart(item) && item.stock > 0))
   const change = () => { setRequested(false); setDirty(true); setMessage(''); setError('') }
   async function save() {
+    if (saving.current) return
     if (invalidCustom) { setError('Enter valid whole-number hardware specifications.'); return }
     if (!name.trim()) { setError('Enter a build name.'); return }
     if (Number(budget) < 0 || !Number.isFinite(Number(budget))) { setError('Enter a valid budget.'); return }
     const nextId = id || crypto.randomUUID()
     const record = { id: nextId, name: name.trim(), budget, selection, custom, legacyNotes: plans.find(plan => plan.id === nextId)?.legacyNotes }
-    const next = plans.some(plan => plan.id === nextId) ? plans.map(plan => plan.id === nextId ? record : plan) : [record, ...plans]
-    if (!await confirm({ title: id ? 'Save build changes?' : 'Save this build?', message: `${id ? 'Update' : 'Save'} “${record.name}” to your saved builds?`, confirmLabel: id ? 'Save changes' : 'Save build' })) return
-    try { localStorage.setItem(key, JSON.stringify(next)); setPlans(next); setId(nextId); setDirty(false); setError(''); setMessage('Build saved. Stock and prices are rechecked whenever you open it.'); setPlanOpen(false) }
-    catch { setError('Unable to save this build. Check browser storage.') }
+    saving.current = true
+    try {
+      if (!await confirm({ title: id ? 'Save build changes?' : 'Save this build?', message: `${id ? 'Update' : 'Save'} “${record.name}” to your saved builds?`, confirmLabel: id ? 'Save changes' : 'Save build' })) return
+      await setDoc(recordRef(plansPath, nextId), firestoreData(record)); setId(nextId); setDirty(false); setError(''); setMessage('Build saved. Stock and prices are rechecked whenever you open it.'); setPlanOpen(false)
+    }
+    catch { setError('Unable to save this build. Check your connection.') }
+    finally { saving.current = false }
   }
   async function startNew() {
     if (dirty && !await confirm({ title: 'Start a new build?', message: 'Discard the unsaved changes in this build?', confirmLabel: 'Discard changes', tone: 'danger' })) return
@@ -94,19 +79,23 @@ export function PcBuildingPage({ identify = false }: { identify?: boolean }) {
   }
   function exportBuild() { return prepareExcel(name || 'pc-build', [['Component', 'Model', 'SKU', 'Price PHP'], ...components.map(part => { const item = selected.find(item => componentOf(item) === part.name); return [part.name, item?.name ?? 'Not selected', item?.sku ?? '', item?.id.startsWith('custom:') ? 'Quote required' : item?.price ?? ''] }), ['Stock subtotal', '', '', total], ['Budget', '', '', Number(budget) || 0]]) }
   async function requestBuild() {
+    if (saving.current || requested) return
     setError(''); setMessage('')
     if (invalidCustom) { setError('Enter valid whole-number hardware specifications.'); return }
     if (!selected.length || incompleteCustom || !name.trim()) { setError('Name your build and select at least one complete part.'); return }
     if (!Number.isFinite(Number(budget)) || Number(budget) < 0) { setError('Enter a valid budget.'); return }
     if (errors.length) { setError('Resolve the listed compatibility conflicts first.'); return }
+    saving.current = true
     try {
       if (!await confirm({ title: 'Send build request?', message: `Save your ${name.trim()} request for workshop review?`, confirmLabel: 'Send request' })) return
       const model = (component: ComponentType) => { const item = selected.find(value => componentOf(value) === component); return item ? [item.brand, item.model || item.name].filter(Boolean).join(' / ') : 'Needs guidance' }
-      savePcRequest(user!, { useCase, budget, processor: model('Processor'), graphics: model('Graphics'), memory: model('Memory'), storage: model('Storage'), tier, parts: selected.map(item => ({ component: componentOf(item)!, model: item.model || item.name, brand: item.brand, specs: item.specs, price: item.price, inventoryId: item.id.startsWith('custom:') ? undefined : item.id, source: item.id.startsWith('custom:') ? 'Custom' : 'Stock' })), notes: name + '\n' + requestNotes })
-      setRequested(true); setRequestOpen(false); setMessage('Build request saved on this device. The workshop can review it in Service jobs in this browser.')
-    } catch { setError('Could not save this request. Your selected parts are still here; check browser storage and try again.') }
+      await savePcRequest(user!, { useCase, budget, processor: model('Processor'), graphics: model('Graphics'), memory: model('Memory'), storage: model('Storage'), tier, parts: selected.map(item => ({ component: componentOf(item)!, model: item.model || item.name, brand: item.brand, specs: item.specs, price: item.price, inventoryId: item.id.startsWith('custom:') ? undefined : item.id, source: item.id.startsWith('custom:') ? 'Custom' : 'Stock' })), notes: name + '\n' + requestNotes })
+      setRequested(true); setRequestOpen(false); setMessage('Build request sent. The workshop can review it in Service jobs.')
+    } catch { setError('Could not save this request. Your selected parts are still here; check your connection and try again.') }
+    finally { saving.current = false }
   }
   return <>
+    {plansError && <p className="form-error" role="alert">{plansError}</p>}
     <PageHeader eyebrow="BUILD STUDIO" title={mode === 'identify' ? "PC identifier" : "PC builder"} description="Select from the shared component catalog, identify the resulting tier, and request or order the same build."><ExcelButton disabled={!selected.length} onExport={exportBuild} /></PageHeader>
     <div className="record-tabs" role="group" aria-label="PC workspace mode"><button className={mode === 'build' ? 'primary-button' : 'secondary-button'} aria-pressed={mode === 'build'} onClick={() => setMode('build')}><Cpu size={17} />Build & request</button><button className={mode === 'identify' ? 'primary-button' : 'secondary-button'} aria-pressed={mode === 'identify'} onClick={() => setMode('identify')}><Monitor size={17} />Identify my PC</button></div>
     {mode === 'build' && <Pc3dBuilder selected={selection} inventory={inventory} onSelectionChange={changes => { change(); setSelection(current => ({ ...current, ...changes })) }} onSelect={part => { setPartEditorOpen(true); setEditingPart(part) }} />}
@@ -123,7 +112,7 @@ export function PcBuildingPage({ identify = false }: { identify?: boolean }) {
         <label>Saved builds<select aria-label="Saved builds" disabled={dirty} value={id} onChange={e => { const plan = plans.find(plan => plan.id === e.target.value); setId(plan?.id ?? ''); setName(plan?.name ?? ''); setBudget(plan?.budget ?? ''); setSelection(plan?.selection ?? {}); setCustom(plan?.custom ?? {}); setRequested(false); setError(''); setMessage('') }}><option value="">New build</option>{plans.map(plan => <option value={plan.id} key={plan.id}>{plan.name}</option>)}</select></label>
         <label>Build name<input value={name} maxLength={100} onChange={e => { change(); setName(e.target.value) }}/></label><label>Target budget (PHP)<input type="number" min="0" step="0.01" value={budget} onChange={e => { change(); setBudget(e.target.value) }}/></label>
         {plans.find(plan => plan.id === id)?.legacyNotes && <details><summary>Previous manual plan</summary><p className="legacy-plan storage-caption">{plans.find(plan => plan.id === id)?.legacyNotes}</p><p className="storage-caption">Matching stock is selected automatically. Choose replacements for unlisted models.</p></details>}
-        <div className="dialog-actions"><button type="button" className="primary-button" onClick={save}><Save size={18}/>{id ? 'Save changes' : 'Save build'}</button>{id && <button type="button" className="secondary-button danger-button" onClick={async () => { if (!await confirm({ title: 'Delete saved build?', message: 'Permanently delete "' + name + '"?', confirmLabel: 'Delete build', tone: 'danger' })) return; try { const next = plans.filter(plan => plan.id !== id); localStorage.setItem(key, JSON.stringify(next)); setPlans(next); setId(''); setDirty(true); setPlanOpen(false) } catch { setError('Unable to delete the build.') } }}><Trash2 size={18}/>Delete build</button>}</div>{error && <p className="form-error" role="alert">{error}</p>}
+        <div className="dialog-actions"><button type="button" className="primary-button" onClick={save}><Save size={18}/>{id ? 'Save changes' : 'Save build'}</button>{id && <button type="button" className="secondary-button danger-button" onClick={async () => { if (!await confirm({ title: 'Delete saved build?', message: 'Permanently delete "' + name + '"?', confirmLabel: 'Delete build', tone: 'danger' })) return; try { await deleteDoc(recordRef(plansPath, id)); setId(''); setDirty(true); setPlanOpen(false) } catch { setError('Unable to delete the build.') } }}><Trash2 size={18}/>Delete build</button>}</div>{error && <p className="form-error" role="alert">{error}</p>}
       </div></Dialog>}
       <div className="pc-build-feedback">{errors.map(error => <p className="form-error" key={error}>{error}</p>)}{unavailable && <p className="form-error">One or more selected parts are unavailable. Choose replacements.</p>}{message && <p className="save-message" role="status">{message}</p>}{error && <p className="form-error" role="alert">{error}</p>}{missing.length > 0 && <p className="storage-caption">Still needed: {missing.map(part => part.name).join(', ')}. Check compatibility before ordering.</p>}</div>
       <div className="pc-build-actions">

@@ -8,8 +8,8 @@ import { directoryLabels, useDirectories, type DirectoryGroup, type FeePreset } 
 import { useShopSettings } from '../../lib/preferences'
 
 export function DirectoriesPage() {
-  const [data, save] = useDirectories()
-  const [shop, saveShop] = useShopSettings()
+  const [data, save, directoryStatus] = useDirectories()
+  const [shop, saveShop, shopStatus] = useShopSettings()
   const { confirm } = useConfirmation()
   const [group, setGroup] = useState<DirectoryGroup | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
@@ -19,8 +19,8 @@ export function DirectoriesPage() {
   const [fee, setFee] = useState<FeePreset | null>(null)
   const [defaults, setDefaults] = useState({ taxRate: shop.taxRate, labor: shop.labor })
 
-  function attempt(action: () => void) {
-    try { action(); setError('') }
+  async function attempt(action: () => Promise<void>) {
+    try { await action(); setError('') }
     catch (err) { setError((err as Error).message) }
   }
 
@@ -32,8 +32,8 @@ export function DirectoriesPage() {
       return
     }
     if (!await confirm({ title: editing ? 'Save directory change?' : 'Add directory value?', message: editing ? `Save the change to “${editing}”?` : `Add “${next}” to ${directoryLabels[group]}?`, confirmLabel: editing ? 'Save changes' : 'Add value' })) return
-    attempt(() => {
-      save({ ...data, [group]: editing ? data[group].map(item => item === editing ? next : item) : [...data[group], next] })
+    await attempt(async () => {
+      await save({ ...data, [group]: editing ? data[group].map(item => item === editing ? next : item) : [...data[group], next] })
       setValue('')
       setEditing(null)
     })
@@ -43,7 +43,7 @@ export function DirectoriesPage() {
     if (!group) return
     if (data[group].length < 2) { setError('Keep at least one value in this directory.'); return }
     if (!await confirm({ title: 'Delete directory value?', message: `Remove “${item}” from future forms? Existing records keep their saved values.`, confirmLabel: 'Delete value', tone: 'danger' })) return
-    attempt(() => save({ ...data, [group]: data[group].filter(value => value !== item) }))
+    await attempt(() => save({ ...data, [group]: data[group].filter(value => value !== item) }))
   }
 
   async function saveDefaults(event: FormEvent<HTMLFormElement>) {
@@ -53,12 +53,12 @@ export function DirectoriesPage() {
       return
     }
     if (!await confirm({ title: 'Save fee defaults?', message: 'Apply these tax and labor defaults to new transactions?', confirmLabel: 'Save defaults' })) return
-    attempt(() => { saveShop({ ...shop, ...defaults }); setFeesOpen(false) })
+    await attempt(async () => { await saveShop({ ...shop, ...defaults }); setFeesOpen(false) })
   }
 
   async function removeFee(item: FeePreset) {
     if (!await confirm({ title: 'Delete fee preset?', message: `Delete “${item.name}”?`, confirmLabel: 'Delete preset', tone: 'danger' })) return
-    attempt(() => save({ ...data, fees: data.fees.filter(value => value.id !== item.id) }))
+    await attempt(() => save({ ...data, fees: data.fees.filter(value => value.id !== item.id) }))
   }
 
   async function saveFee(event: FormEvent<HTMLFormElement>) {
@@ -70,12 +70,14 @@ export function DirectoriesPage() {
     }
     const existing = data.fees.some(item => item.id === fee.id)
     if (!await confirm({ title: existing ? 'Save fee preset changes?' : 'Add fee preset?', message: `${existing ? 'Save changes to' : 'Add'} “${fee.name.trim()}”?`, confirmLabel: existing ? 'Save preset' : 'Add preset' })) return
-    attempt(() => {
-      save({ ...data, fees: [...data.fees.filter(item => item.id !== fee.id), { ...fee, name: fee.name.trim() }] })
+    await attempt(async () => {
+      await save({ ...data, fees: [...data.fees.filter(item => item.id !== fee.id), { ...fee, name: fee.name.trim() }] })
       setFee(null)
     })
   }
 
+  const loadError = directoryStatus.error || shopStatus.error
+  if (loadError || directoryStatus.loading || shopStatus.loading) return <p className={loadError ? 'form-error' : 'storage-caption'} role={loadError ? 'alert' : 'status'}>{loadError || 'Loading directories…'}</p>
   return <>
     <PageHeader eyebrow="WORKSPACE DIRECTORY" title="Directories" description="Manage choices used by forms. Existing records keep their original values." />
     <div className="settings-menu">

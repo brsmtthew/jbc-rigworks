@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,3 +23,10 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 
 export const firebaseAuth = getAuth(app)
 export const firebaseFirestore = getFirestore(app)
+
+// Development only: tests use a demo project and never connect to production.
+if (import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true') {
+  if (!firebaseConfig.projectId.startsWith('demo-')) throw new Error('Emulator mode requires a demo- project ID.')
+  connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(firebaseFirestore, '127.0.0.1', 8080)
+}

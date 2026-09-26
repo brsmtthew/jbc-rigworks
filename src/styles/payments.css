@@ -1,0 +1,16 @@
+.order-qr { display: flex; align-items: center; gap: 20px; padding: 20px 0; border-top: 1px solid var(--line); }
+.order-qr img { flex: 0 0 180px; max-width: 45%; height: auto; }
+.order-qr strong { overflow-wrap: anywhere; }
+.order-qr p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.payment-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 20px; }
+.payment-account-card, .payment-proof-panel { border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: #fff; }
+.payment-proof-panel { margin: 20px 0; }
+.payment-account-card h3, .payment-proof-panel h3 { margin-top: 0; }
+.payment-qr-image { width: 220px; max-width: 100%; height: auto; object-fit: contain; }
+.payment-proof-image { max-width: 100%; max-height: 440px; object-fit: contain; border: 1px solid var(--line); }
+.payment-qr-empty { display: grid; place-items: center; min-height: 160px; color: #536579; border: 1px dashed #aab9c8; border-radius: 8px; background: #f6f8fb; }
+.receipt-payment { padding: 14px; background: #f0f7f3; border: 1px solid #bcd8c5; border-radius: 8px; }
+.receipt-payment h3, .receipt-payment p { margin: 4px 0; }
+.pos-order-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 640px) { .payment-account-grid { grid-template-columns: 1fr; } .order-qr { flex-direction: column; align-items: flex-start; } .order-qr img { max-width: 180px; flex: none; } }
+@media print { .order-qr { break-inside: avoid; } .order-qr a { display: none; } .order-qr img { width: 120px; height: 120px; flex-basis: 120px; } }

@@ -7,6 +7,7 @@ import { Dialog } from './Dialog'
 import { today, useWorkspace } from '../../lib/workspaceStorage'
 import type { Expense, InventoryItem, Job, Sale } from '../../types/business'
 import { useConfirmation } from './confirmation-context'
+import { useNavigate } from 'react-router-dom'
 
 export type EntryType = 'job' | 'sale' | 'item' | 'expense'
 type RecordType = Job | Sale | InventoryItem | Expense
@@ -30,6 +31,7 @@ const entries = {
 } satisfies Record<EntryType, { label: string; description: string; icon: typeof Wrench; fields: Field[] }>
 
 export function EntryForm({ initialType, record, onClose }: { initialType?: EntryType; record?: RecordType; onClose: () => void }) {
+  const navigate = useNavigate()
   const [type, setType] = useState(initialType)
   const [error, setError] = useState('')
   const workspace = useWorkspace()
@@ -39,12 +41,11 @@ export function EntryForm({ initialType, record, onClose }: { initialType?: Entr
   const fields = type ? (entries[type].fields as Field[]).map(field => ({ ...field, options: field.name === 'socket' ? ['', ...directory.sockets] : field.name === 'memoryType' ? ['', ...directory.memory] : field.name === 'method' ? directory.payments : field.options })).filter(field => (!(type === 'sale' && record && 'lines' in record && record.lines) || field.name === 'paid') && !(type === 'job' && record && 'status' in record && record.status === 'Completed' && field.name === 'status')) : []
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!type) return
+    if (!type || type === 'sale') return
     const form = new FormData(event.currentTarget)
     const parsed = Object.fromEntries(fields.map(field => { const raw = String(form.get(field.name) ?? '').trim(); return [field.name, field.type === 'number' && field.name !== 'warrantyMonths' ? (raw === '' && field.optional ? '' : Number(raw)) : raw] }))
     const values = { ...(record as unknown as Record<string, unknown>), ...parsed }
     if (fields.some(field => (!field.optional && parsed[field.name] === '') || (typeof parsed[field.name] === 'number' && (!Number.isFinite(parsed[field.name]) || Number(parsed[field.name]) < 0)))) { setError('Complete every field with a valid value.'); return }
-    if (type === 'sale' && Number(values.paid) > Number(values.total)) { setError('Amount received cannot exceed the sale total.'); return }
     if (type === 'item' && workspace.inventory.some(item => item.sku.toLowerCase() === String(values.sku).toLowerCase() && item.id !== record?.id)) { setError('This SKU already exists. Edit that inventory item instead.'); return }
     if (type === 'item' && values.kind === 'part' && (!String(values.brand || '').trim() || !String(values.model || '').trim() || !String(values.component || '').trim() || !String(form.get('specs') || '').trim())) { setError('PC parts need a brand, model, component type, and specifications before they can be listed in the shared catalog.'); return }
     if (type === 'item' && values.kind === 'asset' && (!String(values.assetTag || '').trim() || !String(values.location || '').trim())) { setError('Tools and equipment need an asset tag and storage location.'); return }
@@ -56,13 +57,13 @@ export function EntryForm({ initialType, record, onClose }: { initialType?: Entr
     if (!confirmed) return
     const id = record?.id ?? `${{ job: 'JOB', sale: 'INV', item: 'STK', expense: 'EXP' }[type]}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
     try {
-      if (type === 'job') workspace.save('jobs', { ...values, id } as Job)
-      if (type === 'sale') workspace.save('sales', { ...values, id, status: values.paid === values.total ? 'Paid' : Number(values.paid) > 0 ? 'Partial' : 'Unpaid' } as Sale)
-      if (type === 'item') { const old = record as InventoryItem | undefined; workspace.save('inventory', { ...values, kind: String(values.kind) as InventoryItem['kind'], cores: values.cores === '' ? undefined : Number(values.cores), memoryGb: values.memoryGb === '' ? undefined : Number(values.memoryGb), vramGb: values.vramGb === '' ? undefined : Number(values.vramGb), brand: String(values.brand || '').trim(), model: String(values.model || '').trim(), assetTag: String(values.assetTag || '').trim(), location: String(values.location || '').trim(), image, specs: String(form.get('specs') || ''), stockHistory: [...(old?.stockHistory || []), ...(old?.stock !== Number(values.stock) ? [{ date: new Date().toISOString(), before: old?.stock || 0, after: Number(values.stock), reason: String(form.get('stockReason') || (old ? 'Inventory adjustment' : 'Opening stock')) }] : [])], warrantyMonths: values.warrantyMonths || undefined, id } as InventoryItem) }
-      if (type === 'expense') workspace.save('expenses', { ...values, id } as Expense)
+      if (type === 'job') await workspace.save('jobs', { ...values, id } as Job)
+      if (type === 'item') { const old = record as InventoryItem | undefined; await workspace.save('inventory', { ...values, kind: String(values.kind) as InventoryItem['kind'], cores: values.cores === '' ? undefined : Number(values.cores), memoryGb: values.memoryGb === '' ? undefined : Number(values.memoryGb), vramGb: values.vramGb === '' ? undefined : Number(values.vramGb), brand: String(values.brand || '').trim(), model: String(values.model || '').trim(), assetTag: String(values.assetTag || '').trim(), location: String(values.location || '').trim(), image, specs: String(form.get('specs') || ''), stockHistory: [...(old?.stockHistory || []), ...(old?.stock !== Number(values.stock) ? [{ date: new Date().toISOString(), before: old?.stock || 0, after: Number(values.stock), reason: String(form.get('stockReason') || (old ? 'Inventory adjustment' : 'Opening stock')) }] : [])], warrantyMonths: values.warrantyMonths || undefined, id } as InventoryItem, old?.stock) }
+      if (type === 'expense') await workspace.save('expenses', { ...values, id } as Expense)
       onClose()
     } catch (err) { setError((err as Error).message) }
   }
+  if (type === 'sale') return <Dialog title="Sale and payment" onClose={onClose}><p>Create sales and record cash payments in the POS to keep stock and transaction receipts together.</p><button className="primary-button" onClick={() => { onClose(); navigate('/pos', record ? { state: { collectSaleId: record.id } } : undefined) }}>Open POS</button></Dialog>
   return <Dialog wide={type === 'item'} title={type ? `${record ? 'Edit ' : 'New '}${entries[type].label.toLowerCase()}` : 'New entry'} onClose={onClose}>
     {!type ? <div className="entry-options">{(Object.keys(entries) as EntryType[]).map(key => {
       const item = entries[key]
@@ -74,8 +75,8 @@ export function EntryForm({ initialType, record, onClose }: { initialType?: Entr
       <datalist id="entry-categories">{(type === 'expense' ? directory.expenseCategories : directory.categories).map(value => <option key={value} value={value}/>)}</datalist><datalist id="entry-services">{directory.services.map(value => <option key={value} value={value}/>)}</datalist>
       {type === 'item' && <fieldset className="inventory-media"><legend><ImagePlus size={18}/> Product presentation</legend><label>Specifications<textarea name="specs" maxLength={4000} rows={4} defaultValue={(record as InventoryItem)?.specs || ''} placeholder="Model, dimensions, interfaces, power requirements, and included accessories"/></label><label>Product photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async e => { const file = e.target.files?.[0]; if (!file) return; if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 500000) { setError('Use a JPEG, PNG, or WebP photo smaller than 500 KB.'); return } const reader = new FileReader(); reader.onload = () => { setImage(String(reader.result)); setError('') }; reader.onerror = () => setError('The photo could not be read.'); reader.readAsDataURL(file) }}/></label>{image && <div className="upload-preview"><img src={image} alt="Product photo"/><button type="button" className="icon-button" aria-label="Remove photo" title="Remove photo" onClick={() => setImage('')}><Trash2 size={18}/></button></div>}<label>Stock adjustment reason<input name="stockReason" maxLength={200} placeholder="Delivery, count correction, damaged stock..."/></label></fieldset>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      <p className="storage-caption">Saved on this device.</p>
-      <div className="dialog-actions">{!initialType && <button className="secondary-button" type="button" onClick={() => { setType(undefined); setError('') }}><ArrowLeft size={18}/>Back</button>}<button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit"><Save size={18}/>{record ? 'Save changes' : 'Save record'}</button>{record && !(type === 'sale' && 'lines' in record && record.lines) && <button type="button" className="secondary-button danger-button" onClick={async () => { if (!await confirm({ title: 'Delete record?', message: 'Permanently delete this record? This cannot be undone.', confirmLabel: 'Delete record', tone: 'danger' })) return; try { workspace.remove(({ job: 'jobs', sale: 'sales', item: 'inventory', expense: 'expenses' } as const)[type], record.id); onClose() } catch (err) { setError((err as Error).message) } }}><Trash2 size={18}/>Delete record</button>}</div>
+      <p className="storage-caption">Saved to the shared database.</p>
+      <div className="dialog-actions">{!initialType && <button className="secondary-button" type="button" onClick={() => { setType(undefined); setError('') }}><ArrowLeft size={18}/>Back</button>}<button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit"><Save size={18}/>{record ? 'Save changes' : 'Save record'}</button>{record && <button type="button" className="secondary-button danger-button" onClick={async () => { if (!await confirm({ title: 'Delete record?', message: 'Permanently delete this record? This cannot be undone.', confirmLabel: 'Delete record', tone: 'danger' })) return; try { await workspace.remove(({ job: 'jobs', sale: 'sales', item: 'inventory', expense: 'expenses' } as const)[type], record.id); onClose() } catch (err) { setError((err as Error).message) } }}><Trash2 size={18}/>Delete record</button>}</div>
     </form>}
   </Dialog>
 }

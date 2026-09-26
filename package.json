@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "playwright test",
+    "test": "npm run test:rules && npm run test:database",
+    "test:legacy": "playwright test",
+    "test:rules": "firebase emulators:exec --project demo-jbc-rigworks --only firestore \"node --test tests/database/firestore.rules.mjs\"",
+    "test:database": "firebase emulators:exec --project demo-jbc-rigworks --only auth,firestore \"node --test tests/database/workflows.mjs\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -29,6 +32,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

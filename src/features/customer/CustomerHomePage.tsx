@@ -5,16 +5,16 @@ import { CalendarPlus, Cpu, ClipboardList, ShoppingCart, Coins } from 'lucide-re
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Panel } from '../../components/ui/Panel'
 import { useAuth } from '../../lib/auth-context'
-import { getAppointments, getPcRequests } from '../../lib/customerStorage'
+import { useCustomerRequests } from '../../lib/customerStorage'
 
 export function CustomerHomePage() {
   const { user } = useAuth()
   const { sales } = useWorkspace()
+  const { appointments, requests, error } = useCustomerRequests(user)
   if (!user) return null
-  const appointments = getAppointments(user)
-  const requests = getPcRequests(user)
   return <>
     <PageHeader eyebrow="YOUR CUSTOMER PORTAL" title="Dashboard" description="Book care for your device or start planning your next build." />
+    {error && <p className="form-error" role="alert">{error}</p>}
     <div className="metric-grid"><MetricCard label="Appointments" value={String(appointments.length)} note="All service requests" icon={CalendarPlus} /><MetricCard label="PC requests" value={String(requests.length)} note="Saved build requests" icon={Cpu} /><MetricCard label="Orders" value={String(sales.length)} note="Your purchase history" icon={ShoppingCart} /><MetricCard label="Order total" value={formatPHP(sales.reduce((sum, sale) => sum + sale.total, 0))} note="Across all your orders" icon={Coins} dark /></div>
     <div className="overview-grid customer-overview-grid">
       <Panel title="Your appointments" subtitle="Keep track of requests and confirmed visits">

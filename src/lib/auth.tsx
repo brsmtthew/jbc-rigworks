@@ -11,14 +11,13 @@ import {
   updateProfile as updateFirebaseProfile,
   type User as FirebaseUser,
 } from 'firebase/auth'
-import { doc, getDocFromServer, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore'
-import type { AppUser } from '../types/business'
-import { isCompanyAdminEmail } from './adminAccess'
+import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore'
+import type { AppUser, UserRole } from '../types/business'
 import { AuthContext } from './auth-context'
 import { firebaseAuth, firebaseFirestore } from './firebase'
 
-const adminAccountRef = doc(firebaseFirestore, 'config', 'adminAccount')
-const adminSetupMessage = 'This company account is not linked as the admin yet. Set config/adminAccount to its Firebase UID in Firestore.'
+const profileRef = (uid: string) => doc(firebaseFirestore, 'users', uid)
+const missingProfileMessage = 'Your account profile is missing. Refresh your account to restore it.'
 
 const authErrorMessages: Record<string, string> = {
   'auth/email-already-in-use': 'An account already exists for this email. Sign in instead.',
@@ -48,7 +47,7 @@ function accountAccessError(error: unknown) {
     : ''
   if (code === 'permission-denied') return 'Firestore denied account access. Deploy the project security rules and refresh your account.'
   if (code === 'unavailable' || code === 'auth/network-request-failed') return 'Account access is temporarily unavailable. Check your connection and refresh your account.'
-  return 'Could not load your account profile and admin access from Firestore. Refresh your account or contact the company admin.'
+  return 'Could not load your account profile and role from Firestore. Refresh your account or contact an administrator.'
 }
 
 function baseUser(firebaseUser: FirebaseUser): AppUser {
@@ -57,19 +56,35 @@ function baseUser(firebaseUser: FirebaseUser): AppUser {
     name: (firebaseUser.displayName?.trim() || firebaseUser.email?.split('@')[0] || 'Customer').slice(0, 80),
     email: firebaseUser.email ?? '',
     emailVerified: firebaseUser.emailVerified,
+    adminVerificationRequired: false,
     role: 'user',
   }
 }
 
-async function syncVerifiedProfile(firebaseUser: FirebaseUser, account: AppUser) {
-  const profileRef = doc(firebaseFirestore, 'users', firebaseUser.uid)
-  await runTransaction(firebaseFirestore, async transaction => {
-    const existing = await transaction.get(profileRef)
+function withRole(account: AppUser, role: UserRole): AppUser {
+  return {
+    ...account,
+    role: role === 'admin' && account.emailVerified ? 'admin' : 'user',
+    adminVerificationRequired: role === 'admin' && !account.emailVerified,
+  }
+}
+
+async function syncProfile(firebaseUser: FirebaseUser, account: AppUser) {
+  const ref = profileRef(firebaseUser.uid)
+  return runTransaction(firebaseFirestore, async transaction => {
+    const existing = await transaction.get(ref)
     if (!existing.exists()) {
-      transaction.set(profileRef, { name: account.name, email: account.email, createdAt: serverTimestamp() })
-    } else if (existing.data().name !== account.name || existing.data().email !== account.email) {
-      transaction.update(profileRef, { name: account.name, email: account.email })
+      transaction.set(ref, { name: account.name, email: account.email, role: 'user', createdAt: serverTimestamp() })
+      return 'user' as UserRole
     }
+    const profile = existing.data()
+    const updates: Record<string, string> = {}
+    if (profile.name !== account.name) updates.name = account.name
+    if (profile.email !== account.email) updates.email = account.email
+    // Give older profiles a user role without changing an existing admin role.
+    if (!Object.hasOwn(profile, 'role')) updates.role = 'user'
+    if (Object.keys(updates).length) transaction.update(ref, updates)
+    return profile.role === 'admin' ? 'admin' as UserRole : 'user' as UserRole
   })
 }
 
@@ -81,18 +96,9 @@ async function resolveAccount(firebaseUser: FirebaseUser): Promise<{ account: Ap
     return { account: baseUser(firebaseUser), error: accountAccessError(error) }
   }
   const account = baseUser(firebaseUser)
-  if (!account.emailVerified) return { account, error: '' }
-
   try {
-    await syncVerifiedProfile(firebaseUser, account)
-    if (isCompanyAdminEmail(account.email)) {
-      const adminAccount = await getDocFromServer(adminAccountRef)
-      if (!adminAccount.exists() || adminAccount.data().uid !== account.id) {
-        return { account, error: adminSetupMessage }
-      }
-      account.role = 'admin'
-    }
-    return { account, error: '' }
+    const role = await syncProfile(firebaseUser, account)
+    return { account: withRole(account, role), error: '' }
   } catch (error) {
     return { account, error: accountAccessError(error) }
   }
@@ -145,23 +151,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!user?.id || !user.emailVerified || !isCompanyAdminEmail(user.email)) return
+    if (!user?.id) return
     const uid = user.id
-    return onSnapshot(adminAccountRef, { includeMetadataChanges: true }, snapshot => {
-      // Local writes have not passed the server's rules yet; only trust a confirmed admin UID.
-      if (snapshot.metadata.hasPendingWrites) return
-      const isAdmin = !snapshot.metadata.fromCache && snapshot.exists() && snapshot.data().uid === uid
-      setUser(current => current?.id === uid && current.role !== (isAdmin ? 'admin' : 'user')
-        ? { ...current, role: isAdmin ? 'admin' : 'user' }
-        : current)
-      if (!snapshot.metadata.fromCache) {
-        setAccountError(current => isAdmin && current === adminSetupMessage ? '' : !isAdmin ? adminSetupMessage : current)
-      }
+    return onSnapshot(profileRef(uid), { includeMetadataChanges: true }, snapshot => {
+      // resolveAccount already read the role from the server. Ignore the listener's
+      // initial cache event so refreshing an admin page does not redirect it.
+      if (snapshot.metadata.hasPendingWrites || snapshot.metadata.fromCache) return
+      const isAdmin = snapshot.exists() && snapshot.data().role === 'admin'
+      setUser(current => {
+        if (current?.id !== uid) return current
+        const next = withRole(current, isAdmin ? 'admin' : 'user')
+        return current.role === next.role && current.adminVerificationRequired === next.adminVerificationRequired ? current : next
+      })
+      setAccountError(current => !snapshot.exists() ? missingProfileMessage : current === missingProfileMessage ? '' : current)
     }, error => {
-      setUser(current => current?.id === uid ? { ...current, role: 'user' } : current)
+      setUser(current => current?.id === uid ? withRole(current, 'user') : current)
       setAccountError(accountAccessError(error))
     })
-  }, [user?.id, user?.email, user?.emailVerified])
+  }, [user?.id, user?.emailVerified])
 
   const refreshAccount = async () => {
     const firebaseUser = firebaseAuth.currentUser
@@ -199,9 +206,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!name.trim() || name.trim().length > 80 || !email.trim() || password.length < 6) {
       throw new Error('Enter a name up to 80 characters, a valid email, and a password with at least 6 characters.')
     }
-    if (isCompanyAdminEmail(email)) {
-      throw new Error('This email is reserved for the company admin. Sign in or contact the business.')
-    }
     let firebaseUser: FirebaseUser
     try {
       await setPersistence(firebaseAuth, browserLocalPersistence)
@@ -209,18 +213,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       throw friendlyAuthError(error)
     }
-    let warning = ''
+    const warnings: string[] = []
     try {
       await updateFirebaseProfile(firebaseUser, { displayName: name.trim() })
     } catch {
-      warning = 'Account created, but your display name could not be saved. You can update it in Settings.'
+      warnings.push('Account created, but your display name could not be saved. You can update it in Settings.')
     }
     try {
-      await sendEmailVerification(firebaseUser)
+      await syncProfile(firebaseUser, { ...baseUser(firebaseUser), name: name.trim() })
     } catch {
-      warning = 'Account created, but the verification email could not be sent. Use Send verification email below.'
+      warnings.push('Your profile could not be saved to Firestore. Refresh your account to retry.')
     }
     const nextUser = baseUser(firebaseUser)
+    const warning = warnings.join(' ')
     registrationWarning.current = warning
     setUser(nextUser)
     setAccountError(warning)
@@ -233,10 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (firebaseUser.emailVerified) throw new Error('This email address is already verified.')
     try {
       await sendEmailVerification(firebaseUser)
-      if (registrationWarning.current.includes('verification email')) {
-        registrationWarning.current = ''
-        setAccountError('')
-      }
     } catch (error) {
       throw friendlyAuthError(error)
     }

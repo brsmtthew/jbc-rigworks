@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, CircleCheck, CircleX, Cpu, Eye, FileQuestion, Save, Trash2 } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -6,7 +6,7 @@ import { Panel } from '../../components/ui/Panel'
 import { Dialog } from '../../components/ui/Dialog'
 import { ActionButton } from '../../components/ui/ActionButton'
 import { useAuth } from '../../lib/auth-context'
-import { getAppointments, getPcRequests, respondToPcQuote } from '../../lib/customerStorage'
+import { changePendingRequest, respondToPcQuote, useCustomerRequests } from '../../lib/customerStorage'
 import { formatPHP } from '../../data/appData'
 import { today } from '../../lib/workspaceStorage'
 import { useDirectories } from '../../lib/directories'
@@ -22,23 +22,9 @@ export function CustomerRecordsPage({ kind, embedded = false }: { kind: 'appoint
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [error, setError] = useState('')
-  const key = 'jbc-rigworks:' + (kind === 'appointments' ? 'appointments:' : 'pc-requests:') + user?.id
-
-  useSyncExternalStore(callback => {
-    window.addEventListener('storage', callback)
-    window.addEventListener('jbc-requests-change', callback)
-    return () => {
-      window.removeEventListener('storage', callback)
-      window.removeEventListener('jbc-requests-change', callback)
-    }
-  }, () => {
-    try { return localStorage.getItem(key) }
-    catch { return null }
-  })
+  const { appointments, requests, error: loadError, loading } = useCustomerRequests(user)
 
   if (!user) return null
-  const appointments = getAppointments(user)
-  const requests = getPcRequests(user)
   const isAppointments = kind === 'appointments'
   const rows = isAppointments ? appointments : requests
 
@@ -53,23 +39,11 @@ export function CustomerRecordsPage({ kind, embedded = false }: { kind: 'appoint
   async function change(remove = false) {
     if (!selected) return
     try {
-      const current = JSON.parse(localStorage.getItem(key) || '[]') as (CustomerAppointment | CustomPcRequest)[]
-      if (!Array.isArray(current)) throw new Error('Saved requests could not be read.')
-      const latest = current.find(item => item.id === selected.id)
-      if (!latest || !['Requested', 'Under review'].includes(latest.status)) {
-        throw new Error('This request is being processed. Reopen it to see the current status.')
-      }
-      if (!remove && 'preferredDate' in latest && (!date || date < today() || !time)) {
+      if (!remove && 'preferredDate' in selected && (!date || date < today() || !time)) {
         throw new Error('Select a current or future date and a time.')
       }
       if (!await confirm({ title: remove ? 'Delete request?' : 'Save request changes?', message: remove ? 'Permanently delete this pending request?' : 'Save your changes to this request?', confirmLabel: remove ? 'Delete request' : 'Save changes', tone: remove ? 'danger' : 'primary' })) return
-      const next = remove
-        ? current.filter(item => item.id !== selected.id)
-        : current.map(item => item.id === selected.id
-          ? { ...item, notes, ...('preferredDate' in item ? { preferredDate: date, preferredTime: time } : {}) }
-          : item)
-      localStorage.setItem(key, JSON.stringify(next))
-      window.dispatchEvent(new Event('jbc-requests-change'))
+      await changePendingRequest(user!, kind, selected.id, remove ? null : { notes, preferredDate: date, preferredTime: time })
       setSelected(null)
       setError('')
     } catch (err) {
@@ -81,7 +55,7 @@ export function CustomerRecordsPage({ kind, embedded = false }: { kind: 'appoint
     if (!user || !selected || 'service' in selected) return
     if (!await confirm({ title: response === 'Approved' ? 'Accept this quote?' : 'Decline this quote?', message: response === 'Approved' ? 'Record your approval for this PC build quote?' : 'Record that you are declining this PC build quote?', confirmLabel: response === 'Approved' ? 'Accept quote' : 'Decline quote', tone: response === 'Declined' ? 'danger' : 'primary' })) return
     try {
-      setSelected(respondToPcQuote(user, selected.id, response))
+      setSelected(await respondToPcQuote(user, selected.id, response))
       setError('')
     } catch (err) {
       setError((err as Error).message || 'Unable to update this quote.')
@@ -94,7 +68,7 @@ export function CustomerRecordsPage({ kind, embedded = false }: { kind: 'appoint
   return <>
     {!embedded && <PageHeader eyebrow="CUSTOMER PORTAL" title={isAppointments ? 'My appointments' : 'My PC requests'} description="Your saved requests and their details." />}
     <Panel title={isAppointments ? 'Appointment requests' : 'Custom build requests'}>
-      {!rows.length ? <div className="customer-empty large">
+      {loadError ? <p className="form-error" role="alert">{loadError}</p> : loading ? <p role="status">Loading requests…</p> : !rows.length ? <div className="customer-empty large">
         <FileQuestion size={30} />
         <h3>{isAppointments ? 'No appointments yet' : 'No PC requests yet'}</h3>
         <Link className="primary-button" to={isAppointments ? '/customer/book' : '/customer/pc-building'}>

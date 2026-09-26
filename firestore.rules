@@ -10,44 +10,179 @@ service cloud.firestore {
       return signedIn() && request.auth.token.email_verified == true;
     }
 
-    function adminPath() {
-      return /databases/$(database)/documents/config/adminAccount;
-    }
-
-    function companyEmail() {
-      return verified() && request.auth.token.email is string &&
-        request.auth.token.email.lower() == 'jbcrigworks@gmail.com';
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     function isAdmin() {
-      return companyEmail() && exists(adminPath()) &&
-        get(adminPath()).data.uid == request.auth.uid;
+      return verified() && exists(profilePath()) &&
+        get(profilePath()).data.role == 'admin';
     }
 
     function validProfile(data) {
-      return data.keys().hasAll(['name', 'email', 'createdAt']) &&
-        data.keys().hasOnly(['name', 'email', 'createdAt']) &&
+      return data.keys().hasAll(['name', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['name', 'email', 'role', 'createdAt']) &&
         data.name is string && data.name.size() > 0 && data.name.size() <= 80 &&
         data.email is string && data.email == request.auth.token.email &&
+        data.role in ['user', 'admin'] &&
         data.createdAt is timestamp;
     }
 
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
-      allow create: if verified() && request.auth.uid == uid &&
+      allow create: if signedIn() && request.auth.uid == uid &&
         validProfile(request.resource.data) &&
+        request.resource.data.role == 'user' &&
         request.resource.data.createdAt == request.time;
-      allow update: if verified() && request.auth.uid == uid &&
+      allow update: if signedIn() && request.auth.uid == uid &&
         validProfile(request.resource.data) &&
         request.resource.data.createdAt == resource.data.createdAt &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email']);
+        request.resource.data.role == resource.data.get('role', 'user') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email', 'role']);
+      allow delete: if false;
+
+      match /settings/{settingId} {
+        allow read, write: if signedIn() && request.auth.uid == uid && settingId == 'account';
+      }
+
+      match /plans/{planId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid &&
+          request.resource.data.id == planId;
+      }
+    }
+
+    match /settings/{settingId} {
+      allow read: if signedIn() && settingId in ['shop', 'directories'];
+      allow create, update: if isAdmin() && settingId in ['shop', 'directories'];
       allow delete: if false;
     }
 
-    match /config/adminAccount {
-      allow get: if companyEmail();
-      allow list, create, update, delete: if false;
+    match /inventory/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /catalog/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /bundles/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /jobs/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /expenses/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /sales/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /orders/{id} {
+      allow get, list: if isAdmin() ||
+        (signedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if isAdmin() || (signedIn() &&
+        request.resource.data.id == id &&
+        request.resource.data.customerId == request.auth.uid &&
+        request.resource.data.channel == 'Online' &&
+        request.resource.data.orderStatus == 'Requested' &&
+        request.resource.data.status == 'Unpaid' &&
+        request.resource.data.paid == 0 &&
+        request.resource.data.cost == 0 &&
+        request.resource.data.total is number &&
+        request.resource.data.total >= 0 && request.resource.data.total <= 10000000 &&
+        request.resource.data.lines is list &&
+        request.resource.data.lines.size() > 0 && request.resource.data.lines.size() <= 50 &&
+        request.resource.data.paymentMethod == 'Cash' &&
+        request.resource.data.fulfillment.mode == 'Pickup' &&
+        request.resource.data.receiptEmail is string &&
+        request.resource.data.receiptEmail.size() > 0 && request.resource.data.receiptEmail.size() <= 254 &&
+        !request.resource.data.keys().hasAny(['serviceJobId', 'cashTendered', 'change', 'lastReceiptId']) &&
+        request.resource.data.paymentHistory.size() == 0);
+      allow update, delete: if isAdmin();
+    }
+
+    match /paymentAccounts/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && id in ['bank', 'ewallet'];
+    }
+
+    match /paymentProofs/{id} {
+      function ownOrder() {
+        return signedIn() && get(/databases/$(database)/documents/orders/$(id)).data.customerId == request.auth.uid;
+      }
+      function validProof() {
+        let data = request.resource.data;
+        let order = get(/databases/$(database)/documents/orders/$(id)).data;
+        let account = get(/databases/$(database)/documents/paymentAccounts/$(data.accountId)).data;
+        return ownOrder() && data.keys().hasOnly(['id', 'orderId', 'customerId', 'accountId', 'method', 'amount', 'reference', 'image', 'submittedAt', 'status']) &&
+          data.id == id && data.orderId == id && data.customerId == request.auth.uid &&
+          data.status == 'Pending' && order.orderStatus != 'Declined' &&
+          data.amount is number && data.amount > 0 &&
+          data.amount >= order.total - order.paid - 0.000001 && data.amount <= order.total - order.paid + 0.000001 &&
+          data.accountId in ['bank', 'ewallet'] && account.enabled == true && account.qrImage.size() > 0 && data.method == account.kind &&
+          data.reference is string && data.reference.size() > 0 && data.reference.size() <= 100 &&
+          data.submittedAt is string && data.image is string && data.image.size() <= 700000 &&
+          data.image.matches('data:image/(png|jpeg|webp);base64,.*');
+      }
+      allow get: if isAdmin() || ownOrder();
+      allow list: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if signedIn() && validProof();
+      allow update: if isAdmin() || (signedIn() && resource.data.status == 'Rejected' && validProof());
+      allow delete: if false;
+    }
+
+    match /receipts/{id} {
+      allow get, list: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if isAdmin() && request.resource.data.id == id;
+      allow update, delete: if false;
+    }
+
+    match /receiptEmails/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.receiptId == id && request.resource.data.status == 'Queued';
+      allow update, delete: if false;
+    }
+
+    match /appointments/{id} {
+      allow get, list: if isAdmin() ||
+        (signedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.id == id &&
+        request.resource.data.customerId == request.auth.uid &&
+        request.resource.data.customerEmail == request.auth.token.email &&
+        request.resource.data.status == 'Requested';
+      allow update: if isAdmin() || (signedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        resource.data.status == 'Requested' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'preferredDate', 'preferredTime']));
+      allow delete: if isAdmin() || (signedIn() &&
+        resource.data.customerId == request.auth.uid && resource.data.status == 'Requested');
+    }
+
+    match /pcRequests/{id} {
+      allow get, list: if isAdmin() ||
+        (signedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.id == id &&
+        request.resource.data.customerId == request.auth.uid &&
+        request.resource.data.customerEmail == request.auth.token.email &&
+        request.resource.data.status == 'Under review' &&
+        !request.resource.data.keys().hasAny(['quote']);
+      allow update: if isAdmin() || (signedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        ((resource.data.status == 'Under review' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes'])) ||
+         (resource.data.status == 'Quoted' &&
+          request.resource.data.status in ['Approved', 'Declined'] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))));
+      allow delete: if isAdmin() || (signedIn() &&
+        resource.data.customerId == request.auth.uid && resource.data.status == 'Under review');
     }
   }
 }

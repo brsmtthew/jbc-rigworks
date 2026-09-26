@@ -1,12 +1,14 @@
-import { useState, useSyncExternalStore, type FormEvent } from 'react'
-import { ClipboardList, Eye, Pencil, ReceiptText, Save, Wrench } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+import { Banknote, ClipboardList, Eye, Pencil, ReceiptText, Save, Wrench } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { usePaymentProofs } from '../../lib/payments'
 import { Dialog } from '../../components/ui/Dialog'
 import { ActionButton } from '../../components/ui/ActionButton'
 import { DataTable } from '../../components/ui/DataTable'
 import { Panel } from '../../components/ui/Panel'
 import { useAuth } from '../../lib/auth-context'
 import { useWorkspace } from '../../lib/workspaceStorage'
-import { savePcQuote } from '../../lib/customerStorage'
+import { receiveAppointmentAsJob, savePcQuote, updateAppointmentStatus, useAllRequests } from '../../lib/customerStorage'
 import { formatPHP } from '../../data/appData'
 import { InvoiceDialog } from '../sales/InvoiceDialog'
 import type { CustomerAppointment, CustomPcRequest, Sale } from '../../types/business'
@@ -14,39 +16,17 @@ import { useConfirmation } from '../../components/ui/confirmation-context'
 
 type RequestRow = {
   id: string
-  key: string
   customerId: string
   owner: string
   kind: 'Booking' | 'PC request'
   record: CustomerAppointment | CustomPcRequest
 }
 
-const appointmentPrefix = 'jbc-rigworks:appointments:'
-const requestPrefix = 'jbc-rigworks:pc-requests:'
-
-function snapshot() {
-  try {
-    return JSON.stringify(Object.keys(localStorage)
-      .filter(key => key.startsWith(appointmentPrefix) || key.startsWith(requestPrefix))
-      .sort()
-      .map(key => [key, localStorage.getItem(key)]))
-  } catch {
-    return '[]'
-  }
-}
-
-function subscribe(fn: () => void) {
-  window.addEventListener('storage', fn)
-  window.addEventListener('jbc-requests-change', fn)
-  return () => {
-    window.removeEventListener('storage', fn)
-    window.removeEventListener('jbc-requests-change', fn)
-  }
-}
-
 export function RequestInbox() {
-  const raw = useSyncExternalStore(subscribe, snapshot)
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const proofs = usePaymentProofs(user)
+  const { appointments, requests, error: requestsError } = useAllRequests(user?.role === 'admin')
   const workspace = useWorkspace()
   const { confirm } = useConfirmation()
   const [selected, setSelected] = useState<RequestRow | null>(null)
@@ -59,37 +39,10 @@ export function RequestInbox() {
   const [quoteAmount, setQuoteAmount] = useState('')
   const [quoteMessage, setQuoteMessage] = useState('')
 
-  const rows: RequestRow[] = []
-  let invalid = false
-  try {
-    for (const [key, value] of JSON.parse(raw) as [string, string][]) {
-      try {
-        const data = JSON.parse(value)
-        if (!Array.isArray(data)) throw new Error('Invalid request list')
-        for (const record of data) {
-          if (!record || typeof record.id !== 'string' || typeof record.status !== 'string') {
-            invalid = true
-            continue
-          }
-          if (record.shopId && record.shopId !== user?.id) continue
-          const kind = key.startsWith(appointmentPrefix) ? 'Booking' : 'PC request'
-          const customerId = key.slice(kind === 'Booking' ? appointmentPrefix.length : requestPrefix.length)
-          rows.push({
-            id: record.id,
-            key,
-            customerId,
-            owner: record.customerName || customerId,
-            kind,
-            record,
-          })
-        }
-      } catch {
-        invalid = true
-      }
-    }
-  } catch {
-    invalid = true
-  }
+  const rows: RequestRow[] = [
+    ...appointments.map(record => ({ id: record.id, customerId: record.customerId || '', owner: record.customerName || record.customerId || '', kind: 'Booking' as const, record })),
+    ...requests.map(record => ({ id: record.id, customerId: record.customerId || '', owner: record.customerName || record.customerId || '', kind: 'PC request' as const, record })),
+  ]
 
   function openRequest(row: RequestRow) {
     setSelected(row)
@@ -108,14 +61,9 @@ export function RequestInbox() {
   async function updateBookingStatus(nextStatus = status, confirmed = false) {
     if (!selected || selected.kind !== 'Booking') return
     try {
-      const current = JSON.parse(localStorage.getItem(selected.key) || '[]')
-      if (!Array.isArray(current) || !current.some((record: CustomerAppointment) => record.id === selected.id)) {
-        throw new Error('This request is no longer available.')
-      }
       if (!confirmed && !await confirm({ title: 'Update appointment status?', message: `Change this appointment request to ${nextStatus}?`, confirmLabel: 'Save status' })) return
-      localStorage.setItem(selected.key, JSON.stringify(current.map((record: CustomerAppointment) =>
-        record.id === selected.id ? { ...record, status: nextStatus } : record)))
-      window.dispatchEvent(new Event('jbc-requests-change'))
+      if (!user) throw new Error('Sign in again to update appointments.')
+      await updateAppointmentStatus(user, selected.id, nextStatus as CustomerAppointment['status'])
       setSelected(null)
       setError('')
     } catch (err) {
@@ -133,16 +81,9 @@ export function RequestInbox() {
       }
       if (workspace.jobs.some(job => job.id === id)) throw new Error('This request already has a service job.')
       if (!await confirm({ title: 'Receive appointment?', message: `Create a service job for ${selected.owner} and confirm this appointment?`, confirmLabel: 'Receive as job' })) return
-      workspace.save('jobs', {
-        id,
-        customer: selected.owner,
-        device: record.device,
-        service: record.service + (record.visit?.mode === 'Home service' ? ' / Home service: ' + record.visit.address : ''),
-        due: record.preferredDate,
-        quote: record.visit?.estimate || 0,
-        status: 'Queued',
-      })
-      await updateBookingStatus('Confirmed', true)
+      if (!user) throw new Error('Sign in again to receive appointments.')
+      await receiveAppointmentAsJob(user, selected.id)
+      setSelected(null)
     } catch (err) {
       setError((err as Error).message)
     }
@@ -158,7 +99,7 @@ export function RequestInbox() {
     }
     try {
       if (!await confirm({ title: 'Save quote?', message: `Send this ${formatPHP(amount)} quote to ${selected.owner}?`, confirmLabel: 'Save quote' })) return
-      const updated = savePcQuote(user, selected.customerId, selected.id, { amount, message: quoteMessage })
+      const updated = await savePcQuote(user, selected.customerId, selected.id, { amount, message: quoteMessage })
       setSelected({ ...selected, record: updated })
       setStatus(updated.status)
       setQuoteEditing(false)
@@ -171,10 +112,10 @@ export function RequestInbox() {
   async function saveOrderStatus() {
     if (!order) return
     try {
-      const latest = workspace.sales.find(value => value.id === order.id)
+      const latest = workspace.orders.find(value => value.id === order.id)
       if (!latest) throw new Error('Order unavailable.')
       if (!await confirm({ title: 'Update order status?', message: `Change ${order.id} to ${orderStatus}?`, confirmLabel: 'Save status' })) return
-      workspace.save('sales', { ...latest, orderStatus: orderStatus as Sale['orderStatus'] })
+      await workspace.updateOrderStatus(latest.id, orderStatus as NonNullable<Sale['orderStatus']>)
       setOrder(null)
       setError('')
     } catch (err) {
@@ -182,12 +123,12 @@ export function RequestInbox() {
     }
   }
 
-  const orders = workspace.sales.filter(sale => sale.channel === 'Online')
+  const orders = workspace.orders
   const selectedPcRequest = selected && !('service' in selected.record) ? selected.record : null
   const canQuote = selectedPcRequest && ['Under review', 'Quoted'].includes(selectedPcRequest.status)
 
   return <div className="request-inbox">
-    <Panel title="Customer requests" subtitle="Bookings and PC requests saved in this browser" action={<ClipboardList size={22} />}>
+    <Panel title="Customer requests" subtitle="Bookings and PC requests from all devices" action={<ClipboardList size={22} />}>
       <DataTable rows={rows} label="Customer requests" columns={[
         { label: 'Customer', sortValue: row => row.owner, render: row => row.owner },
         { label: 'Type', render: row => row.kind },
@@ -197,20 +138,23 @@ export function RequestInbox() {
       ]} />
     </Panel>
 
-    <Panel title="Online transactions" subtitle="Process pickup and delivery orders">
+    <Panel title="Online transactions" subtitle="Prepare pickup orders and review payments in the POS">
       <DataTable rows={orders} label="Online transactions" columns={[
         { label: 'Customer', render: row => row.customer },
         { label: 'Invoice', render: row => row.id },
         { label: 'Fulfillment', render: row => row.fulfillment?.mode || 'Pickup' },
         { label: 'Status', render: row => row.orderStatus || 'Requested' },
+        { label: 'Payment', render: row => proofs.rows.some(proof => proof.orderId === row.id && proof.status === 'Pending') ? 'Proof awaiting review' : row.status },
         { label: 'Actions', render: row => <div className="part-actions">
+          <ActionButton label={'Open POS ' + row.id} disabled={row.orderStatus === 'Declined'} onClick={() => navigate('/pos', { state: { collectSaleId: row.id } })}><Banknote size={18} /></ActionButton>
           <ActionButton label={'Process ' + row.id} onClick={() => { setOrder(row); setOrderStatus(row.orderStatus || 'Requested'); setError('') }}><Wrench size={18} /></ActionButton>
           <ActionButton label={'Invoice ' + row.id} onClick={() => setInvoice(row)}><ReceiptText size={18} /></ActionButton>
         </div> },
       ]} />
     </Panel>
 
-    {invalid && <p role="alert" className="form-error">Some saved requests could not be read. Their original data has been preserved.</p>}
+    {requestsError && <p role="alert" className="form-error">Could not load customer requests: {requestsError}</p>}
+    {proofs.error && <p role="alert" className="form-error">Could not load payment proofs: {proofs.error}</p>}
 
     {selected && <Dialog title={quoteEditing ? 'Prepare PC quote' : 'Review ' + selected.id} onClose={() => { setSelected(null); setQuoteEditing(false) }}>
       {quoteEditing && selected.kind === 'PC request' && !('service' in selected.record) ? <form className="portal-form settings-fields" onSubmit={submitQuote}>
@@ -265,7 +209,7 @@ export function RequestInbox() {
         <p>{order.detail}</p>
         <p>{order.fulfillment?.address}</p>
         <label>Order status<select aria-label="Order status" value={orderStatus} onChange={event => setOrderStatus(event.target.value)}>
-          {['Requested', 'Processing', 'Ready', 'Completed'].map(value => <option key={value}>{value}</option>)}
+          {['Requested', 'Processing', 'Ready', 'Completed', 'Declined'].map(value => <option key={value}>{value}</option>)}
         </select></label>
         {error && <p role="alert" className="form-error">{error}</p>}
         <ActionButton variant="labeled" label="Save order status" onClick={saveOrderStatus}><Save size={18} /></ActionButton>
