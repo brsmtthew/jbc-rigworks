@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { AppUser } from '../types/business'
+import type { AppUser } from '../types'
 
 export type AuthContextValue = {
   user: AppUser | null

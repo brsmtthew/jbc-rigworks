@@ -1,0 +1,1558 @@
+/* Admin workspace. Keep the official palette, fonts, and shared 3D scene intact. */
+.admin-shell {
+  --line: #dce4ed;
+  --muted: #5b6f83;
+  --radius: 14px;
+  --shadow: 0 3px 12px #02275304;
+  --admin-gutter: clamp(20px, 2.8vw, 44px);
+  color: var(--brand-navy);
+  font-size: 14px;
+}
+.admin-shell .app-sidebar {
+  width: 240px;
+  flex-basis: 240px;
+  background: var(--brand-navy);
+  border-right: 1px solid #ffffff14;
+}
+.admin-shell .sidebar-content {
+  padding: 24px 18px 18px;
+}
+.admin-shell .brand-lockup {
+  padding: 15px 9px;
+  border-radius: 9px;
+  margin-bottom: 24px;
+}
+.admin-shell .workspace-role {
+  margin: -10px 0 12px;
+  color: #c3d6e9;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.admin-shell .sidebar-nav {
+  gap: 5px;
+}
+.admin-shell .sidebar-label {
+  padding: 16px 12px 6px;
+  color: #a8c2dd;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+}
+.admin-shell .nav-item {
+  min-height: 43px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  gap: 13px;
+}
+.admin-shell .nav-item.is-active {
+  background: var(--brand-blue);
+  box-shadow: 0 4px 16px #001e4533;
+}
+.admin-shell .nav-item.is-active::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+}
+.admin-shell .sidebar-spacer {
+  flex: 1;
+  min-height: 36px;
+}
+.admin-sidebar-note {
+  margin: 0 12px 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ffffff20;
+}
+.admin-sidebar-note > span {
+  font-size: 9px;
+  font-weight: 700;
+  color: #a8c2dd;
+  letter-spacing: 0.15em;
+}
+.admin-sidebar-note p {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+  color: #e0ecf7;
+  margin-top: 9px;
+}
+.admin-shell .sidebar-collapse-button {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 8px;
+  align-self: auto;
+  justify-content: flex-start;
+  padding: 10px;
+  font-size: 11px;
+  background: #ffffff09;
+}
+.admin-shell.sidebar-collapsed .app-sidebar {
+  width: 78px;
+  flex-basis: 78px;
+}
+.admin-shell.sidebar-collapsed .sidebar-content {
+  padding-inline: 12px;
+}
+.admin-shell.sidebar-collapsed .brand-lockup {
+  padding: 7px;
+}
+.admin-shell.sidebar-collapsed .nav-item {
+  padding-inline: 8px;
+}
+.admin-shell.sidebar-collapsed .nav-item::after {
+  display: none;
+}
+.admin-shell.sidebar-collapsed .sidebar-collapse-button {
+  justify-content: center;
+}
+.admin-shell .topbar {
+  padding-inline: var(--admin-gutter);
+  align-items: center;
+  border-color: var(--line);
+}
+.admin-shell .topbar-title-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.admin-shell .topbar-title-block > span {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.admin-shell .topbar-title-block > strong {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-shell .workspace-clock {
+  background: none;
+  border: 0;
+  padding: 0 8px;
+}
+.admin-shell .workspace-clock small {
+  color: var(--muted);
+}
+.admin-shell .topbar-account {
+  border-color: var(--line);
+  border-radius: 9px;
+}
+.admin-shell .topbar-signout {
+  border-color: transparent;
+  background: transparent;
+  font-size: 12px;
+}
+.admin-shell .page-content {
+  max-width: none;
+  padding: 32px var(--admin-gutter) 0;
+  scrollbar-width: thin;
+  scrollbar-color: #b7c8da transparent;
+}
+.admin-shell .page-content::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+.admin-shell .page-content::-webkit-scrollbar-thumb {
+  background: #b7c8da;
+  border-radius: 5px;
+}
+.admin-shell .page-transition {
+  max-width: 1640px;
+  margin-inline: auto;
+}
+.admin-shell .page-heading {
+  position: static;
+  top: auto;
+  padding: 0;
+  margin: 0 0 28px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  align-items: center;
+}
+.admin-shell .page-heading h1 {
+  font-size: clamp(26px, 2.5vw, 36px);
+  font-weight: 750;
+  letter-spacing: -0.055em;
+  line-height: 1.18;
+}
+.admin-shell .page-heading .eyebrow {
+  color: var(--brand-blue);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  margin-bottom: 10px;
+}
+.admin-shell .page-heading p {
+  display: block;
+  max-width: 620px;
+  font-size: 13px;
+  margin-top: 10px;
+  color: var(--muted);
+}
+.admin-shell .heading-actions {
+  justify-content: flex-end;
+}
+.admin-shell :is(.primary-button, .secondary-button) {
+  border-radius: 8px;
+  min-height: 42px;
+  font-size: 12px;
+  padding: 11px 15px;
+  line-height: 1.4;
+}
+.admin-shell .primary-button {
+  box-shadow: 0 3px 6px #0466d315;
+}
+.admin-shell .secondary-button {
+  border-color: #cbd8e5;
+  color: #355673;
+}
+.admin-shell .secondary-button:hover {
+  border-color: var(--brand-blue);
+  background: #f1f7ff;
+}
+.admin-shell .icon-button {
+  border-color: var(--line);
+  background: #f5f8fb;
+  border-radius: 8px;
+}
+.admin-shell .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.admin-shell :is(.period-select, .heading-actions > input, select) {
+  border: 1px solid #cbd8e5;
+  border-radius: 8px;
+  background: white;
+  color: var(--navy);
+  font-size: 13px;
+  min-height: 42px;
+  padding: 10px 12px;
+}
+.admin-shell .metric-grid {
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.admin-shell .metric-card {
+  border: 1px solid var(--line);
+  padding: 22px;
+  border-radius: 12px;
+  min-height: 166px;
+  box-shadow: var(--shadow);
+}
+.admin-shell .metric-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.admin-shell .metric-icon {
+  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  background: #eef5ff;
+  color: var(--blue);
+}
+.admin-shell .metric-card > strong {
+  margin: 12px 0 16px;
+  font-size: clamp(26px, 2.4vw, 36px);
+  letter-spacing: -0.055em;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.admin-shell .metric-note {
+  padding-top: 12px;
+  border-color: #e9eef5;
+  font-size: 11px;
+  color: var(--muted);
+}
+.admin-shell .metric-card-dark {
+  background: var(--brand-navy);
+  border-color: var(--brand-navy);
+}
+.admin-shell .metric-card-dark .metric-label,
+.admin-shell .metric-card-dark .metric-note {
+  color: #c3d6e9;
+}
+.admin-shell .metric-card-dark .metric-note {
+  border-color: #ffffff1c;
+}
+.admin-shell .metric-card-dark .metric-icon {
+  background: #ffffff10;
+  color: #a8d0ff;
+}
+.admin-attention {
+  margin-bottom: 28px;
+}
+.admin-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+.admin-section-heading .eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  margin-bottom: 5px;
+}
+.admin-section-heading h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.admin-section-heading > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.admin-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+}
+.admin-queue-item {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  gap: 14px;
+  border-right: 1px solid var(--line);
+}
+.admin-queue-item:last-child {
+  border: 0;
+}
+.admin-queue-item > svg:first-child {
+  color: var(--blue);
+}
+.admin-queue-item > svg:last-child {
+  margin-left: auto;
+  color: #69839d;
+}
+.admin-queue-item:hover {
+  background: #edf5ff;
+}
+.admin-queue-item span {
+  min-width: 0;
+}
+.admin-queue-item strong {
+  display: block;
+  font-size: 23px;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  font-weight: 650;
+}
+.admin-queue-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
+.admin-shell .panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.admin-shell .panel-heading {
+  padding: 22px 24px 18px;
+}
+.admin-shell .panel-heading h2 {
+  font-size: 16px;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.admin-shell .panel-heading p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.admin-shell .analytics-grid {
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+.admin-shell .analytics-grid > .panel {
+  min-height: 0;
+}
+.admin-shell .analytics-rows {
+  padding: 8px 24px 22px;
+}
+.admin-shell .analytics-rows > div {
+  font-size: 12px;
+  margin-bottom: 18px;
+  gap: 8px;
+}
+.admin-shell .analytics-rows > div:last-child {
+  margin-bottom: 0;
+}
+.admin-shell .analytics-rows meter {
+  height: 9px;
+}
+.admin-shell .detail-list > div {
+  padding-block: 13px;
+}
+.admin-shell .mini-stats {
+  margin: 0 0 24px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+.admin-shell .mini-stats > div {
+  padding: 20px 24px;
+  border-color: var(--line);
+  min-width: 0;
+}
+.admin-shell .mini-stats dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.admin-shell .mini-stats dd {
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.admin-shell :is(.list-toolbar, .admin-filter-bar) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.admin-shell .search-field {
+  min-height: 44px;
+  border: 1px solid #cbd8e5;
+  border-radius: 8px;
+  background: white;
+}
+.admin-shell .search-field input {
+  min-height: 42px;
+  font-size: 13px;
+  color: var(--navy);
+}
+.admin-shell :is(.list-toolbar, .admin-filter-bar) .search-field {
+  flex: 1 1 260px;
+  max-width: 360px;
+  min-width: 0;
+}
+.admin-shell .result-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.admin-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-shell .admin-expense-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #eaf0f780;
+  gap: 16px;
+}
+.admin-shell .admin-expense-filters label {
+  margin: 0;
+  font-size: 11px;
+}
+.admin-shell .record-tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #eaf0f7;
+  margin-bottom: 24px;
+}
+.admin-shell .record-tabs button {
+  color: #4a6480;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  min-height: 38px;
+  padding: 9px 16px;
+}
+.admin-shell .record-tabs .primary-button {
+  color: var(--navy);
+  background: white;
+  border-color: #d9e3ef;
+  box-shadow: 0 2px 4px #02275308;
+}
+.admin-shell .record-tabs button:hover {
+  color: var(--blue);
+  background: #ffffff99;
+}
+.admin-shell .data-table th {
+  border: 0;
+  border-block: 1px solid var(--line);
+  background: #f5f8fb;
+  color: #5b6f83;
+  padding: 13px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin-shell .data-table td {
+  padding: 17px 18px;
+  border: 0;
+  border-bottom: 1px solid #e7edf4;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.admin-shell .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-shell .data-table tbody tr:nth-child(even) {
+  background: #fbfcfe;
+}
+.admin-shell .data-table tbody tr:hover {
+  background: #f1f7ff;
+}
+.admin-shell .data-table td strong {
+  font-weight: 600;
+}
+.admin-shell .data-table td small {
+  font-size: 11px;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.admin-shell .data-table .numeric {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.admin-shell .data-table .part-actions {
+  gap: 8px;
+  min-width: 180px;
+}
+.admin-shell .data-table .item-cell {
+  min-width: 200px;
+}
+.admin-shell .inventory-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.admin-shell .inventory-filter-toolbar .list-toolbar {
+  flex: 1 1 100%;
+  width: 100%;
+  margin: 0;
+}
+.admin-shell .inventory-category-filter {
+  flex: 0 1 230px;
+  width: auto;
+  font-size: 11px;
+  gap: 6px;
+}
+.admin-shell .inventory-filter-reset {
+  margin-bottom: 10px;
+}
+.admin-shell .data-table .text-button {
+  padding: 5px 7px;
+  border-radius: 5px;
+}
+.admin-shell .data-table .text-button:hover {
+  background: #e3efff;
+}
+.admin-shell .table-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b7c8da #f3f6fa;
+}
+.admin-shell .table-container::-webkit-scrollbar {
+  height: 6px;
+}
+.admin-shell .table-container::-webkit-scrollbar-thumb {
+  background: #b7c8da;
+  border-radius: 5px;
+}
+.admin-shell .job-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.admin-shell .job-card > .eyebrow {
+  display: inline-block;
+  padding: 5px 9px;
+  color: var(--blue);
+  background: #edf5ff;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  border-radius: 5px;
+  margin-bottom: 17px;
+}
+.admin-shell .job-card h2 {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+}
+.admin-shell .job-card p {
+  color: #526b85;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.admin-shell .job-card-actions {
+  width: 100%;
+  padding-top: 18px;
+  margin-top: auto;
+  gap: 8px;
+}
+.admin-shell .job-card-actions > button {
+  flex: 1 1 auto;
+}
+.admin-shell .empty-state {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  min-height: 240px;
+  padding: 40px 24px;
+}
+.admin-shell .panel .empty-state {
+  border: 0;
+}
+.admin-shell .empty-state h3 {
+  font-size: 17px;
+  font-weight: 650;
+}
+.admin-shell .empty-state p {
+  font-size: 13px;
+  max-width: 450px;
+  margin-top: 8px;
+}
+.admin-shell .pos-layout {
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 22px;
+}
+.admin-shell .pos-products {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.admin-shell .pos-product {
+  padding: 18px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.admin-shell .pos-product .product-visual {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.admin-shell .pos-product .product-image {
+  height: 56px;
+  width: 70px;
+  object-fit: contain;
+}
+.admin-shell .pos-product .service-icon {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: #edf5ff;
+}
+.admin-shell .pos-product .service-icon svg {
+  width: 25px;
+  height: 25px;
+}
+.admin-shell .pos-product h2 {
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 650;
+}
+.admin-shell .pos-product p {
+  font-size: 11px;
+}
+.admin-shell .pos-product .shop-card-specs {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.admin-shell .pos-product > strong {
+  padding-top: 8px;
+  font-size: 22px;
+  letter-spacing: -0.045em;
+}
+.admin-shell .pos-product > .secondary-button {
+  width: 100%;
+  background: #f5f9ff;
+  border-color: #d6e5f7;
+  color: var(--blue);
+}
+.admin-shell .pos-product > .product-inspect {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+}
+.admin-shell .pos-layout > .panel {
+  position: sticky;
+  top: 0;
+}
+.admin-shell .pos-layout > .panel .panel-heading {
+  background: var(--brand-navy);
+  color: white;
+  border-radius: 11px 11px 0 0;
+  padding: 19px 22px;
+}
+.admin-shell .pos-layout > .panel .panel-heading h2 {
+  color: white;
+}
+.admin-shell .order-body {
+  padding: 0 22px 22px;
+}
+.admin-shell .cart-lines {
+  border-top: 0;
+  border-bottom-color: var(--line);
+}
+.admin-shell .customer-empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  min-height: 230px;
+  padding: 25px 5px;
+}
+.admin-shell .customer-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.admin-shell .customer-empty p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.admin-shell .reports-grid {
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.admin-shell .report-highlight {
+  position: relative;
+  padding: 30px 34px;
+  border-radius: 12px;
+  background: var(--brand-navy);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.admin-shell .report-highlight > svg {
+  width: 70px;
+  height: 70px;
+  color: #9ec5f2;
+  margin-right: 14px;
+}
+.admin-shell .report-highlight .admin-report-watermark {
+  position: absolute;
+  right: 20px;
+  bottom: -12px;
+  width: 150px;
+  height: 150px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.admin-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin: 0 0 0 32px;
+  padding-left: 32px;
+  border-left: 1px solid #ffffff25;
+}
+.admin-report-metrics dt {
+  color: #c3d6e9;
+  font-size: 11px;
+}
+.admin-report-metrics dd {
+  margin: 8px 0 0;
+  font-size: 22px;
+  color: white;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.admin-shell .report-highlight strong {
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+}
+.admin-shell .report-highlight small {
+  color: #c3d6e9;
+  font-size: 12px;
+}
+.admin-shell .report-rows {
+  padding: 0 24px 22px;
+}
+.admin-shell .report-rows > div {
+  padding-block: 13px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 12px;
+  gap: 16px;
+}
+.admin-shell .report-rows > p {
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.admin-shell .report-rows > div:last-child {
+  border-bottom: 0;
+}
+.admin-shell .reports-grid .panel > p {
+  margin: 0 24px 14px;
+}
+.admin-shell .reports-grid .panel > .secondary-button {
+  margin: 0 24px 24px;
+}
+.admin-shell .profile-card {
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  margin-bottom: 32px;
+  gap: 22px;
+}
+.admin-shell .profile-symbol {
+  width: 66px;
+  height: 66px;
+  border-radius: 16px;
+}
+.admin-shell .profile-card h2 {
+  font-size: 23px;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+.admin-shell .profile-card p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.admin-shell .profile-card .eyebrow {
+  font-size: 9px;
+  color: var(--blue);
+}
+.admin-settings-groups {
+  display: grid;
+  gap: 28px;
+}
+.admin-settings-group {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 2fr);
+  gap: 28px;
+}
+.admin-settings-heading {
+  padding-top: 16px;
+}
+.admin-settings-heading h2 {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+.admin-settings-heading p {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 230px;
+  line-height: 1.7;
+}
+.admin-shell .admin-settings-group .settings-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+.admin-shell .settings-tile {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  min-height: 98px;
+  gap: 17px;
+}
+.admin-shell .admin-settings-group .settings-tile {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  width: 100%;
+  min-height: 88px;
+}
+.admin-shell .admin-settings-group .settings-tile:last-child {
+  border: 0;
+}
+.admin-shell .settings-tile strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.admin-shell .settings-tile small {
+  font-size: 12px;
+  margin-top: 5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.admin-shell .settings-tile .service-icon {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: #edf5ff;
+  border-radius: 10px;
+}
+.admin-shell .settings-tile .service-icon svg {
+  width: 21px;
+}
+.admin-shell .settings-tile > svg:last-child {
+  width: 16px;
+  color: #69839d;
+}
+.admin-shell .app-dialog {
+  width: min(620px, calc(100vw - 40px));
+  border: 1px solid #dce4ed;
+  border-radius: 16px;
+  box-shadow: 0 24px 100px #001f4a40;
+}
+.admin-shell .app-dialog.dialog-wide {
+  width: min(1000px, calc(100vw - 40px));
+}
+.admin-shell .app-dialog::backdrop {
+  background: #02275366;
+  backdrop-filter: blur(5px);
+}
+.admin-shell .app-dialog .dialog-heading {
+  padding: 20px 26px;
+  border-color: var(--line);
+  background: #fbfcfe;
+}
+.admin-shell .app-dialog .dialog-heading h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.admin-shell .app-dialog .dialog-heading .icon-button {
+  background: white;
+}
+.admin-shell .app-dialog .dialog-body {
+  padding: 26px;
+  scroll-padding-block: 20px;
+}
+.admin-shell .dialog-footer {
+  padding: 18px 26px;
+  gap: 10px;
+  border-color: var(--line);
+  background: #fbfcfe;
+}
+/* Reset legacy negative margins that pushed actions beyond the dialog body. */
+.admin-shell .dialog-body .dialog-actions {
+  position: static;
+  margin: 24px 0 0;
+  padding: 20px 0 0;
+  border-color: var(--line);
+  background: transparent;
+}
+.admin-shell .portal-form {
+  padding: 0;
+}
+.admin-shell .portal-form-grid {
+  gap: 18px 20px;
+  align-items: start;
+}
+.admin-shell .portal-form label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 550;
+  color: #3d5975;
+  gap: 7px;
+}
+.admin-shell .portal-form :is(input, select, textarea) {
+  border: 1px solid #c2d1e0;
+  border-radius: 8px;
+  min-width: 0;
+  color: var(--navy);
+  background: white;
+  box-shadow: 0 1px 2px #02275303;
+  font-size: 14px;
+  min-height: 44px;
+}
+.admin-shell .portal-form :is(input, textarea)::placeholder {
+  color: #7a8da1;
+}
+.admin-shell .portal-form :is(input, select, textarea):focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px #0466d312;
+}
+.admin-shell .portal-form input[readonly] {
+  color: var(--muted);
+  background: #f3f6fa;
+}
+.admin-shell .portal-form input[type='file'] {
+  padding: 7px;
+  font-size: 12px;
+}
+.admin-shell input[type='file']::file-selector-button {
+  border: 0;
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: #eaf2fc;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 600;
+  margin-right: 10px;
+  cursor: pointer;
+}
+.admin-shell .portal-form .check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-shell .portal-form :is(input[type='checkbox'], input[type='radio']) {
+  width: 17px;
+  height: 17px;
+  min-height: 17px;
+  flex: 0 0 17px;
+  accent-color: var(--blue);
+  box-shadow: none;
+}
+.admin-shell .storage-caption {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.75;
+}
+.admin-shell .settings-fields {
+  gap: 20px;
+}
+.admin-shell .business-settings-fields {
+  grid-template-columns: 1fr 1fr;
+}
+.admin-shell .business-settings-fields label:nth-child(2),
+.admin-shell .business-settings-fields label:last-child {
+  grid-column: 1 / -1;
+}
+.admin-shell .form-section {
+  border-color: var(--line);
+  background: #fbfcfe;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.admin-shell .form-section summary {
+  font-size: 13px;
+}
+.admin-shell .schedule-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-shell .schedule-days .check-row {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+}
+.admin-shell .schedule-days .check-row:has(:checked) {
+  background: #edf5ff;
+  border-color: #b7d3f6;
+  color: var(--blue);
+}
+.admin-shell .schedule-window {
+  grid-template-columns: 1fr 1fr 0.65fr auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7f9fc;
+  gap: 14px;
+  align-items: end;
+}
+.admin-shell .schedule-window h3 {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-shell .schedule-window > button {
+  min-height: 44px;
+}
+.admin-shell .directory-values {
+  border-color: var(--line);
+}
+.admin-shell .directory-row {
+  padding: 12px 14px;
+  border-color: var(--line);
+  gap: 10px;
+}
+.admin-shell .directory-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-shell .scanner-layout {
+  align-items: start;
+}
+.admin-shell .scanner-layout .settings-fields {
+  align-content: start;
+  gap: 22px;
+}
+.admin-shell .scanner-layout form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 10px;
+}
+.admin-shell .scanner-layout form > label {
+  margin: 0;
+}
+.admin-shell .qr-item {
+  background: #f7f9fc;
+  border-color: var(--line);
+  min-height: 230px;
+}
+.admin-shell .qr-item > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.admin-builder-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.admin-builder-toolbar .eyebrow {
+  font-size: 9px;
+  margin-bottom: 5px;
+}
+.admin-builder-toolbar h2 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.admin-shell .page-footer {
+  max-width: 1640px;
+  margin: 32px auto 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.025em;
+}
+.admin-shell.density-compact .metric-card {
+  padding: 16px;
+  min-height: 142px;
+}
+.admin-shell.density-compact .data-table td {
+  padding-block: 10px;
+}
+.admin-shell.density-compact .job-card {
+  padding: 18px;
+}
+@media (min-width: 1600px) {
+  .admin-shell .pos-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .admin-shell .pos-products {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 801px) {
+  .admin-shell[data-page='inventory'] .data-table {
+    min-width: 1380px;
+  }
+  .admin-shell .data-table td:first-child {
+    min-width: 200px;
+  }
+}
+@media (max-width: 800px) {
+  .admin-shell .data-table td {
+    border: 0;
+    padding: 0;
+  }
+  .admin-shell .data-table td:last-child {
+    grid-column: 1 / -1;
+  }
+  .admin-shell .data-table .part-actions {
+    min-width: 0;
+  }
+}
+@media (max-height: 820px) and (min-width: 1025px) {
+  .admin-sidebar-note {
+    display: none;
+  }
+}
+@media (max-width: 1250px) {
+  .admin-shell .report-highlight {
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .admin-report-metrics {
+    width: 100%;
+    margin: 0;
+    padding: 22px 0 0;
+    border-left: 0;
+    border-top: 1px solid #ffffff25;
+  }
+  .admin-shell .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .pos-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .topbar-title-block > span {
+    display: none;
+  }
+  .admin-shell .topbar-title-block > strong {
+    border: 0;
+    padding: 0;
+  }
+  .admin-queue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-queue-item:nth-child(2) {
+    border-right: 0;
+  }
+  .admin-queue-item:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-shell .analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .heading-actions {
+    max-width: 50%;
+  }
+}
+@media (max-width: 1024px) {
+  .admin-shell .app-sidebar {
+    display: none;
+  }
+  .admin-shell .drawer-dialog {
+    background: var(--brand-navy);
+  }
+  .admin-shell .drawer-dialog .dialog-body {
+    padding: 0;
+  }
+  .admin-shell .drawer-dialog .sidebar-content {
+    padding: 22px;
+  }
+  .admin-shell.sidebar-collapsed
+    .drawer-dialog
+    :is(.workspace-role, .sidebar-label, .nav-item span) {
+    display: block;
+  }
+  .admin-shell.sidebar-collapsed .drawer-dialog .nav-item {
+    justify-content: flex-start;
+  }
+  .admin-shell.sidebar-collapsed .drawer-dialog .brand-lockup {
+    height: auto;
+  }
+  .admin-shell .admin-expense-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .admin-shell .mini-stats {
+    gap: 0;
+  }
+  .admin-shell .mini-stats > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-shell {
+    --admin-gutter: 20px;
+  }
+  .admin-shell .page-content {
+    padding-top: 24px;
+  }
+  .admin-shell .page-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    margin-bottom: 22px;
+    padding-bottom: 0;
+  }
+  .admin-shell .heading-actions {
+    width: 100%;
+    max-width: none;
+    justify-content: flex-start;
+  }
+  .admin-shell .heading-actions > * {
+    flex: 0 1 auto;
+  }
+  .admin-shell .analytics-grid,
+  .admin-shell .reports-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .pos-layout {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .pos-layout > .panel {
+    position: static;
+  }
+  .admin-settings-group {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .admin-settings-heading {
+    padding-top: 0;
+  }
+  .admin-settings-heading p {
+    max-width: none;
+    margin-top: 5px;
+  }
+  .admin-shell .workspace-clock {
+    display: none;
+  }
+  .admin-shell .schedule-window {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-shell .profile-card {
+    padding: 22px;
+    flex-wrap: wrap;
+  }
+  .admin-shell .profile-card > div:nth-child(2) {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .profile-card > button {
+    width: auto;
+    margin-left: 88px;
+  }
+  .admin-shell .record-tabs {
+    width: 100%;
+  }
+  .admin-shell .record-tabs button {
+    flex: 1;
+    padding-inline: 10px;
+  }
+}
+@media (max-width: 540px) {
+  .admin-report-metrics {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .admin-report-metrics > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .admin-report-metrics dd {
+    margin: 0;
+    font-size: 19px;
+  }
+  .admin-shell {
+    --admin-gutter: 16px;
+  }
+  .admin-shell .topbar {
+    padding-inline: 12px;
+  }
+  .admin-shell .topbar-actions {
+    gap: 4px;
+  }
+  .admin-shell .topbar-account-meta,
+  .admin-shell .topbar-account > svg {
+    display: none;
+  }
+  .admin-shell .topbar-account {
+    padding: 3px;
+    min-width: 42px;
+  }
+  .admin-shell .topbar-signout {
+    padding: 9px;
+  }
+  .admin-shell .topbar-signout span {
+    display: none;
+  }
+  .admin-shell .metric-grid {
+    gap: 10px;
+  }
+  .admin-shell .metric-card {
+    padding: 16px;
+    min-height: 160px;
+  }
+  .admin-shell .metric-label {
+    align-items: flex-start;
+    font-size: 11px;
+    gap: 5px;
+  }
+  .admin-shell .metric-icon {
+    width: 25px;
+    height: 25px;
+  }
+  .admin-shell .metric-icon svg {
+    width: 15px;
+  }
+  .admin-shell .metric-card > strong {
+    font-size: 26px;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .metric-note {
+    font-size: 10px;
+  }
+  .admin-section-heading > span {
+    display: none;
+  }
+  .admin-queue-item {
+    padding: 16px 12px;
+    gap: 10px;
+  }
+  .admin-queue-item > svg:last-child {
+    display: none;
+  }
+  .admin-queue-item small {
+    font-size: 10px;
+  }
+  .admin-shell .mini-stats > div {
+    padding: 16px;
+  }
+  .admin-shell .mini-stats dd {
+    font-size: 24px;
+  }
+  .admin-shell :is(.list-toolbar, .admin-filter-bar) .search-field {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .admin-filter-label {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .admin-shell .result-count {
+    margin-left: 0;
+  }
+  .admin-shell .admin-expense-filters {
+    gap: 14px;
+    padding: 16px;
+  }
+  .admin-shell .record-tabs {
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .admin-shell .record-tabs button {
+    font-size: 11px;
+    padding: 9px 8px;
+  }
+  .admin-shell .panel-heading {
+    padding: 20px;
+  }
+  .admin-shell .panel-heading p {
+    font-size: 11px;
+  }
+  .admin-shell .pos-products {
+    gap: 12px;
+  }
+  .admin-shell .pos-product {
+    padding: 14px;
+  }
+  .admin-shell .pos-product h2 {
+    font-size: 12px;
+  }
+  .admin-shell .pos-product > strong {
+    font-size: 20px;
+  }
+  .admin-shell .pos-product > .secondary-button {
+    font-size: 11px;
+    padding-inline: 8px;
+  }
+  .admin-shell .pos-product > .secondary-button svg {
+    width: 14px;
+  }
+  .admin-shell .data-table td {
+    padding: 0;
+  }
+  .admin-shell .data-table .part-actions {
+    min-width: 0;
+  }
+  .admin-shell .inventory-filter-toolbar {
+    flex-direction: row;
+  }
+  .admin-shell .inventory-category-filter {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .admin-shell .profile-card > button {
+    margin-left: 0;
+    width: 100%;
+  }
+  .admin-shell .settings-tile {
+    padding: 18px 16px;
+    gap: 12px;
+  }
+  .admin-shell .settings-tile small {
+    font-size: 11px;
+  }
+  .admin-shell .app-dialog,
+  .admin-shell .app-dialog.dialog-wide {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 12px;
+  }
+  .admin-shell .app-dialog .dialog-inner {
+    max-height: calc(100dvh - 22px);
+  }
+  .admin-shell .app-dialog .dialog-heading {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  .admin-shell .app-dialog .dialog-heading h2 {
+    font-size: 16px;
+  }
+  .admin-shell .app-dialog .dialog-body {
+    padding: 20px 18px;
+  }
+  .admin-shell .dialog-footer {
+    padding: 16px 18px;
+    flex-wrap: wrap;
+  }
+  .admin-shell .dialog-footer > button {
+    flex: 1;
+  }
+  .admin-shell .business-settings-fields {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .portal-form :is(input, select, textarea) {
+    font-size: 16px;
+  }
+  .admin-shell .directory-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin-shell .directory-row > span {
+    flex: 1 1 100%;
+  }
+  .admin-shell .schedule-window {
+    padding: 14px;
+  }
+  .admin-shell .schedule-days .check-row {
+    padding: 8px 9px;
+  }
+  .admin-shell .page-footer {
+    font-size: 9px;
+    gap: 12px;
+  }
+}

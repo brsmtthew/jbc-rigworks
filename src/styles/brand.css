@@ -9,8 +9,33 @@
   --font-heading: 'Montserrat Variable', Montserrat, ui-sans-serif, system-ui, sans-serif;
 }
 
-.brand-artwork { display: block; overflow: hidden; background: var(--brand-white); flex-shrink: 0; }
-.brand-artwork-primary { position: relative; width: 100%; aspect-ratio: 1840 / 340; }
-.brand-artwork-primary img { position: absolute; width: 107.77174%; max-width: none; height: auto; left: -3.80435%; top: -64.70588%; }
-.brand-artwork-mark { width: 100%; height: 100%; border-radius: inherit; }
-.brand-artwork-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.brand-artwork {
+  display: block;
+  overflow: hidden;
+  background: var(--brand-white);
+  flex-shrink: 0;
+}
+.brand-artwork-primary {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1840 / 340;
+}
+.brand-artwork-primary img {
+  position: absolute;
+  width: 107.77174%;
+  max-width: none;
+  height: auto;
+  left: -3.80435%;
+  top: -64.70588%;
+}
+.brand-artwork-mark {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.brand-artwork-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

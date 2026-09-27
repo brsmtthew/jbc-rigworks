@@ -1,0 +1,314 @@
+/* Shared V2 layout: one application scroll region and one scroll region per dialog. */
+.app-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-main {
+  height: 100dvh;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.app-sidebar {
+  height: 100dvh;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.page-header-host,
+.topbar {
+  flex-shrink: 0;
+}
+.page-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.page-transition,
+.page-header,
+.pos-layout > *,
+.booking-layout > * {
+  min-width: 0;
+}
+.app-dialog {
+  overflow: hidden;
+  max-height: calc(100dvh - 32px);
+}
+.app-dialog .dialog-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  max-height: calc(100dvh - 34px);
+  min-height: 0;
+}
+.app-dialog .dialog-heading {
+  position: static;
+  margin: 0;
+  padding: 20px 24px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border, #dce4ed);
+  background: white;
+}
+.app-dialog .dialog-body {
+  padding: 24px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border, #dce4ed);
+  padding: 16px 24px;
+  background: #fff;
+}
+.dialog-footer > span:first-child {
+  margin-right: auto;
+  font-weight: 600;
+}
+.dialog-footer .dialog-actions {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.dialog-body .dialog-actions {
+  position: static;
+  margin: 20px 0 0;
+  padding: 12px 0 0;
+}
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  overflow: visible;
+}
+.checkout-layout > *,
+.checkout-review {
+  position: static;
+  overflow: visible;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+}
+.form-section {
+  border: 1px solid #dce4ed;
+  border-radius: 10px;
+  padding: 16px;
+}
+.form-section > summary {
+  font-weight: 650;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.form-section[open] > summary {
+  margin-bottom: 18px;
+}
+.form-section label {
+  margin-block: 10px;
+}
+.record-tabs,
+.job-card-actions,
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.quick-actions {
+  margin: 18px 0 26px;
+}
+.metric-grid > a {
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+.job-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.job-card ul {
+  padding-left: 20px;
+  line-height: 1.8;
+}
+.shop-layout {
+  display: block;
+}
+.shop-layout .pos-products {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.pos-product {
+  min-width: 0;
+}
+.pos-product .product-image {
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  background: #f6f8fb;
+  border-radius: 8px;
+}
+.pos-product .product-inspect {
+  position: static;
+  width: auto;
+}
+.pos-product > .secondary-button {
+  width: auto;
+}
+.shop-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  align-items: center;
+}
+.shop-filters input,
+.shop-filters select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px;
+  border: 1px solid #cad6e3;
+  border-radius: 8px;
+}
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 12px 20px;
+  background: #153354;
+  color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px #1232;
+}
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.skeleton-grid i {
+  height: 220px;
+  border-radius: 12px;
+  background: #e9eef4;
+  animation: v2-pulse 1s ease-in-out infinite alternate;
+}
+.skeleton-table {
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+  padding: 16px;
+  overflow: hidden;
+}
+.skeleton-table > div {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 14px 0;
+}
+.skeleton-table i {
+  height: 18px;
+  min-width: 0;
+  background: #e9eef4;
+  border-radius: 5px;
+  animation: v2-pulse 1s ease-in-out infinite alternate;
+}
+.reduce-motion :is(.skeleton-grid i, .skeleton-table i) {
+  animation: none;
+}
+@keyframes v2-pulse {
+  to {
+    opacity: 0.5;
+  }
+}
+:is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #2b79d4;
+  outline-offset: 3px;
+}
+.pc-3d-builder {
+  min-width: 0;
+  max-width: 100%;
+}
+.pc-3d-builder .jbc-pc {
+  height: auto;
+  min-height: 0;
+  max-width: 100%;
+}
+.pc-3d-builder .jbc-pc__stage {
+  height: clamp(420px, 58dvh, 650px);
+}
+.pc-build-tools {
+  min-width: 0;
+}
+.build-intelligence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 18px;
+  margin-block: 16px;
+  border: 1px solid #d4dfeb;
+  border-radius: 12px;
+  background: white;
+}
+.build-intelligence > div {
+  flex: 1;
+  min-width: 160px;
+}
+.build-intelligence strong,
+.build-intelligence small {
+  display: block;
+  margin-block: 5px;
+}
+@media (max-width: 1200px) {
+  .shop-layout .pos-products {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .checkout-layout,
+  .booking-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shop-layout .pos-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dialog-footer {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+  }
+  .app-dialog .dialog-heading,
+  .app-dialog .dialog-body {
+    padding: 16px;
+  }
+  .dialog-footer > span:first-child {
+    flex-basis: 100%;
+  }
+  .primary-button,
+  .secondary-button,
+  .icon-button {
+    min-height: 42px;
+  }
+  .pc-3d-builder .jbc-pc__stage {
+    height: 440px;
+  }
+  .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .shop-layout .pos-products {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-grid i,
+  .skeleton-table i {
+    animation: none;
+  }
+}
+@media print {
+  .app-shell {
+    display: none;
+  }
+}

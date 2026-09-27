@@ -1,0 +1,152 @@
+import { defaultShop } from '../../../src/lib/shopSettings'
+import { adaptServices } from '../../../src/features/services/serviceCatalog'
+const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date())
+export const shop = {
+  ...defaultShop,
+  name: 'JBC RigWorks',
+  address: 'Manila, Philippines',
+  taxRate: 12,
+  delivery: 150,
+  services: adaptServices({
+    Desktop: { Low: '600', Mid: '900', High: '1200' },
+    Laptop: { Low: '700', Mid: '1000', High: '1400' },
+  }),
+}
+const names = [
+  'Processor',
+  'Motherboard',
+  'Memory',
+  'Graphics',
+  'Storage',
+  'Power supply',
+  'Case',
+  'Cooling',
+]
+export const inventory = names.map((component, i) => ({
+  id: `part-${i}`,
+  name: `${['AMD Ryzen 7 7700', 'MSI B650 Gaming Plus WiFi', 'Kingston Fury Beast 32 GB', 'Gigabyte RTX 4070 Windforce', 'Samsung 990 PRO 2 TB', 'Corsair RM750e', 'Fractal Design North', 'DeepCool AK400'][i]}`,
+  brand: ['AMD', 'MSI', 'Kingston', 'Gigabyte', 'Samsung', 'Corsair', 'Fractal Design', 'DeepCool'][
+    i
+  ],
+  model: names[i],
+  kind: 'part',
+  sku: `JBC-${i}`,
+  category: component,
+  component,
+  stock: 8,
+  reserved: 1,
+  minimum: 2,
+  cost: 1000 + i * 500,
+  price: 2000 + i * 1500,
+  specs: 'Workshop selected component with manufacturer warranty.',
+  socket: 'AM5',
+  memoryType: 'DDR5',
+  active: true,
+}))
+const sale = {
+  id: 'INV-fixture',
+  customerId: 'fixture-user',
+  customer: 'Jamie Santos',
+  contact: '09171234567',
+  date,
+  detail: inventory[0].name,
+  total: 2240,
+  paid: 2240,
+  cost: 1000,
+  status: 'Paid',
+  paymentStatus: 'Paid',
+  channel: 'Online',
+  orderStatus: 'Completed',
+  lines: [
+    {
+      id: inventory[0].id,
+      inventoryId: inventory[0].id,
+      description: inventory[0].name,
+      quantity: 1,
+      unitPrice: 2000,
+      unitCost: 1000,
+    },
+  ],
+  charges: {
+    subtotal: 2000,
+    taxRate: 12,
+    tax: 240,
+    labor: 0,
+    other: 0,
+    discount: 0,
+    delivery: 0,
+    otherLabel: '',
+  },
+  paymentHistory: [],
+  fulfillment: { mode: 'Pickup', address: '', distanceKm: 0 },
+  paymentMethod: 'Cash',
+}
+export const collections: Record<string, unknown[]> = {
+  inventory,
+  catalog: inventory.map((item) => ({ ...item, cost: 0 })),
+  sales: [sale],
+  orders: [
+    sale,
+    {
+      ...sale,
+      id: 'INV-pending',
+      paid: 0,
+      status: 'Unpaid',
+      paymentStatus: 'Unpaid',
+      orderStatus: 'Requested',
+      reservationState: 'None',
+    },
+  ],
+  jobs: [
+    {
+      id: 'JOB-fixture',
+      customer: 'Jamie Santos',
+      device: 'Lenovo ThinkPad',
+      service: 'Standard Deep Cleaning',
+      due: date,
+      quote: 700,
+      status: 'In service',
+      paymentStatus: 'Unpaid',
+    },
+  ],
+  appointments: [
+    {
+      id: 'APT-fixture',
+      customerId: 'fixture-user',
+      customerName: 'Jamie Santos',
+      customerEmail: 'jamie@example.test',
+      serviceId: 'laptop-0',
+      service: 'Standard Deep Cleaning',
+      device: 'Lenovo ThinkPad',
+      preferredDate: date,
+      preferredTime: '09:00–11:00',
+      notes: 'Fan noise and high temperature',
+      status: 'Requested',
+      createdAt: date,
+    },
+  ],
+  expenses: [
+    {
+      id: 'EXP-fixture',
+      date,
+      description: 'Workshop cleaning supplies',
+      category: 'Supplies',
+      amount: 450,
+      method: 'Cash',
+    },
+  ],
+  bundles: [
+    {
+      id: 'bundle-fixture',
+      name: 'Upgrade essentials',
+      price: 5000,
+      active: true,
+      published: true,
+      items: inventory.slice(0, 2).map((item) => ({ inventoryId: item.id, quantity: 1 })),
+    },
+  ],
+  pcRequests: [],
+  paymentProofs: [],
+  paymentAccounts: [],
+  appointmentSlots: [],
+}

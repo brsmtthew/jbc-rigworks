@@ -1,62 +1,212 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, ShieldCheck } from 'lucide-react'
+import { sendPasswordResetEmail } from 'firebase/auth'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { BrandLogo } from '../../components/ui/BrandLogo'
+import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useAuth } from '../../lib/auth-context'
+import { firebaseAuth } from '../../lib/firebase'
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const isRegister = mode === 'register'
-  const location = useLocation()
   const navigate = useNavigate()
   const { signIn, register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const [visible, setVisible] = useState(false)
+  const [recovery, setRecovery] = useState(false)
+  const [message, setMessage] = useState('')
+  const { busy, error, setError, run } = useAsyncAction()
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setError('')
-    setBusy(true)
-    try {
+    void run(async () => {
+      setMessage('')
+      if (recovery) {
+        try {
+          await sendPasswordResetEmail(firebaseAuth, email.trim())
+          setMessage(
+            'Request accepted. If this email has an account, check its inbox and spam folder for the reset link.',
+          )
+        } catch {
+          throw new Error(
+            'Could not request a reset email. Check your email and connection, then try again.',
+          )
+        }
+        return
+      }
       const account = isRegister
-        ? await register(name, email, password)
-        : await signIn(email, password)
+        ? await register(name.trim(), email.trim(), password)
+        : await signIn(email.trim(), password)
       navigate(account.role === 'admin' ? '/dashboard' : '/customer', { replace: true })
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Unable to continue.')
-    } finally {
-      setBusy(false)
-    }
+    })
   }
-
-  return <main className="auth-shell">
-    <section className="auth-brand-panel">
-      <Link to="/login" aria-label="JBC RigWorks home"><BrandLogo /></Link>
-      <div className="auth-brand-copy"><span className="eyebrow">PC & LAPTOP CARE DONE RIGHT</span><h1>Clear service.<br />Confident decisions.</h1><p>Book a service, request a custom build, or manage your workshop in one focused workspace.</p></div>
-      <div className="auth-trust"><ShieldCheck size={18} /><span>Service, repairs, and custom builds. All in one place.</span></div>
-    </section>
-    <section className="auth-form-panel">
-      <div className="auth-form-wrap">
-        <span className="auth-mobile-mark"><BrandLogo variant="mark" decorative /></span>
-        <nav className="auth-mode-nav" aria-label="Account access">
-          <Link to="/login" aria-current={!isRegister ? 'page' : undefined} className={!isRegister ? 'is-selected' : ''}>Sign in</Link>
-          <Link to="/register" aria-current={isRegister ? 'page' : undefined} className={isRegister ? 'is-selected' : ''}>Create account</Link>
-        </nav>
-        <span className="eyebrow">{isRegister ? 'CREATE YOUR ACCOUNT' : 'WELCOME BACK'}</span>
-        <h2>{isRegister ? 'Create your user account' : 'Sign in to JBC RigWorks'}</h2>
-        <p className="auth-intro">{isRegister ? 'Request appointments and custom PC builds from your own portal.' : 'Sign in to open the workspace assigned to your account.'}</p>
-        <form className="auth-form" onSubmit={submit}>
-          {isRegister && <label>Full name<input value={name} onChange={event => setName(event.target.value)} autoComplete="name" placeholder="Your name" maxLength={80} required /></label>}
-          <label>Email address<input type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
-          <label>Password<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete={isRegister ? 'new-password' : 'current-password'} placeholder="At least 6 characters" minLength={6} required /></label>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          <button className="primary-button auth-submit" type="submit" disabled={busy}>{busy ? 'Opening workspace…' : isRegister ? 'Create account' : 'Continue'} <ArrowRight size={16} /></button>
-        </form>
-        <p className="auth-switch">{isRegister ? 'Already have an account?' : 'Need a user account?'} <Link to={isRegister ? '/login' : '/register'} state={{ from: location.pathname }}>{isRegister ? 'Sign in' : 'Create one'}</Link></p>
-        <p className="auth-local-note">{isRegister ? 'Every new account starts as a user account.' : 'Administrators use the same sign-in form.'}</p>
-      </div>
-    </section>
-  </main>
+  return (
+    <main className="auth-shell auth-redesign">
+      <section className="auth-brand-panel">
+        <Link to="/login" aria-label="JBC RigWorks home">
+          <BrandLogo />
+        </Link>
+        <div className="auth-brand-copy">
+          <span className="eyebrow">PC & Laptop Care Done Right.</span>
+          <h2>
+            Your PC.
+            <br />
+            In good hands.
+          </h2>
+          <p>Book a service, track your orders, and plan your next build.</p>
+          <div className="auth-circuit" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+        <div className="auth-trust">
+          <ShieldCheck size={20} />
+          <span>One account for your devices, orders, and builds.</span>
+        </div>
+      </section>
+      <section className="auth-form-panel">
+        <div className="auth-form-wrap">
+          <span className="auth-mobile-mark">
+            <BrandLogo variant="mark" decorative />
+          </span>
+          <span className="eyebrow">WELCOME TO JBC RIGWORKS</span>
+          <h1>
+            {recovery ? 'Reset your password' : isRegister ? 'Create your account' : 'Welcome back'}
+          </h1>
+          <p className="auth-intro">
+            {recovery
+              ? 'Enter your sign-in email to request a password reset link.'
+              : isRegister
+                ? 'Keep your service requests, orders, and build ideas together.'
+                : 'Sign in to pick up where you left off.'}
+          </p>
+          <form className="auth-form" onSubmit={submit} aria-busy={busy}>
+            <fieldset disabled={busy} className="record-fields settings-fields">
+              {isRegister && !recovery && (
+                <label>
+                  Full name
+                  <input
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="name"
+                    maxLength={80}
+                    required
+                  />
+                </label>
+              )}
+              <label>
+                Email address
+                <input
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  maxLength={254}
+                  placeholder="you@example.com"
+                  required
+                />
+              </label>
+              {!recovery && (
+                <label>
+                  Password
+                  <span className="password-field">
+                    <input
+                      name="password"
+                      type={visible ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={isRegister ? 'new-password' : 'current-password'}
+                      minLength={isRegister ? 6 : undefined}
+                      required
+                      aria-describedby={isRegister ? 'password-requirements' : undefined}
+                    />
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={visible ? 'Hide password' : 'Show password'}
+                      aria-pressed={visible}
+                      onClick={() => setVisible((value) => !value)}
+                    >
+                      {visible ? <EyeOff size={19} /> : <Eye size={19} />}
+                    </button>
+                  </span>
+                </label>
+              )}
+              {isRegister && (
+                <p id="password-requirements" className="storage-caption">
+                  Use at least 6 characters. Choose a unique password.
+                </p>
+              )}
+              {!isRegister && !recovery && (
+                <button
+                  type="button"
+                  className="text-button recovery-link"
+                  onClick={() => {
+                    setRecovery(true)
+                    setError('')
+                    setMessage('')
+                  }}
+                >
+                  Forgot password?
+                </button>
+              )}
+            </fieldset>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            {message && (
+              <p className="save-message" role="status">
+                {message}
+              </p>
+            )}
+            <button className="primary-button auth-submit" type="submit" disabled={busy}>
+              {busy
+                ? recovery
+                  ? 'Requesting link…'
+                  : 'Please wait…'
+                : recovery
+                  ? 'Send reset link'
+                  : isRegister
+                    ? 'Create account'
+                    : 'Sign in'}
+              <ArrowRight size={18} />
+            </button>
+          </form>
+          {recovery ? (
+            <button
+              className="text-button auth-switch"
+              disabled={busy}
+              onClick={() => {
+                setRecovery(false)
+                setError('')
+                setMessage('')
+              }}
+            >
+              <ArrowLeft size={17} />
+              Back to sign in
+            </button>
+          ) : (
+            <p className="auth-switch">
+              {isRegister ? 'Already have an account?' : 'New to JBC RigWorks?'}{' '}
+              <Link
+                to={isRegister ? '/login' : '/register'}
+                onClick={() => {
+                  setError('')
+                  setMessage('')
+                }}
+              >
+                {isRegister ? 'Sign in' : 'Create an account'}
+              </Link>
+            </p>
+          )}
+        </div>
+      </section>
+    </main>
+  )
 }

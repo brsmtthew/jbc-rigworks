@@ -1,0 +1,353 @@
+import { sendPasswordResetEmail } from 'firebase/auth'
+import { Save, ShieldCheck, Upload, UserRound } from 'lucide-react'
+import { useRef, useState, type FormEvent } from 'react'
+import { useBeforeUnload, useBlocker, useSearchParams } from 'react-router-dom'
+import { Dialog } from '../../components/ui/Dialog'
+import { LoadingState } from '../../components/ui/LoadingState'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { useAsyncAction } from '../../hooks/useAsyncAction'
+import { useAuth } from '../../lib/auth-context'
+import { firebaseAuth } from '../../lib/firebase'
+import {
+  accountKey,
+  defaultAccount,
+  useStoredValue,
+  type AccountSettings,
+} from '../../lib/preferences'
+
+export function CustomerSettings() {
+  const { user, updateProfile } = useAuth()
+  const [account, saveAccount, status] = useStoredValue(accountKey(user!.id), defaultAccount)
+  const [changes, setChanges] = useState<Partial<AccountSettings>>({})
+  const base = {
+    ...account,
+    name: account.name || user!.name,
+    contactEmail: account.contactEmail || user!.email,
+  }
+  const profile = { ...base, ...changes }
+  const dirty = Object.entries(changes).some(
+    ([key, value]) => base[key as keyof AccountSettings] !== value,
+  )
+  const [params, setParams] = useSearchParams()
+  const display = params.get('section') === 'display'
+  const [message, setMessage] = useState('')
+  const { busy, error, setError, run } = useAsyncAction()
+  const [photoLoading, setPhotoLoading] = useState(false)
+  const photoSequence = useRef(0)
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      (dirty || busy || photoLoading) && currentLocation.pathname !== nextLocation.pathname,
+  )
+  useBeforeUnload((event) => {
+    if (dirty || busy || photoLoading) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+  })
+  function change(values: Partial<AccountSettings>) {
+    setChanges((current) => ({ ...current, ...values }))
+    setMessage('')
+  }
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage('')
+    void run(async () => {
+      if (!profile.name.trim()) throw new Error('Enter your display name.')
+      await updateProfile(profile.name.trim())
+      await saveAccount({ ...profile, name: profile.name.trim() })
+      setChanges({})
+      setMessage('Your changes are saved.')
+    })
+  }
+  function choosePhoto(file?: File) {
+    const sequence = ++photoSequence.current
+    setPhotoLoading(false)
+    setError('')
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPG, PNG, or WebP image.')
+      return
+    }
+    if (file.size > 500000) {
+      setError('Choose an image of 500 KB or smaller.')
+      return
+    }
+    setPhotoLoading(true)
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (sequence !== photoSequence.current) return
+      if (typeof reader.result === 'string') change({ photo: reader.result })
+      setPhotoLoading(false)
+    }
+    reader.onerror = () => {
+      if (sequence === photoSequence.current) {
+        setError('Unable to read this photo. Try another file.')
+        setPhotoLoading(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+  return (
+    <>
+      <PageHeader
+        eyebrow="MY ACCOUNT"
+        title="Profile & settings"
+        description="Your contact details, preferences, and account access."
+      />
+      {status.loading && !status.error ? (
+        <LoadingState label="Loading your settings…" />
+      ) : status.error ? (
+        <p className="form-error" role="alert">
+          {status.error}
+        </p>
+      ) : (
+        <div className="customer-settings">
+          <section className="profile-card">
+            <div className="profile-symbol">
+              {profile.photo ? (
+                <img src={profile.photo} alt="Your profile photo" />
+              ) : (
+                <UserRound size={32} />
+              )}
+            </div>
+            <div>
+              <h2>{profile.name}</h2>
+              <p>{user?.email}</p>
+              <small>Customer account</small>
+            </div>
+          </section>
+          <div className="record-tabs" role="group" aria-label="Account section">
+            <button
+              aria-pressed={!display}
+              className={!display ? 'primary-button' : 'secondary-button'}
+              onClick={() => setParams({})}
+            >
+              Profile & contact
+            </button>
+            <button
+              aria-pressed={display}
+              className={display ? 'primary-button' : 'secondary-button'}
+              onClick={() => setParams({ section: 'display' })}
+            >
+              Display & account access
+            </button>
+          </div>
+          <form
+            className="portal-form settings-fields customer-settings-form"
+            onSubmit={submit}
+            aria-busy={busy}
+          >
+            <fieldset className="record-fields settings-fields" disabled={busy || photoLoading}>
+              {!display ? (
+                <>
+                  <div className="profile-photo-field">
+                    <strong>Profile photo</strong>
+                    <label className="photo-upload">
+                      <Upload size={20} />
+                      <span>
+                        {photoLoading
+                          ? 'Reading photo…'
+                          : profile.photo
+                            ? 'Replace photo'
+                            : 'Upload photo'}
+                        <small>JPG, PNG, or WebP · up to 500 KB</small>
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        aria-label="Upload or replace profile photo"
+                        onChange={(e) => choosePhoto(e.target.files?.[0])}
+                      />
+                    </label>
+                    {profile.photo && (
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={() => {
+                          ++photoSequence.current
+                          change({ photo: '' })
+                        }}
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                  </div>
+                  <label>
+                    Display name
+                    <input
+                      name="name"
+                      autoComplete="name"
+                      required
+                      maxLength={80}
+                      value={profile.name}
+                      onChange={(e) => change({ name: e.target.value })}
+                    />
+                  </label>
+                  <div className="readonly-account">
+                    <ShieldCheck size={20} />
+                    <div>
+                      <strong>Sign-in email</strong>
+                      <p>{user?.email}</p>
+                      <small>
+                        This is your account identifier. Use contact email below for an alternative
+                        contact address.
+                      </small>
+                    </div>
+                  </div>
+                  <div className="portal-form-grid">
+                    <label>
+                      Contact email
+                      <input
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        maxLength={254}
+                        value={profile.contactEmail}
+                        onChange={(e) => change({ contactEmail: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Phone number
+                      <input
+                        name="tel"
+                        type="tel"
+                        autoComplete="tel"
+                        maxLength={30}
+                        value={profile.phone}
+                        onChange={(e) => change({ phone: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Address
+                    <textarea
+                      name="street-address"
+                      autoComplete="street-address"
+                      rows={3}
+                      maxLength={400}
+                      value={profile.address}
+                      onChange={(e) => change({ address: e.target.value })}
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <h2>Make this space yours</h2>
+                  <label className="preference-row">
+                    <span>
+                      <strong>Compact display</strong>
+                      <small>Fit more rows and cards into your workspace.</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={profile.compact}
+                      onChange={(e) => change({ compact: e.target.checked })}
+                    />
+                  </label>
+                  <label className="preference-row">
+                    <span>
+                      <strong>Reduce motion</strong>
+                      <small>
+                        Limit nonessential animation. You can still rotate and zoom your PC model.
+                      </small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={profile.reduceMotion}
+                      onChange={(e) => change({ reduceMotion: e.target.checked })}
+                    />
+                  </label>
+                  <section className="account-security">
+                    <h3>Account access</h3>
+                    <p>Password reset links are requested for {user?.email}.</p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        void run(async () => {
+                          await sendPasswordResetEmail(firebaseAuth, user!.email)
+                          setMessage(
+                            'Reset request accepted. Check your sign-in email for the reset link.',
+                          )
+                        })
+                      }
+                    >
+                      Send password reset link
+                    </button>
+                  </section>
+                </>
+              )}
+            </fieldset>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            {message && (
+              <p className="save-message" role="status">
+                {message}
+              </p>
+            )}
+            <div className="settings-save-bar">
+              <span role="status">
+                {photoLoading
+                  ? 'Reading photo…'
+                  : busy
+                    ? 'Saving…'
+                    : dirty
+                      ? 'You have unsaved changes'
+                      : 'All changes saved'}
+              </span>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={!dirty || busy || photoLoading}
+                onClick={() => {
+                  setChanges({})
+                  setError('')
+                  setMessage('Changes discarded.')
+                }}
+              >
+                Discard changes
+              </button>
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={!dirty || busy || photoLoading}
+              >
+                <Save size={17} />
+                Save changes
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      {blocker.state === 'blocked' && (
+        <Dialog
+          title={busy || photoLoading ? 'Please wait' : 'Leave without saving?'}
+          onClose={() => blocker.reset()}
+          footer={
+            <>
+              <button className="secondary-button" onClick={() => blocker.reset()}>
+                Stay here
+              </button>
+              <button
+                className="primary-button"
+                disabled={busy || photoLoading}
+                onClick={() => blocker.proceed()}
+              >
+                Discard and leave
+              </button>
+            </>
+          }
+        >
+          <p>
+            {busy || photoLoading
+              ? 'Wait for the current action to finish before leaving.'
+              : 'Your unsaved profile and display changes will be lost.'}
+          </p>
+        </Dialog>
+      )}
+    </>
+  )
+}

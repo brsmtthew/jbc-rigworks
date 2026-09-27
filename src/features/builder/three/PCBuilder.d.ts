@@ -12,6 +12,7 @@ export type BuilderInstance = {
   dispose(): void
 }
 export function createPCBuilder(container: HTMLElement, options?: {
+  externalPicker?: boolean
   catalog?: CatalogItem[]
   selection?: BuilderSelection
   currency?: string

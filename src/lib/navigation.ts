@@ -1,18 +1,28 @@
-import { FolderCog, ShoppingCart, ClipboardList, BrushCleaning, Cpu, BarChart3, CreditCard, LayoutDashboard, Package, ReceiptText, UsersRound, Wrench } from 'lucide-react'
-import type { View } from '../types/business'
+import {
+  BarChart3,
+  BrushCleaning,
+  ClipboardList,
+  Cpu,
+  CreditCard,
+  LayoutDashboard,
+  Package,
+  ReceiptText,
+  Settings,
+  ShoppingCart,
+  Wrench,
+} from 'lucide-react'
+import type { View } from '../types'
 
 export const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pos', label: 'Point of sale', icon: ShoppingCart },
-  { id: 'jobs', label: 'Service jobs', icon: Wrench },
-  { id: 'sales', label: 'Sales & payments', icon: CreditCard },
-  { id: 'pc-building', label: 'PC build & identify', icon: Cpu },
-  { id: 'pc-directory', label: 'PC parts directory', icon: Package },
+  { id: 'jobs', label: 'Services', icon: Wrench },
+  { id: 'sales', label: 'Sales', icon: CreditCard },
+  { id: 'pc-building', label: 'PC Builds', icon: Cpu },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'expenses', label: 'Expenses', icon: ReceiptText },
-  { id: 'directories', label: 'Directories', icon: FolderCog },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
-  { id: 'users', label: 'Users', icon: UsersRound },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ] satisfies { id: View; label: string; icon: typeof Wrench }[]
 
 export const customerNavigation = [

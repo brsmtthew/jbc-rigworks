@@ -1,0 +1,8 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.firebase/
+package-lock.json
+src/features/builder/three/
+*.log

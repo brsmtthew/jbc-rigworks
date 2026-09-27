@@ -7,7 +7,9 @@ export type ConfirmationOptions = {
   tone?: 'primary' | 'danger'
 }
 
-export type ConfirmationContextValue = { confirm: (options: ConfirmationOptions) => Promise<boolean> }
+export type ConfirmationContextValue = {
+  confirm: (options: ConfirmationOptions) => Promise<boolean>
+}
 
 export const ConfirmationContext = createContext<ConfirmationContextValue | null>(null)
 

@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
   onAuthStateChanged,
   reload,
   sendEmailVerification,
   setPersistence,
   signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
   updateProfile as updateFirebaseProfile,
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore'
-import type { AppUser, UserRole } from '../types/business'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { AppUser, UserRole } from '../types'
 import { AuthContext } from './auth-context'
 import { firebaseAuth, firebaseFirestore } from './firebase'
 
@@ -27,33 +27,43 @@ const authErrorMessages: Record<string, string> = {
   'auth/wrong-password': 'Email or password is incorrect.',
   'auth/user-disabled': 'This account is disabled. Contact the workshop administrator.',
   'auth/weak-password': 'Choose a password with at least 6 characters.',
-  'auth/operation-not-allowed': 'Email and password sign-in is not enabled in Firebase Authentication yet.',
-  'auth/unauthorized-domain': 'Add this website domain to the authorized domains in Firebase Authentication.',
-  'auth/network-request-failed': 'Could not reach Firebase. Check your internet connection and try again.',
+  'auth/operation-not-allowed': 'Sign-in is temporarily unavailable. Contact JBC RigWorks.',
+  'auth/unauthorized-domain': 'Sign-in is unavailable on this website. Contact JBC RigWorks.',
+  'auth/network-request-failed': 'Could not connect. Check your internet connection and try again.',
   'auth/too-many-requests': 'Too many attempts. Wait a little and try again.',
-  'auth/invalid-api-key': 'Firebase rejected the web app configuration. Check the values in .env.local.',
+  'auth/invalid-api-key': 'Sign-in is temporarily unavailable. Please contact JBC RigWorks.',
 }
 
 function friendlyAuthError(error: unknown) {
-  const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
-    ? error.code
-    : ''
-  return new Error(authErrorMessages[code] ?? 'Firebase Authentication could not complete that request. Check your setup and try again.')
+  const code =
+    error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : ''
+  return new Error(
+    authErrorMessages[code] ?? 'We could not complete that request. Please try again.',
+  )
 }
 
 function accountAccessError(error: unknown) {
-  const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
-    ? error.code
-    : ''
-  if (code === 'permission-denied') return 'Firestore denied account access. Deploy the project security rules and refresh your account.'
-  if (code === 'unavailable' || code === 'auth/network-request-failed') return 'Account access is temporarily unavailable. Check your connection and refresh your account.'
-  return 'Could not load your account profile and role from Firestore. Refresh your account or contact an administrator.'
+  const code =
+    error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : ''
+  if (code === 'permission-denied')
+    return 'Account access is unavailable. Refresh your account or contact JBC RigWorks.'
+  if (code === 'unavailable' || code === 'auth/network-request-failed')
+    return 'Account access is temporarily unavailable. Check your connection and refresh your account.'
+  return 'Could not load your account profile. Refresh your account or contact an administrator.'
 }
 
 function baseUser(firebaseUser: FirebaseUser): AppUser {
   return {
     id: firebaseUser.uid,
-    name: (firebaseUser.displayName?.trim() || firebaseUser.email?.split('@')[0] || 'Customer').slice(0, 80),
+    name: (
+      firebaseUser.displayName?.trim() ||
+      firebaseUser.email?.split('@')[0] ||
+      'Customer'
+    ).slice(0, 80),
     email: firebaseUser.email ?? '',
     emailVerified: firebaseUser.emailVerified,
     adminVerificationRequired: false,
@@ -71,10 +81,15 @@ function withRole(account: AppUser, role: UserRole): AppUser {
 
 async function syncProfile(firebaseUser: FirebaseUser, account: AppUser) {
   const ref = profileRef(firebaseUser.uid)
-  return runTransaction(firebaseFirestore, async transaction => {
+  return runTransaction(firebaseFirestore, async (transaction) => {
     const existing = await transaction.get(ref)
     if (!existing.exists()) {
-      transaction.set(ref, { name: account.name, email: account.email, role: 'user', createdAt: serverTimestamp() })
+      transaction.set(ref, {
+        name: account.name,
+        email: account.email,
+        role: 'user',
+        createdAt: serverTimestamp(),
+      })
       return 'user' as UserRole
     }
     const profile = existing.data()
@@ -84,11 +99,13 @@ async function syncProfile(firebaseUser: FirebaseUser, account: AppUser) {
     // Give older profiles a user role without changing an existing admin role.
     if (!Object.hasOwn(profile, 'role')) updates.role = 'user'
     if (Object.keys(updates).length) transaction.update(ref, updates)
-    return profile.role === 'admin' ? 'admin' as UserRole : 'user' as UserRole
+    return profile.role === 'admin' ? ('admin' as UserRole) : ('user' as UserRole)
   })
 }
 
-async function resolveAccount(firebaseUser: FirebaseUser): Promise<{ account: AppUser; error: string }> {
+async function resolveAccount(
+  firebaseUser: FirebaseUser,
+): Promise<{ account: AppUser; error: string }> {
   try {
     await reload(firebaseUser)
     await firebaseUser.getIdToken(true)
@@ -113,35 +130,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
     let generation = 0
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async firebaseUser => {
-      const currentGeneration = ++generation
-      if (!firebaseUser) {
+    const unsubscribe = onAuthStateChanged(
+      firebaseAuth,
+      async (firebaseUser) => {
+        const currentGeneration = ++generation
+        if (!firebaseUser) {
+          if (active) {
+            setUser(null)
+            registrationWarning.current = ''
+            setAccountError('')
+            setLoading(false)
+          }
+          return
+        }
+
+        let resolved: { account: AppUser; error: string }
+        try {
+          resolved = await resolveAccount(firebaseUser)
+        } catch (error) {
+          resolved = { account: baseUser(firebaseUser), error: accountAccessError(error) }
+        }
+        if (!active || currentGeneration !== generation) return
+        setUser(resolved.account)
+        setAccountError(resolved.error || registrationWarning.current)
+        setLoading(false)
+      },
+      (error) => {
         if (active) {
           setUser(null)
-          registrationWarning.current = ''
-          setAccountError('')
+          setAccountError(accountAccessError(error))
           setLoading(false)
         }
-        return
-      }
-
-      let resolved: { account: AppUser; error: string }
-      try {
-        resolved = await resolveAccount(firebaseUser)
-      } catch (error) {
-        resolved = { account: baseUser(firebaseUser), error: accountAccessError(error) }
-      }
-      if (!active || currentGeneration !== generation) return
-      setUser(resolved.account)
-      setAccountError(resolved.error || registrationWarning.current)
-      setLoading(false)
-    }, error => {
-      if (active) {
-        setUser(null)
-        setAccountError(accountAccessError(error))
-        setLoading(false)
-      }
-    })
+      },
+    )
 
     return () => {
       active = false
@@ -153,21 +174,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.id) return
     const uid = user.id
-    return onSnapshot(profileRef(uid), { includeMetadataChanges: true }, snapshot => {
-      // resolveAccount already read the role from the server. Ignore the listener's
-      // initial cache event so refreshing an admin page does not redirect it.
-      if (snapshot.metadata.hasPendingWrites || snapshot.metadata.fromCache) return
-      const isAdmin = snapshot.exists() && snapshot.data().role === 'admin'
-      setUser(current => {
-        if (current?.id !== uid) return current
-        const next = withRole(current, isAdmin ? 'admin' : 'user')
-        return current.role === next.role && current.adminVerificationRequired === next.adminVerificationRequired ? current : next
-      })
-      setAccountError(current => !snapshot.exists() ? missingProfileMessage : current === missingProfileMessage ? '' : current)
-    }, error => {
-      setUser(current => current?.id === uid ? withRole(current, 'user') : current)
-      setAccountError(accountAccessError(error))
-    })
+    return onSnapshot(
+      profileRef(uid),
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        // resolveAccount already read the role from the server. Ignore the listener's
+        // initial cache event so refreshing an admin page does not redirect it.
+        if (snapshot.metadata.hasPendingWrites || snapshot.metadata.fromCache) return
+        const isAdmin = snapshot.exists() && snapshot.data().role === 'admin'
+        setUser((current) => {
+          if (current?.id !== uid) return current
+          const next = withRole(current, isAdmin ? 'admin' : 'user')
+          return current.role === next.role &&
+            current.adminVerificationRequired === next.adminVerificationRequired
+            ? current
+            : next
+        })
+        setAccountError((current) =>
+          !snapshot.exists()
+            ? missingProfileMessage
+            : current === missingProfileMessage
+              ? ''
+              : current,
+        )
+      },
+      (error) => {
+        setUser((current) => (current?.id === uid ? withRole(current, 'user') : current))
+        setAccountError(accountAccessError(error))
+      },
+    )
   }, [user?.id, user?.emailVerified])
 
   const refreshAccount = async () => {
@@ -204,12 +239,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     if (!name.trim() || name.trim().length > 80 || !email.trim() || password.length < 6) {
-      throw new Error('Enter a name up to 80 characters, a valid email, and a password with at least 6 characters.')
+      throw new Error(
+        'Enter a name up to 80 characters, a valid email, and a password with at least 6 characters.',
+      )
     }
     let firebaseUser: FirebaseUser
     try {
       await setPersistence(firebaseAuth, browserLocalPersistence)
-      firebaseUser = (await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password)).user
+      firebaseUser = (await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password))
+        .user
     } catch (error) {
       throw friendlyAuthError(error)
     }
@@ -217,12 +255,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await updateFirebaseProfile(firebaseUser, { displayName: name.trim() })
     } catch {
-      warnings.push('Account created, but your display name could not be saved. You can update it in Settings.')
+      warnings.push(
+        'Account created, but your display name could not be saved. You can update it in Settings.',
+      )
     }
     try {
       await syncProfile(firebaseUser, { ...baseUser(firebaseUser), name: name.trim() })
     } catch {
-      warnings.push('Your profile could not be saved to Firestore. Refresh your account to retry.')
+      warnings.push('Your profile could not be saved. Refresh your account to retry.')
     }
     const nextUser = baseUser(firebaseUser)
     const warning = warnings.join(' ')
@@ -269,5 +309,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user, loading, accountError, signIn, register, refreshAccount, resendVerificationEmail, updateProfile, signOut }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        accountError,
+        signIn,
+        register,
+        refreshAccount,
+        resendVerificationEmail,
+        updateProfile,
+        signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }

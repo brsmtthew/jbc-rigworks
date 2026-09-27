@@ -59,8 +59,39 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /stockMovements/{id} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+    match /orderSnapshots/{id} { allow read, write: if isAdmin(); }
+    match /appointmentSlots/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+
     match /inventory/{id} {
-      allow read, write: if isAdmin();
+      function hasSkuClaim() {
+        return request.resource.data.skuKey is string &&
+          getAfter(/databases/$(database)/documents/inventorySkus/$(request.resource.data.skuKey)).data.itemId == id;
+      }
+      allow read: if isAdmin();
+      allow create: if isAdmin() && hasSkuClaim() && validInventory();
+      allow update: if isAdmin() && validInventory() &&
+        ((request.resource.data.sku == resource.data.sku && request.resource.data.get('skuKey', '') == resource.data.get('skuKey', '')) || hasSkuClaim());
+      function validInventory() {
+        return request.resource.data.id == id &&
+        request.resource.data.stock is int && request.resource.data.stock >= 0 &&
+        request.resource.data.get('reserved', 0) is int && request.resource.data.get('reserved', 0) >= 0 &&
+        request.resource.data.get('reserved', 0) <= request.resource.data.stock &&
+        request.resource.data.cost is number && request.resource.data.cost >= 0 &&
+        request.resource.data.price is number && request.resource.data.price >= 0;
+      }
+      allow delete: if false;
+    }
+
+    match /inventorySkus/{key} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.itemId is string &&
+        getAfter(/databases/$(database)/documents/inventory/$(request.resource.data.itemId)).data.skuKey == key;
+      allow update: if isAdmin() && request.resource.data.itemId == resource.data.itemId;
+      allow delete: if isAdmin() && getAfter(/databases/$(database)/documents/inventory/$(resource.data.itemId)).data.skuKey != key;
     }
 
     match /catalog/{id} {
@@ -74,18 +105,33 @@ service cloud.firestore {
     }
 
     match /jobs/{id} {
-      allow read, write: if isAdmin();
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
     }
 
     match /expenses/{id} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && request.resource.data.amount is number && request.resource.data.amount >= 0;
+      allow delete: if false;
     }
 
     match /sales/{id} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.id == id && request.resource.data.status == 'Paid' && request.resource.data.paid == request.resource.data.total && request.resource.data.total >= 0;
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     match /orders/{id} {
+      function submittingOwnProof() {
+        let proof = getAfter(/databases/$(database)/documents/paymentProofs/$(id)).data;
+        return signedIn() && resource.data.customerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus']) &&
+          request.resource.data.paymentStatus == 'Pending verification' &&
+          resource.data.paid < resource.data.total &&
+          !(resource.data.orderStatus in ['Cancelled', 'Declined']) &&
+          proof.customerId == request.auth.uid && proof.orderId == id && proof.status == 'Pending';
+      }
       allow get, list: if isAdmin() ||
         (signedIn() && resource.data.customerId == request.auth.uid);
       allow create: if isAdmin() || (signedIn() &&
@@ -94,24 +140,28 @@ service cloud.firestore {
         request.resource.data.channel == 'Online' &&
         request.resource.data.orderStatus == 'Requested' &&
         request.resource.data.status == 'Unpaid' &&
+        request.resource.data.get('reservationState', 'None') == 'None' &&
+        request.resource.data.get('paymentStatus', 'Unpaid') == 'Unpaid' &&
         request.resource.data.paid == 0 &&
         request.resource.data.cost == 0 &&
         request.resource.data.total is number &&
         request.resource.data.total >= 0 && request.resource.data.total <= 10000000 &&
         request.resource.data.lines is list &&
         request.resource.data.lines.size() > 0 && request.resource.data.lines.size() <= 50 &&
-        request.resource.data.paymentMethod == 'Cash' &&
-        request.resource.data.fulfillment.mode == 'Pickup' &&
+        request.resource.data.paymentMethod in ['Cash', 'Bank transfer', 'E-wallet'] &&
+        request.resource.data.fulfillment.mode in ['Pickup', 'Delivery'] &&
+        (request.resource.data.fulfillment.mode == 'Pickup' || (request.resource.data.fulfillment.address is string && request.resource.data.fulfillment.address.size() > 0 && request.resource.data.contact is string && request.resource.data.contact.size() > 0)) &&
         request.resource.data.receiptEmail is string &&
         request.resource.data.receiptEmail.size() > 0 && request.resource.data.receiptEmail.size() <= 254 &&
-        !request.resource.data.keys().hasAny(['serviceJobId', 'cashTendered', 'change', 'lastReceiptId']) &&
+        !request.resource.data.keys().hasAny(['serviceJobId', 'buildId', 'cashTendered', 'change', 'lastReceiptId', 'paidAt']) &&
         request.resource.data.paymentHistory.size() == 0);
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || submittingOwnProof();
+      allow delete: if false;
     }
 
     match /paymentAccounts/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin() && id in ['bank', 'ewallet'];
+      allow write: if isAdmin();
     }
 
     match /paymentProofs/{id} {
@@ -124,10 +174,10 @@ service cloud.firestore {
         let account = get(/databases/$(database)/documents/paymentAccounts/$(data.accountId)).data;
         return ownOrder() && data.keys().hasOnly(['id', 'orderId', 'customerId', 'accountId', 'method', 'amount', 'reference', 'image', 'submittedAt', 'status']) &&
           data.id == id && data.orderId == id && data.customerId == request.auth.uid &&
-          data.status == 'Pending' && order.orderStatus != 'Declined' &&
+          data.status == 'Pending' && !(order.orderStatus in ['Declined', 'Cancelled']) &&
           data.amount is number && data.amount > 0 &&
           data.amount >= order.total - order.paid - 0.000001 && data.amount <= order.total - order.paid + 0.000001 &&
-          data.accountId in ['bank', 'ewallet'] && account.enabled == true && account.qrImage.size() > 0 && data.method == account.kind &&
+          account.get('customers', true) == true && account.enabled == true && account.qrImage.size() > 0 && data.method == account.kind &&
           data.reference is string && data.reference.size() > 0 && data.reference.size() <= 100 &&
           data.submittedAt is string && data.image is string && data.image.size() <= 700000 &&
           data.image.matches('data:image/(png|jpeg|webp);base64,.*');
@@ -157,13 +207,13 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.id == id &&
         request.resource.data.customerId == request.auth.uid &&
         request.resource.data.customerEmail == request.auth.token.email &&
-        request.resource.data.status == 'Requested';
+        request.resource.data.status == 'Requested' &&
+        !request.resource.data.keys().hasAny(['jobId', 'slotId', 'cancelledBy', 'cancelledAt', 'reviewedEstimate', 'reviewNote', 'scheduleHistory']) && request.resource.data.device is string && request.resource.data.preferredDate is string;
       allow update: if isAdmin() || (signedIn() &&
         resource.data.customerId == request.auth.uid &&
         resource.data.status == 'Requested' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'preferredDate', 'preferredTime']));
-      allow delete: if isAdmin() || (signedIn() &&
-        resource.data.customerId == request.auth.uid && resource.data.status == 'Requested');
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'preferredDate', 'preferredTime']) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.cancelledAt is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'cancellationReason']))));
+      allow delete: if false;
     }
 
     match /pcRequests/{id} {
@@ -172,17 +222,16 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.id == id &&
         request.resource.data.customerId == request.auth.uid &&
         request.resource.data.customerEmail == request.auth.token.email &&
-        request.resource.data.status == 'Under review' &&
-        !request.resource.data.keys().hasAny(['quote']);
+        request.resource.data.status in ['Under review', 'Quote requested'] &&
+        !request.resource.data.keys().hasAny(['quote', 'transactionId']) && request.resource.data.get('reservationState', 'None') == 'None';
       allow update: if isAdmin() || (signedIn() &&
         resource.data.customerId == request.auth.uid &&
-        ((resource.data.status == 'Under review' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes'])) ||
+        ((resource.data.status in ['Under review', 'Quote requested'] &&
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt'])))) ||
          (resource.data.status == 'Quoted' &&
           request.resource.data.status in ['Approved', 'Declined'] &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))));
-      allow delete: if isAdmin() || (signedIn() &&
-        resource.data.customerId == request.auth.uid && resource.data.status == 'Under review');
+      allow delete: if false;
     }
   }
 }

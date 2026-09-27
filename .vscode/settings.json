@@ -1,0 +1,31 @@
+{
+  "cSpell.words": [
+    "ewallet",
+    "firestore",
+    "gridline",
+    "nums",
+    "rigworks",
+    "topbar",
+    "uids",
+    "webp",
+    "wght"
+  ],
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true,
+    "**/test-results": true,
+    "**/playwright-report": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/test-results": true,
+    "**/playwright-report": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json",
+    "tsconfig.json": "tsconfig.*.json"
+  }
+}

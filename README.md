@@ -1,75 +1,49 @@
-# React + TypeScript + Vite
+# JBC RigWorks
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Customer and workshop management app built with React, TypeScript, Vite, Firebase Auth/Firestore, and a procedural Three.js PC builder.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node.js 24 LTS or newer: the installed QR-reader dependency requires Node 24. The current machine may still build under Node 22, but that is outside the dependency's supported range.
 
-## React Compiler
+1. Install dependencies with `npm ci`.
+2. Copy `.env.example` to `.env.local` and supply your Firebase web-app configuration. Do not commit local credentials or service-account keys.
+3. Run `npm run dev`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Authentication and business records use Firebase. The retired browser-local demo is not part of this application. Account roles come from protected user profiles; public registration creates customers only.
 
-## Expanding the ESLint configuration
+## Commands
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Command                           | Purpose                                                             |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `npm run dev`                     | Development server                                                  |
+| `npm run build`                   | TypeScript checks and production bundle                             |
+| `npm run lint`                    | Source lint checks                                                  |
+| `npm run format`                  | Format maintained source, tests, docs and configuration             |
+| `npm run format:check`            | Check formatting without changing files                             |
+| `npm test` / `npm run test:logic` | Local logic/transaction simulation; no browser or Firebase emulator |
+| `npm run test:integration`        | Explicit Firebase emulator rules and integration suites             |
+| `npm run test:ui`                 | Explicit isolated browser/layout checks; may generate screenshots   |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The local transaction simulation is not a substitute for deployed rules or production verification. Run browser/emulator suites only when appropriate to the task; they were not run for the repository cleanup or architecture refactor.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Project layout
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `src/features/`: nine domains: auth, builder, customer, dashboard, finance, inventory, pos, services, and settings.
+- `src/components/`: shared UI and application layout.
+- `src/hooks/`: shared live subscriptions, workspace reads, list filters and async-action guards.
+- `src/lib/`: Firebase access, authentication and shared business/formatting helpers; feature operations live beside their pages.
+- `src/App.tsx` and `src/routes.tsx`: providers and role-aware lazy routing.
+- `src/types.ts`: shared business contracts.
+- `src/styles/`: shared styling; 3D-specific styles stay beside the runtime.
+- `public/branding/`: JBC brand assets and guidance.
+- `tests/logic/`: fast local business-logic and transaction simulations.
+- `tests/database/`: explicitly invoked Firebase emulator tests.
+- `tests/ui/`: isolated browser fixtures and layout checks.
+- `docs/`: architecture, Firebase setup, V2 implementation and checklist.
 
-```
+Generated folders (`node_modules`, `dist`, and test output) are hidden in the VS Code Explorer. Dependencies remain installed; build output is recreated by `npm run build`. Related package/TypeScript configuration files are nested.
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+See [Architecture](docs/ARCHITECTURE.md), [Firebase setup](docs/FIREBASE-SETUP.md), [V2 implementation](docs/V2-IMPLEMENTATION.md), and the [104-section checklist](docs/V2-CHECKLIST.md).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+Customer-facing redesign details and verification limits are documented in [Customer UI](docs/CUSTOMER-UI.md).

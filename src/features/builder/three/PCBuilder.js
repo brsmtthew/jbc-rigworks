@@ -122,7 +122,10 @@ export function createPCBuilder(container, options = {}) {
     aside.append(el('span','jbc-pc__eyebrow','YOUR CONFIGURATION'),el('h3',null,active?PARTS[active].label:'Make it your own'),el('p','jbc-pc__description',active?PARTS[active].description:'Select a part on the model or a component below to browse available stock.'));
     const progress=el('div','jbc-pc__progress');progress.append(el('span',null,`${snapshot.selectedCount} of 8 selected`));const bar=el('div');const fill=el('i');fill.style.width=`${snapshot.selectedCount/8*100}%`;bar.append(fill);progress.append(bar);aside.append(progress);
     const list=el('div','jbc-pc__products');
-    if(active) {
+    if(options.externalPicker && snapshot.selectedCount) {
+      for(const item of snapshot.parts) list.append(el('p','jbc-pc__description',item.name));
+      list.append(el('p','jbc-pc__description','Choose a component to change its source or specifications. Review compatibility in your build summary.'));
+    } else if(active && !options.externalPicker) {
       const available=catalog.filter(i=>i.category===active);list.append(el('div','jbc-pc__list-title',`${available.filter(i=>i.stock>0).length} available options`));
       if(!available.length)list.append(el('p','jbc-pc__empty','No products in this category yet. Add items to your inventory to see them here.'));
       for(const item of available) {
