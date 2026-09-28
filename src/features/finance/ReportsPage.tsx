@@ -3,6 +3,7 @@ import { BarChart3 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ExcelButton } from '../../components/ui/ExcelButton'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Panel } from '../../components/ui/Panel'
 import { useLiveCollection } from '../../hooks/useLiveData'
@@ -232,7 +233,7 @@ export function ReportsPage() {
               {movements.error}
             </p>
           ) : movements.loading ? (
-            <p role="status">Loading movements...</p>
+            <LoadingState variant="compact" label="Loading movements…" />
           ) : (
             <div className="report-rows">
               {[...new Set(movements.rows.map((movement) => movement.type))].map((type) => (

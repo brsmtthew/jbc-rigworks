@@ -1,5 +1,6 @@
 import { where } from 'firebase/firestore'
 import { useState } from 'react'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useLiveCollection } from '../../hooks/useLiveData'
 import type { InventoryItem, StockMovement } from '../../types'
 
@@ -28,7 +29,8 @@ export function StockMovementHistory({ item }: { item: InventoryItem }) {
         {movements.error}
       </p>
     )
-  if (movements.loading) return <p role="status">Loading stock movements...</p>
+  if (movements.loading)
+    return <LoadingState variant="compact" label="Loading stock movements…" />
   return (
     <section className="stock-history" aria-label="Stock movement ledger">
       <h3>Stock movements</h3>

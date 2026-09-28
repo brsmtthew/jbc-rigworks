@@ -6,23 +6,30 @@ import {
   Check,
   Clock3,
   House,
+  Laptop,
   MapPin,
+  Monitor,
+  Printer,
+  Search,
   Send,
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Dialog } from '../../components/ui/Dialog'
-import { PageHeader } from '../../components/ui/PageHeader'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useLiveCollection } from '../../hooks/useLiveData'
 import { useAuth } from '../../lib/auth-context'
 import { today } from '../../lib/dates'
 import { formatPHP } from '../../lib/format'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
-import type { ServiceOffering } from '../../types'
+import type { CustomerAppointment, ServiceIntake, ServiceOffering } from '../../types'
 import { availableWindows, slotLabel } from '../services/serviceCatalog'
 import { priceVisit } from '../services/visitPricing'
 import { saveAppointment } from './customerOperations'
+import { ServiceIntakeFields } from './ServiceIntakeFields'
+import { ServiceIntakePrintRoot } from './ServiceIntakeDocument'
+import { emptyServiceIntake, validateServiceIntake } from './serviceIntake'
 
 export function BookingPage() {
   const { user } = useAuth()
@@ -40,9 +47,15 @@ export function BookingPage() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [notes, setNotes] = useState('')
+  const [intake, setIntake] = useState<ServiceIntake>({
+    ...emptyServiceIntake,
+    customerName: profile.name || user?.name || '',
+    contactPhone: profile.phone,
+  })
+  const [intakeAcknowledged, setIntakeAcknowledged] = useState(false)
   const [addressChoice, setAddress] = useState<string | null>(null)
   const address = addressChoice ?? profile.address
-  const [sent, setSent] = useState('')
+  const [sent, setSent] = useState<CustomerAppointment | null>(null)
   const { busy, error, setError, run } = useAsyncAction()
   const slots = useLiveCollection<{ id: string; count: number }>(
     'appointmentSlots',
@@ -80,11 +93,19 @@ export function BookingPage() {
         .toLowerCase()
         .includes(query.toLowerCase()),
   )
+  const reviewStep = 4
+  const steps = ['Location & device', 'Schedule', 'Device intake', 'Review']
   function choose(item: ServiceOffering) {
     setServiceId(item.id)
-    setSent('')
+    setSent(null)
     setStep(1)
     setError('')
+    setIntake((current) => ({
+      ...current,
+      customerName: current.customerName || profile.name || user?.name || '',
+      contactPhone: current.contactPhone || profile.phone,
+      deviceType: item.deviceType === 'Laptop' ? 'Laptop' : 'Desktop PC',
+    }))
     if (mode && !(mode === 'Workshop' ? item.workshop : item.home)) setMode(null)
   }
   function proceed(event: FormEvent<HTMLFormElement>) {
@@ -94,6 +115,10 @@ export function BookingPage() {
       setError('Choose an available service location.')
       return
     }
+    if (!device.trim() || (mode === 'Home service' && !address.trim())) {
+      setError('Enter the device and home-service address before continuing.')
+      return
+    }
     if (
       step >= 2 &&
       (!date || date < today() || !windows.some((window) => slotLabel(window) === time))
@@ -101,7 +126,19 @@ export function BookingPage() {
       setError('Choose an available date and time. Your previous slot may no longer be available.')
       return
     }
-    if (step < 3) {
+    if (step >= 3) {
+      try {
+        validateServiceIntake(intake)
+      } catch (intakeError) {
+        setError(intakeError instanceof Error ? intakeError.message : 'Complete the device intake.')
+        return
+      }
+      if (!intakeAcknowledged) {
+        setError('Confirm that the printed form will be reviewed and signed before work starts.')
+        return
+      }
+    }
+    if (step < reviewStep) {
       setStep(step + 1)
       return
     }
@@ -116,37 +153,58 @@ export function BookingPage() {
         preferredDate: date,
         preferredTime: time,
         notes,
+        serviceIntake: intake,
         visit: { ...visit, address: mode === 'Workshop' ? '' : address },
       })
-      setSent(record.id)
+      setSent(record)
       setServiceId(null)
+      setMode(null)
+      setDevice('')
+      setSpecs('')
+      setUnknown(false)
+      setAddress(null)
       setDate('')
       setTime('')
       setNotes('')
+      setIntake({
+        ...emptyServiceIntake,
+        customerName: profile.name || user?.name || '',
+        contactPhone: profile.phone,
+      })
+      setIntakeAcknowledged(false)
     })
   }
   return (
     <>
-      <PageHeader
-        eyebrow="CARE FOR YOUR DEVICE"
-        title="Services & booking"
-        description="Choose a service. We’ll review the details and confirm your appointment."
-      />
       {sent && (
         <div className="booking-success" role="status">
           <Check />
           <div>
             <strong>Booking request received</strong>
-            <p>Reference {sent} · Requested. No payment collected.</p>
+            <p>Reference {sent.id} · Requested. No payment collected.</p>
           </div>
+          {sent.serviceIntake && (
+            <button type="button" className="secondary-button" onClick={() => window.print()}>
+              <Printer size={17} />
+              Print intake form
+            </button>
+          )}
           <Link
             className="secondary-button"
-            to={`/customer/records?tab=appointments&reference=${encodeURIComponent(sent)}`}
+            to={`/customer/records?tab=appointments&reference=${encodeURIComponent(sent.id)}`}
           >
             View appointment
           </Link>
         </div>
       )}
+      {sent?.serviceIntake && <ServiceIntakePrintRoot appointment={sent} />}
+      <section className="booking-intro" aria-label="Services introduction">
+        <div>
+          <span className="eyebrow">PLAN YOUR VISIT</span>
+          <h2>Choose the care your device needs.</h2>
+          <p>Clear service estimates up front. JBC reviews your request before confirming a time.</p>
+        </div>
+      </section>
       <div className="service-catalog-tools">
         <div className="record-tabs" role="group" aria-label="Device type">
           {['All', ...new Set(offerings.map((item) => item.deviceType))].map((value) => (
@@ -160,14 +218,17 @@ export function BookingPage() {
             </button>
           ))}
         </div>
-        <label>
-          Find a service
-          <input
-            type="search"
-            placeholder="Search services"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <label className="service-search">
+          <span>Find a service</span>
+          <span className="service-search-field">
+            <Search size={17} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search services"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </span>
         </label>
       </div>
       {settingsStatus.error ? (
@@ -175,16 +236,19 @@ export function BookingPage() {
           {settingsStatus.error}
         </p>
       ) : settingsStatus.loading ? (
-        <div className="skeleton-grid" role="status" aria-label="Loading services">
-          <i />
-          <i />
-          <i />
-        </div>
+        <LoadingState label="Loading services…" />
       ) : (
         <>
+          <div className="booking-results-heading">
+            <h2>Available services</h2>
+            <span>{filtered.length} {filtered.length === 1 ? 'service' : 'services'}</span>
+          </div>
           <div className="service-grid">
             {filtered.map((item) => (
               <article className="service-price-card" key={item.id}>
+                <div className="service-card-icon" aria-hidden="true">
+                  {item.deviceType === 'Laptop' ? <Laptop size={23} /> : <Monitor size={23} />}
+                </div>
                 <div className="service-card-meta">
                   <span>{item.deviceType}</span>
                   <span>
@@ -269,28 +333,33 @@ export function BookingPage() {
                   busy || !service?.active || (step >= 2 && (slots.loading || !!slots.error))
                 }
               >
-                {step === 3 ? <Send size={17} /> : null}
-                {busy ? 'Submitting…' : step === 3 ? 'Submit booking request' : 'Continue'}
-                {step < 3 && <ArrowRight size={17} />}
+                {step === reviewStep ? <Send size={17} /> : null}
+                {busy ? 'Submitting…' : step === reviewStep ? 'Submit request' : 'Continue'}
+                {step < reviewStep && <ArrowRight size={17} />}
               </button>
             </>
           }
         >
-          <ol className="booking-steps" aria-label="Booking progress">
-            {['Service', 'Location & device', 'Schedule', 'Review'].map((label, index) => (
+          <div className="booking-modal-summary">
+            <span className="eyebrow">SERVICE REQUEST</span>
+            <strong>{service?.deviceType} · {service?.durationMinutes} min</strong>
+            <small>{service?.price === '' ? 'Quote after review' : formatPHP(Number(service?.price)) + ' estimate'}</small>
+          </div>
+          <ol className={`booking-steps booking-steps-${steps.length}`} aria-label="Booking progress">
+            {steps.map((label, index) => (
               <li
                 key={label}
-                aria-current={step === index ? 'step' : undefined}
-                className={index < step ? 'is-complete' : ''}
+                aria-current={step === index + 1 ? 'step' : undefined}
+                className={index + 1 < step ? 'is-complete' : ''}
               >
-                <span>{index < step ? <Check size={15} /> : index + 1}</span>
+                <span>{index + 1 < step ? <Check size={15} /> : index + 1}</span>
                 {label}
               </li>
             ))}
           </ol>
           <form
             id="customer-booking"
-            className="portal-form settings-fields"
+            className="portal-form settings-fields booking-modal-form"
             onSubmit={proceed}
             aria-busy={busy}
           >
@@ -301,9 +370,11 @@ export function BookingPage() {
             )}
             {step === 1 && (
               <>
-                <p>
-                  Choose how you’d like JBC to care for your {service?.deviceType.toLowerCase()}.
-                </p>
+                <div className="booking-section-heading">
+                  <span className="eyebrow">STEP 01 · THE VISIT</span>
+                  <h3>Where should we work?</h3>
+                  <p>Choose how you’d like JBC to care for your {service?.deviceType.toLowerCase()}.</p>
+                </div>
                 <div className="visit-options">
                   {service?.workshop && (
                     <button
@@ -383,8 +454,11 @@ export function BookingPage() {
             )}
             {step === 2 && (
               <>
-                <h3>When works for you?</h3>
-                <p>Your preferred time is a request until JBC confirms it.</p>
+                <div className="booking-section-heading">
+                  <span className="eyebrow">STEP 02 · SCHEDULE</span>
+                  <h3>When works for you?</h3>
+                  <p>Your preferred time is a request until JBC confirms it.</p>
+                </div>
                 <div className="portal-form-grid">
                   <label>
                     Preferred date
@@ -422,8 +496,23 @@ export function BookingPage() {
               </>
             )}
             {step === 3 && (
+              <ServiceIntakeFields
+                value={intake}
+                onChange={setIntake}
+                service={service?.name || ''}
+                device={device}
+                concerns={notes}
+                acknowledged={intakeAcknowledged}
+                onAcknowledge={setIntakeAcknowledged}
+              />
+            )}
+            {step === reviewStep && (
               <>
-                <h3>Review your request</h3>
+                <div className="booking-section-heading">
+                  <span className="eyebrow">FINAL STEP · REVIEW</span>
+                  <h3>Review your request</h3>
+                  <p>Check the visit details before sending them to JBC.</p>
+                </div>
                 <dl className="customer-detail-grid">
                   <div>
                     <dt>Service</dt>
@@ -458,6 +547,24 @@ export function BookingPage() {
                     <dt>Concerns</dt>
                     <dd>{notes || 'None added'}</dd>
                   </div>
+                    <>
+                      <div>
+                        <dt>Intake contact</dt>
+                        <dd>{intake.customerName}<small>{intake.contactPhone}</small></dd>
+                      </div>
+                      <div>
+                        <dt>Device condition</dt>
+                        <dd>{intake.powerStatus}<small>{intake.visibleCondition}</small></dd>
+                      </div>
+                      <div>
+                        <dt>Reported history</dt>
+                        <dd>{intake.reportedIssues}<small>{intake.issueHistory}</small></dd>
+                      </div>
+                      <div>
+                        <dt>Data backup</dt>
+                        <dd>{intake.backupStatus}</dd>
+                      </div>
+                    </>
                 </dl>
                 <dl className="checkout-totals">
                   <div>
@@ -497,6 +604,9 @@ export function BookingPage() {
                 </dl>
                 <p className="fulfillment-note">
                   Your time is a request until JBC confirms. No payment is collected now.
+                </p>
+                <p className="home-intake-review-note">
+                  The printed intake will be reviewed and signed with JBC before work begins.
                 </p>
               </>
             )}

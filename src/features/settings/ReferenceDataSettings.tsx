@@ -4,6 +4,7 @@ import { ActionButton } from '../../components/ui/ActionButton'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import {
   directoryLabels,
@@ -183,21 +184,9 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
 
   const loadError =
     directoryStatus.error || shopStatus.error || requests.error || workspace.storageError
-  if (
-    loadError ||
-    directoryStatus.loading ||
-    shopStatus.loading ||
-    requests.loading ||
-    workspace.loading
-  )
-    return (
-      <p
-        className={loadError ? 'form-error' : 'storage-caption'}
-        role={loadError ? 'alert' : 'status'}
-      >
-        {loadError || 'Loading directories…'}
-      </p>
-    )
+  if (loadError) return <p className="form-error" role="alert">{loadError}</p>
+  if (directoryStatus.loading || shopStatus.loading || requests.loading || workspace.loading)
+    return <LoadingState label="Loading directories…" />
   return (
     <>
       {!embedded && (

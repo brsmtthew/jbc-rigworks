@@ -1,5 +1,6 @@
 import { setDoc } from 'firebase/firestore'
 import { useState } from 'react'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { firestoreData, recordRef } from '../../lib/database'
 import type { PaymentAccount } from '../../types'
 import { accountAvailable, blankPaymentAccounts, readPaymentImage } from '../finance/payments'
@@ -177,8 +178,8 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
 export function PaymentAccountsEditor() {
   const { rows, loading, error } = usePaymentAccounts()
   const [newAccounts, setNewAccounts] = useState<PaymentAccount[]>([])
-  if (error || loading)
-    return <p role={error ? 'alert' : 'status'}>{error || 'Loading payment accounts…'}</p>
+  if (error) return <p role="alert" className="form-error">{error}</p>
+  if (loading) return <LoadingState variant="compact" label="Loading payment accounts…" />
   return (
     <div className="settings-fields">
       <p>

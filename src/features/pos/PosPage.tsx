@@ -189,7 +189,7 @@ export function PosPage() {
           <div className="shop-results">
             <p>
               {workspace.loading
-                ? 'Loading products?'
+                ? 'Loading products…'
                 : workspace.storageError
                   ? 'Products unavailable'
                   : filtered.length + (filtered.length === 1 ? ' product' : ' products')}
@@ -277,7 +277,7 @@ export function PosPage() {
                 </article>
               ))}
           </div>
-          {workspace.loading && <LoadingState label="Loading products?" />}
+          {workspace.loading && <LoadingState label="Loading products…" />}
           {workspace.storageError && (
             <p className="form-error" role="alert">
               {workspace.storageError}

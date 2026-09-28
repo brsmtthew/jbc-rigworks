@@ -2,6 +2,7 @@ import { Printer } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { BrandLogo } from '../../components/ui/BrandLogo'
 import { Dialog } from '../../components/ui/Dialog'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useLiveDocument } from '../../hooks/useLiveData'
 import { useAuth } from '../../lib/auth-context'
 import { formatDate, formatPHP } from '../../lib/format'
@@ -215,7 +216,7 @@ export function InvoiceDialog({ sale: initialSale, onClose }: { sale: Sale; onCl
             {liveSale.error || receipt.error}
           </p>
         )}
-        {receipt.loading && <p role="status">Loading receipt…</p>}
+        {receipt.loading && <LoadingState variant="compact" label="Loading receipt…" />}
         <Invoice sale={documentSale} seller={seller} receipt={receipt.value} />
         {receipt.value?.recipientEmail && (
           <p className="storage-caption">

@@ -1,0 +1,544 @@
+.customer-home {
+  --home-navy: #06264d;
+  --home-blue: #0866dc;
+  --home-ink: #102a43;
+  --home-muted: #52657a;
+  --home-line: #dce4ed;
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+  padding-bottom: 12px;
+}
+
+.customer-home-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: 180px;
+  padding: 30px clamp(24px, 3.2vw, 42px);
+  overflow: hidden;
+  border-radius: 18px;
+  color: white;
+  background: linear-gradient(110deg, #06264d 0%, #083769 62%, #075aa9 100%);
+  animation: customer-home-rise 520ms ease-out both;
+}
+
+.customer-home-hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -6%;
+  bottom: -230px;
+  width: 470px;
+  height: 470px;
+  border: 1px solid #ffffff22;
+  border-radius: 50%;
+  box-shadow: 0 0 0 55px #ffffff09, 0 0 0 110px #ffffff08;
+  pointer-events: none;
+  animation: customer-home-drift 12s ease-in-out infinite alternate;
+}
+
+.customer-home-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 650px;
+}
+
+.customer-home-kicker {
+  display: block;
+  color: #3d78b9;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+}
+
+.customer-home-hero .customer-home-kicker {
+  color: #b5d6f9;
+}
+
+.customer-home-hero h1 {
+  margin: 10px 0 6px;
+  color: white;
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.17;
+}
+
+.customer-home-hero p {
+  margin: 0;
+  color: #d1e2f4;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.customer-home-hero-art {
+  position: absolute;
+  right: 7%;
+  top: 50%;
+  width: 136px;
+  height: 136px;
+  transform: translateY(-50%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.customer-home-hero-art span {
+  position: absolute;
+  display: block;
+  border: 1px solid #b8dbff;
+  border-radius: 17px;
+  transform: rotate(28deg);
+}
+
+.customer-home-hero-art span:first-child {
+  inset: 0;
+}
+
+.customer-home-hero-art span:nth-child(2) {
+  inset: 20px;
+  transform: rotate(12deg);
+}
+
+.customer-home-hero-art span:last-child {
+  inset: 40px;
+  background: #ffffff1b;
+  transform: rotate(-7deg);
+}
+
+.customer-home-overview,
+.customer-home-activity {
+  min-width: 0;
+}
+
+.customer-home-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.customer-home-section-heading h2 {
+  margin: 5px 0 0;
+  color: var(--home-navy);
+  font-family: var(--font-heading);
+  font-size: clamp(20px, 2vw, 24px);
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+
+.customer-home-section-heading p {
+  margin: 0 0 2px;
+  color: var(--home-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.customer-home-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.customer-home-metric {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 21px;
+  border: 1px solid var(--home-line);
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 8px 24px #102a4308;
+  animation: customer-home-rise 500ms ease-out both;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.customer-home-metric:nth-child(1) {
+  animation-delay: 70ms;
+}
+
+.customer-home-metric:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.customer-home-metric:nth-child(3) {
+  animation-delay: 210ms;
+}
+
+.customer-home-metric-icon,
+.customer-home-card-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  color: var(--home-blue);
+  background: #edf4fd;
+}
+
+.customer-home-metric > div:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.customer-home-metric span {
+  color: var(--home-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.customer-home-metric strong {
+  color: var(--home-navy);
+  font-family: var(--font-heading);
+  font-size: 31px;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.customer-home-metric small {
+  color: var(--home-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.customer-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.customer-home-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--home-line);
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 8px 24px #102a4308;
+  animation: customer-home-rise 520ms ease-out both;
+  animation-delay: 170ms;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+
+@media (hover: hover) {
+  .customer-home-metric:hover,
+  .customer-home-card:hover {
+    border-color: #c9d9eb;
+    box-shadow: 0 11px 26px #102a430e;
+  }
+}
+
+.customer-home-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 78px;
+  padding: 16px 22px;
+  border-bottom: 1px solid #eaf0f6;
+}
+
+.customer-home-card-icon {
+  width: 39px;
+  height: 39px;
+  border-radius: 10px;
+}
+
+.customer-home-card-kicker {
+  display: block;
+  color: #6d87a1;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.customer-home-card-heading h3 {
+  margin: 2px 0 0;
+  color: var(--home-navy);
+  font-family: var(--font-heading);
+  font-size: 17px;
+  letter-spacing: -0.025em;
+}
+
+.customer-home-appointment-content {
+  padding: 21px 22px 22px;
+}
+
+.customer-home-appointment-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-home-appointment-title > div {
+  min-width: 0;
+}
+
+.customer-home-appointment-title h4 {
+  margin: 0;
+  color: var(--home-navy);
+  font-size: 20px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.customer-home-appointment-title p {
+  margin: 4px 0 0;
+  color: var(--home-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.customer-home-appointment-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 19px;
+  padding: 16px;
+  border-radius: 11px;
+  background: #f3f7fc;
+}
+
+.customer-home-appointment-facts > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.customer-home-appointment-facts svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #4d82bc;
+}
+
+.customer-home-appointment-facts span {
+  display: block;
+  min-width: 0;
+  color: var(--home-ink);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.customer-home-appointment-facts small {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--home-muted);
+  font-size: 11px;
+}
+
+.customer-home-appointment-facts strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.customer-home-context {
+  margin: 15px 0 0;
+  color: var(--home-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.customer-home-list {
+  padding: 0 22px;
+}
+
+.customer-home-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 17px 0;
+}
+
+.customer-home-list-item + .customer-home-list-item {
+  border-top: 1px solid #eaf0f6;
+}
+
+.customer-home-list-item > div {
+  min-width: 0;
+}
+
+.customer-home-list-item strong,
+.customer-home-list-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.customer-home-list-item strong {
+  color: var(--home-ink);
+  font-size: 14px;
+}
+
+.customer-home-list-item small {
+  margin-top: 3px;
+  color: var(--home-muted);
+  font-size: 12px;
+}
+
+.customer-home-list-item .status-badge,
+.customer-home-appointment-title .status-badge {
+  flex: 0 0 auto;
+}
+
+.customer-home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 180px;
+  padding: 22px;
+}
+
+.customer-home-empty svg {
+  margin-bottom: 12px;
+  color: #7e9bbb;
+}
+
+.customer-home-empty p {
+  margin: 0;
+  color: var(--home-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.customer-home-empty small {
+  margin-top: 4px;
+  color: var(--home-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@keyframes customer-home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes customer-home-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-18px, -10px, 0);
+  }
+}
+
+@media (max-width: 900px) {
+  .customer-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .customer-home {
+    gap: 22px;
+  }
+
+  .customer-home-hero {
+    min-height: 160px;
+  }
+
+  .customer-home-hero-art {
+    right: -30px;
+    opacity: 0.2;
+  }
+
+  .customer-home-metrics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .customer-home-metric {
+    align-items: center;
+    min-height: 92px;
+    padding: 15px 18px;
+  }
+
+  .customer-home-metric > div:last-child {
+    grid-template-columns: 1fr auto;
+    width: 100%;
+    column-gap: 12px;
+  }
+
+  .customer-home-metric strong {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 28px;
+  }
+
+  .customer-home-metric small {
+    grid-column: 1;
+  }
+
+  .customer-home-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .customer-home-section-heading p {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-home-hero {
+    min-height: 150px;
+    padding: 24px;
+  }
+
+  .customer-home-hero p {
+    font-size: 13px;
+  }
+
+  .customer-home-card-heading,
+  .customer-home-appointment-content {
+    padding-inline: 17px;
+  }
+
+  .customer-home-appointment-title {
+    flex-wrap: wrap;
+  }
+
+  .customer-home-appointment-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .customer-home-list {
+    padding-inline: 17px;
+  }
+
+  .customer-home-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-home *,
+  .customer-home *::before,
+  .customer-home *::after,
+  .customer-home-hero::before {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

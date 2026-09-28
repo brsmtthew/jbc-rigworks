@@ -152,6 +152,8 @@ export async function receiveAppointmentAsJob(user: AppUser, id: string) {
     const appointment = snapshot.data() as CustomerAppointment | undefined
     if (!appointment || appointment.status !== 'Confirmed')
       throw new Error('Confirm the appointment before starting service.')
+    if (appointment.visit && !appointment.intakeSignedAt)
+      throw new Error('Review the paper device intake and collect signatures before starting service.')
     const status: ServiceStatus =
       appointment.visit?.mode === 'Home service' ? 'In service' : 'Checked in'
     const visit = appointment.visit
@@ -178,6 +180,25 @@ export async function receiveAppointmentAsJob(user: AppUser, id: string) {
     tx.set(jobRef, firestoreData(job))
     tx.update(appointmentRef, { status, jobId: job.id })
     return job
+  })
+}
+export async function recordSignedServiceIntake(user: AppUser, id: string) {
+  if (user.role !== 'admin') throw new Error('Only JBC can record a signed intake.')
+  return runTransaction(firebaseFirestore, async (tx) => {
+    const ref = recordRef('appointments', id)
+    const snapshot = await tx.get(ref)
+    const appointment = snapshot.data() as CustomerAppointment | undefined
+    if (
+      !appointment ||
+      !appointment.visit ||
+      appointment.status !== 'Confirmed' ||
+      appointment.jobId
+    )
+      throw new Error('Confirm the appointment before recording the signed intake.')
+    if (appointment.intakeSignedAt) return appointment
+    const signedAt = new Date().toISOString()
+    tx.update(ref, { intakeSignedAt: signedAt, intakeSignedBy: user.id })
+    return { ...appointment, intakeSignedAt: signedAt, intakeSignedBy: user.id }
   })
 }
 export async function advanceService(user: AppUser, id: string, next: ServiceStatus) {

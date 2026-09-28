@@ -1,3 +1,4 @@
+import { Printer } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
@@ -10,9 +11,11 @@ import type { CustomerAppointment, CustomPcRequest } from '../../types'
 import { advanceBuild, recordBuildApproval } from '../builder/buildOperations'
 import { BuildRequestReview } from '../builder/BuildRequestReview'
 import { savePcQuote } from '../customer/customerOperations'
+import { ServiceIntakeDocument, ServiceIntakePrintRoot } from '../customer/ServiceIntakeDocument'
+import { appointmentIntake } from '../customer/serviceIntake'
 import { useAllRequests } from '../customer/useCustomerRequests'
 import { AppointmentReview } from './AppointmentReview'
-import { receiveAppointmentAsJob, updateAppointmentStatus } from './serviceOperations'
+import { receiveAppointmentAsJob, recordSignedServiceIntake, updateAppointmentStatus } from './serviceOperations'
 
 export function RequestQueue({
   scope = 'appointments',
@@ -31,6 +34,8 @@ export function RequestQueue({
     [message, setMessage] = useState('')
   const [review, setReview] = useState<CustomPcRequest | null>(null)
   const [appointmentReview, setAppointmentReview] = useState<CustomerAppointment | null>(null)
+  const [intakeReview, setIntakeReview] = useState<CustomerAppointment | null>(null)
+  const [signedReviewed, setSignedReviewed] = useState(false)
   const [approval, setApproval] = useState<CustomPcRequest | null>(null),
     [approvalNote, setApprovalNote] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -138,6 +143,66 @@ export function RequestQueue({
           }}
         />
       )}
+      {intakeReview && (
+        <>
+          <Dialog
+            title="Customer intake & service authorization"
+            wide
+            onClose={() => {
+              if (!busy) setIntakeReview(null)
+            }}
+            footer={
+              <>
+                <button type="button" className="secondary-button" onClick={() => window.print()}>
+                  <Printer size={17} /> Print form
+                </button>
+                {!intakeReview.intakeSignedAt && (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    disabled={busy || !signedReviewed || intakeReview.status !== 'Confirmed'}
+                    onClick={() =>
+                      void act(async () => {
+                        await recordSignedServiceIntake(user!, intakeReview.id)
+                        setIntakeReview(null)
+                      })
+                    }
+                  >
+                    Record signed form collected
+                  </button>
+                )}
+              </>
+            }
+          >
+            <div className="home-intake-review-dialog">
+              {!appointmentIntake(intakeReview) && (
+                <p className="fulfillment-note">
+                  This older request has no saved device intake. Complete the blank fields together
+                  on the printed form before collecting signatures.
+                </p>
+              )}
+              {intakeReview.status !== 'Confirmed' && (
+                <p className="fulfillment-note">Confirm the appointment before recording a signed form.</p>
+              )}
+              <ServiceIntakeDocument appointment={intakeReview} />
+              {!intakeReview.intakeSignedAt && (
+                <label className="check-row home-intake-staff-check">
+                  <input
+                    type="checkbox"
+                    checked={signedReviewed}
+                    onChange={(event) => setSignedReviewed(event.target.checked)}
+                  />
+                  I checked the completed paper form and collected the customer and technician signatures before service.
+                </label>
+              )}
+              {intakeReview.intakeSignedAt && (
+                <p className="save-message">Signed paper intake recorded.</p>
+              )}
+            </div>
+          </Dialog>
+          <ServiceIntakePrintRoot appointment={intakeReview} />
+        </>
+      )}
       {(error || loadError) && (
         <p className="form-error" role="alert">
           {error || loadError}
@@ -172,7 +237,24 @@ export function RequestQueue({
                 {item.visit?.mode ?? 'Workshop'} {item.visit?.address}
               </p>
               <p>{item.notes}</p>
+              {item.visit && (
+                <p className="home-intake-queue-status">
+                  {item.intakeSignedAt ? 'Signed paper intake recorded' : 'Printed intake and signatures required before service'}
+                </p>
+              )}
               <div className="job-card-actions">
+                {item.visit && ['Requested', 'Confirmed'].includes(item.status) && (
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => {
+                      setSignedReviewed(false)
+                      setIntakeReview(item)
+                    }}
+                  >
+                    <Printer size={17} /> Review / print intake
+                  </button>
+                )}
                 {item.status === 'Requested' && (
                   <button
                     className="primary-button"
@@ -195,7 +277,7 @@ export function RequestQueue({
                   <>
                     <button
                       className="primary-button"
-                      disabled={busy}
+                      disabled={busy || (!!item.visit && !item.intakeSignedAt)}
                       onClick={() => act(() => receiveAppointmentAsJob(user!, item.id))}
                     >
                       {item.visit?.mode === 'Home service' ? 'Start service' : 'Check in device'}

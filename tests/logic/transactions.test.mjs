@@ -15,6 +15,7 @@ import { submitPaymentProof, rejectPaymentProof } from '../../src/features/finan
 import {
   updateAppointmentStatus,
   receiveAppointmentAsJob,
+  recordSignedServiceIntake,
   advanceService,
   reviewAppointment,
 } from '../../src/features/services/serviceOperations.ts'
@@ -277,6 +278,7 @@ test('booking capacity is enforced, check-in is idempotent, and service prices a
     updateAppointmentStatus(admin, 'another', 'Confirmed'),
     /full or unavailable/,
   )
+  await recordSignedServiceIntake(admin, 'booking')
   const job = await receiveAppointmentAsJob(admin, 'booking')
   assert.equal(job.quote, 1000)
   assert.equal((await receiveAppointmentAsJob(admin, 'booking')).id, job.id)

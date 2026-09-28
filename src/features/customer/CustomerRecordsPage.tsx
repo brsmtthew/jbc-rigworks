@@ -6,6 +6,7 @@ import {
   Cpu,
   Eye,
   FileQuestion,
+  Printer,
   Save,
   Trash2,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ import { RecordStatus } from './RecordStatus'
 import { ActionButton } from '../../components/ui/ActionButton'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Panel } from '../../components/ui/Panel'
 import { useLiveCollection } from '../../hooks/useLiveData'
@@ -28,6 +30,8 @@ import type { CustomerAppointment, CustomPcRequest } from '../../types'
 import { availableWindows, slotLabel } from '../services/serviceCatalog'
 import { changePendingRequest, respondToPcQuote } from './customerOperations'
 import { useCustomerRequests } from './useCustomerRequests'
+import { ServiceIntakePrintRoot } from './ServiceIntakeDocument'
+import { appointmentIntake } from './serviceIntake'
 
 export function CustomerRecordsPage({
   kind,
@@ -187,7 +191,7 @@ export function CustomerRecordsPage({
             {loadError}
           </p>
         ) : loading ? (
-          <p role="status">Loading requests…</p>
+          <LoadingState variant="table" label="Loading requests…" />
         ) : !rows.length ? (
           <div className="customer-empty large">
             <FileQuestion size={30} />
@@ -289,6 +293,21 @@ export function CustomerRecordsPage({
                         ))}
                     </dl>
                   </>
+                )}
+                {appointmentIntake(selected) && (
+                  <section className="customer-intake-summary">
+                    <div>
+                      <span className="eyebrow">CUSTOMER INTAKE</span>
+                      <h4>Device condition record</h4>
+                      <p>
+                        {appointmentIntake(selected)?.powerStatus} · {appointmentIntake(selected)?.visibleCondition}
+                      </p>
+                      <small>Review and sign the printed form with the technician before service.</small>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => window.print()}>
+                      <Printer size={17} /> Print intake form
+                    </button>
+                  </section>
                 )}
                 <label>
                   Preferred date
@@ -417,6 +436,9 @@ export function CustomerRecordsPage({
             )}
           </div>
         </Dialog>
+      )}
+      {selected && 'service' in selected && appointmentIntake(selected) && (
+        <ServiceIntakePrintRoot appointment={selected} />
       )}
     </>
   )

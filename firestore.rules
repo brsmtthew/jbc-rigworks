@@ -202,13 +202,28 @@ service cloud.firestore {
     }
 
     match /appointments/{id} {
+      function validServiceIntake() {
+        let intake = request.resource.data.get('serviceIntake', {});
+        return !request.resource.data.keys().hasAny(['visit']) ||
+          (intake is map &&
+            intake.get('customerName', '') is string && intake.get('customerName', '').size() > 0 &&
+            intake.get('contactPhone', '') is string && intake.get('contactPhone', '').size() > 0 &&
+            intake.get('deviceType', '') in ['Desktop PC', 'Laptop'] &&
+            intake.get('visibleDamage', []) is list &&
+            intake.get('visibleCondition', '') is string && intake.get('visibleCondition', '').size() > 0 &&
+            intake.get('reportedIssues', '') is string && intake.get('reportedIssues', '').size() > 0 &&
+            intake.get('issueHistory', '') is string && intake.get('issueHistory', '').size() > 0 &&
+            intake.get('powerStatus', '') in ['Powers on', 'Intermittent', 'Does not power on', 'Not tested'] &&
+            intake.get('liquidExposure', '') in ['Yes', 'No', 'Unsure'] &&
+            intake.get('backupStatus', '') in ['Backed up', 'Not backed up', 'Not applicable', 'Unsure']);
+      }
       allow get, list: if isAdmin() ||
         (signedIn() && resource.data.customerId == request.auth.uid);
       allow create: if signedIn() && request.resource.data.id == id &&
         request.resource.data.customerId == request.auth.uid &&
         request.resource.data.customerEmail == request.auth.token.email &&
         request.resource.data.status == 'Requested' &&
-        !request.resource.data.keys().hasAny(['jobId', 'slotId', 'cancelledBy', 'cancelledAt', 'reviewedEstimate', 'reviewNote', 'scheduleHistory']) && request.resource.data.device is string && request.resource.data.preferredDate is string;
+        !request.resource.data.keys().hasAny(['jobId', 'slotId', 'cancelledBy', 'cancelledAt', 'reviewedEstimate', 'reviewNote', 'scheduleHistory', 'intakeSignedAt', 'intakeSignedBy']) && request.resource.data.device is string && request.resource.data.preferredDate is string && validServiceIntake();
       allow update: if isAdmin() || (signedIn() &&
         resource.data.customerId == request.auth.uid &&
         resource.data.status == 'Requested' &&

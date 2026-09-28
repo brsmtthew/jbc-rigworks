@@ -1,7 +1,8 @@
 import { collection, onSnapshot } from 'firebase/firestore'
-import { AlertCircle, LoaderCircle, Search, ShieldCheck, UserRound, UsersRound } from 'lucide-react'
+import { AlertCircle, Search, ShieldCheck, UserRound, UsersRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useAuth } from '../../lib/auth-context'
 import { firebaseFirestore } from '../../lib/firebase'
 import './users.css'
@@ -170,11 +171,7 @@ export function UsersPage() {
         </div>
 
         {loading ? (
-          <div className="users-empty" role="status">
-            <LoaderCircle className="users-spinner" size={24} />
-            <strong>Loading accounts</strong>
-            <p>Checking the latest user profiles.</p>
-          </div>
+          <LoadingState variant="table" label="Loading accounts…" />
         ) : error ? (
           <div className="users-empty">
             <AlertCircle size={24} />

@@ -13,6 +13,7 @@ import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { useAuth } from '../../lib/auth-context'
 import { firebaseAuth } from '../../lib/firebase'
@@ -171,15 +172,9 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
     reader.readAsDataURL(file)
   }
   const loadError = shopStatus.error || accountStatus.error
-  if (loadError || shopStatus.loading || accountStatus.loading)
-    return (
-      <p
-        className={loadError ? 'form-error' : 'storage-caption'}
-        role={loadError ? 'alert' : 'status'}
-      >
-        {loadError || 'Loading settings…'}
-      </p>
-    )
+  if (loadError) return <p className="form-error" role="alert">{loadError}</p>
+  if (shopStatus.loading || accountStatus.loading)
+    return <LoadingState label="Loading settings…" />
   return (
     <>
       {!embedded && (

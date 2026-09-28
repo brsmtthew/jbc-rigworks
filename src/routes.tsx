@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { WorkspaceShell } from './components/layout/WorkspaceShell'
+import { LoadingState } from './components/ui/LoadingState'
 import { useAuth } from './lib/auth-context'
 
 type EntryType = 'job' | 'item' | 'expense'
@@ -150,7 +151,7 @@ function WorkspaceRoutes() {
           </>
         )}
       </Routes>
-      <Suspense fallback={<p role="status">Opening form…</p>}>
+      <Suspense fallback={<LoadingState variant="compact" label="Opening form…" />}>
         {entry === 'job' && <ServiceIntake onClose={() => setEntry(null)} />}
         {entry === 'item' && <InventoryEditor onClose={() => setEntry(null)} />}
         {entry === 'expense' && <ExpenseEditor onClose={() => setEntry(null)} />}
@@ -161,12 +162,7 @@ function WorkspaceRoutes() {
 
 export function AppRoutes() {
   const { user, loading } = useAuth()
-  if (loading)
-    return (
-      <main className="auth-loading" role="status">
-        Loading your workspace…
-      </main>
-    )
+  if (loading) return <LoadingState variant="screen" label="Getting your workspace ready…" />
   if (!user)
     return (
       <Routes>

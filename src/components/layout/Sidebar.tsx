@@ -34,7 +34,7 @@ export function Sidebar({
   const homePath = isCustomer ? '/customer' : '/dashboard'
   return (
     <>
-      <div className="sidebar-content">
+      <div className={`sidebar-content ${isCustomer ? 'customer-sidebar-content' : ''}`}>
         <NavLink
           to={homePath}
           className="brand-lockup"
@@ -46,7 +46,7 @@ export function Sidebar({
         <div className="workspace-role">
           {isCustomer ? 'PC & Laptop Care Done Right.' : 'Workshop workspace'}
         </div>
-        {isCustomer && <div className="sidebar-label">My account</div>}
+        {isCustomer && <div className="sidebar-label">Explore your workspace</div>}
         <nav className="sidebar-nav" aria-label="Main navigation">
           {items.map(({ id, label, icon: Icon }) => (
             <Fragment key={id}>
@@ -70,7 +70,13 @@ export function Sidebar({
                     : '')
                 }
               >
-                <Icon size={19} aria-hidden="true" />
+                {isCustomer ? (
+                  <span className="customer-nav-icon">
+                    <Icon size={19} aria-hidden="true" />
+                  </span>
+                ) : (
+                  <Icon size={19} aria-hidden="true" />
+                )}
                 <span>{label}</span>
               </NavLink>
             </Fragment>
@@ -97,7 +103,7 @@ export function Sidebar({
             aria-expanded={!collapsed}
           >
             {collapsed ? <ChevronRight size={19} /> : <ChevronLeft size={19} />}
-            {!isCustomer && !collapsed && <span>Collapse menu</span>}
+            {!collapsed && <span>{isCustomer ? 'Collapse sidebar' : 'Collapse menu'}</span>}
           </button>
         )}
       </div>

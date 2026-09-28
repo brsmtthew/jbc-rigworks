@@ -279,6 +279,30 @@ test('customers can edit pending booking details but cannot confirm or reassign 
   await assertFails(deleteDoc(ref))
 })
 
+test('home and workshop bookings require intake details and customers cannot mark paper signatures collected', async () => {
+  const alice = customer('alice')
+  const base = {
+    id: 'home-booking', customerId: 'alice', customerEmail: 'alice@example.test',
+    status: 'Requested', device: 'Test PC', preferredDate: '2026-10-01',
+    visit: { mode: 'Home service', address: 'Manila' },
+  }
+  const intake = {
+    customerName: 'Alice', contactPhone: '09171234567', deviceType: 'Desktop PC',
+    visibleDamage: ['Scratches'], visibleCondition: 'Small scratch',
+    reportedIssues: 'Fan noise', issueHistory: 'Started last month', powerStatus: 'Powers on',
+    liquidExposure: 'No', backupStatus: 'Backed up',
+  }
+  const ref = doc(alice, 'appointments/home-booking')
+  await assertFails(setDoc(ref, base))
+  await assertFails(setDoc(ref, { ...base, serviceIntake: intake, intakeSignedAt: '2026-10-01' }))
+  await assertSucceeds(setDoc(ref, { ...base, serviceIntake: intake }))
+  await assertFails(updateDoc(ref, { intakeSignedAt: '2026-10-01' }))
+  const workshop = { ...base, id: 'workshop-booking', visit: { mode: 'Workshop', address: '' } }
+  const workshopRef = doc(alice, 'appointments/workshop-booking')
+  await assertFails(setDoc(workshopRef, workshop))
+  await assertSucceeds(setDoc(workshopRef, { ...workshop, serviceIntake: intake }))
+})
+
 test('customers respond to workshop quotes without altering their prices', async () => {
   const alice = customer('alice'),
     ref = doc(alice, 'pcRequests/build')

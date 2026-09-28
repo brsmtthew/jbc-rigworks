@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { useAuth } from '../../lib/auth-context'
 import { formatPHP } from '../../lib/format'
 import { humanError } from '../../lib/workflow'
@@ -33,7 +34,8 @@ export function PaymentProofPanel({ order }: { order: Sale }) {
         {accounts.error || proofs.error}
       </p>
     )
-  if (accounts.loading || proofs.loading) return <p role="status">Loading payment options…</p>
+  if (accounts.loading || proofs.loading)
+    return <LoadingState variant="compact" label="Loading payment options…" />
   if (proof?.status === 'Pending')
     return (
       <section className="payment-proof-panel">

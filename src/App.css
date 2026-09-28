@@ -2088,14 +2088,6 @@ dialog::backdrop {
   line-height: 1.6;
   text-align: center;
 }
-.auth-loading {
-  display: grid;
-  min-height: 100dvh;
-  place-items: center;
-  color: var(--brand-navy);
-  background: var(--brand-mist);
-  font-size: 14px;
-}
 .verification-banner {
   display: flex;
   flex-wrap: wrap;

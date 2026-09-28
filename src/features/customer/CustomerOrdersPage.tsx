@@ -62,7 +62,7 @@ export function CustomerOrdersPage({ embedded = false }: { embedded?: boolean })
       </p>
       <Panel title="Order history">
         {loading ? (
-          <LoadingState label="Loading purchases?" />
+          <LoadingState label="Loading purchases…" />
         ) : storageError ? (
           <p className="form-error" role="alert">
             {storageError}

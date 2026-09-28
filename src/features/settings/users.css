@@ -238,9 +238,6 @@
   margin: 0;
   font-size: 12px;
 }
-.users-spinner {
-  animation: users-spin 1s linear infinite;
-}
 .users-notice {
   display: flex;
   align-items: start;
@@ -259,11 +256,6 @@
   border-color: #e6b7bd;
   background: #fff5f5;
   color: #913f4c;
-}
-@keyframes users-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 @media (max-width: 760px) {
   .users-overview {
@@ -302,10 +294,5 @@
     align-items: flex-start;
     flex-wrap: wrap;
     padding: 19px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .users-spinner {
-    animation: none;
   }
 }

@@ -48,7 +48,7 @@ export function Topbar({
             <Menu size={21} />
           </button>
           <div className="topbar-title-block">
-            <span>{customer ? 'JBC RIGWORKS /' : 'WORKSHOP WORKSPACE'}</span>
+            <span>{customer ? 'JBC RIGWORKS · CUSTOMER PORTAL' : 'WORKSHOP WORKSPACE'}</span>
             <strong>{title}</strong>
           </div>
         </div>
@@ -77,7 +77,7 @@ export function Topbar({
                 }
               }}
             >
-              <summary className="topbar-account">
+              <summary className="topbar-account" aria-label="Account menu">
                 <span className="topbar-avatar">
                   {account.photo ? <img src={account.photo} alt="" /> : <UserRound size={18} />}
                 </span>

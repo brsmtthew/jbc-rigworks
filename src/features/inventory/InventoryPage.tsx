@@ -73,7 +73,7 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
         {workspace.storageError}
       </p>
     )
-  if (workspace.loading) return <LoadingState table label="Loading inventory..." />
+  if (workspace.loading) return <LoadingState variant="table" label="Loading inventory…" />
   return (
     <>
       <PageHeader

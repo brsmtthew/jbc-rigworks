@@ -28,6 +28,31 @@ export type AppUser = {
   role: UserRole
 }
 
+export type ServiceIntake = {
+  customerName: string
+  contactPhone: string
+  socialHandle: string
+  deviceType: 'Desktop PC' | 'Laptop'
+  cpu: string
+  gpu: string
+  ram: string
+  storage: string
+  motherboard: string
+  psuOrCharger: string
+  cooling: string
+  serialNumber: string
+  accessories: string
+  powerStatus: 'Powers on' | 'Intermittent' | 'Does not power on' | 'Not tested'
+  visibleDamage: string[]
+  otherDamage: string
+  visibleCondition: string
+  reportedIssues: string
+  issueHistory: string
+  previousRepairs: string
+  liquidExposure: 'Yes' | 'No' | 'Unsure'
+  backupStatus: 'Backed up' | 'Not backed up' | 'Not applicable' | 'Unsure'
+}
+
 export type CustomerAppointment = {
   reviewedEstimate?: number
   reviewNote?: string
@@ -43,6 +68,11 @@ export type CustomerAppointment = {
   serviceId?: string
   specifications?: string
   unknownSpecifications?: boolean
+  serviceIntake?: ServiceIntake
+  /** Older home-service bookings saved before the shared intake was introduced. */
+  homeIntake?: Partial<ServiceIntake>
+  intakeSignedAt?: string
+  intakeSignedBy?: string
   jobId?: string
   slotId?: string
   cancelledBy?: string

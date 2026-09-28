@@ -107,7 +107,7 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
         {workspace.storageError}
       </p>
     )
-  if (workspace.loading) return <LoadingState table label="Loading expenses..." />
+  if (workspace.loading) return <LoadingState variant="table" label="Loading expenses…" />
   return (
     <>
       <PageHeader

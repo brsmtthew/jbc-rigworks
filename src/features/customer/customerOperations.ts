@@ -7,6 +7,7 @@ import type { AppUser, CustomerAppointment, CustomPcRequest, InventoryItem } fro
 import { reviewBuild } from '../builder/buildReview'
 import { availableWindows, slotKey, slotLabel } from '../services/serviceCatalog'
 import { priceVisit } from '../services/visitPricing'
+import { validateServiceIntake } from './serviceIntake'
 
 export async function savePcQuote(
   user: AppUser,
@@ -178,13 +179,17 @@ export async function saveAppointment(
   )
     throw new Error('That time is no longer available. Choose another appointment window.')
   const visit = priceVisit(appointment, settings)
+  const serviceIntake = appointment.visit
+    ? validateServiceIntake(appointment.serviceIntake)
+    : undefined
   const id = `APT-${crypto.randomUUID()}`
   const record: CustomerAppointment = {
     ...appointment,
     schemaVersion: 2,
     visit,
+    serviceIntake,
     customerId: user.id,
-    customerName: user.name,
+    customerName: serviceIntake?.customerName || user.name,
     customerEmail: user.email,
     id,
     createdAt: new Date().toISOString(),

@@ -184,12 +184,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               </p>
             )}
             {!databaseError && recordsLoading && (
-              <p role="status" className="storage-caption">
-                Loading records…
-              </p>
+              <LoadingState variant="compact" label="Syncing your records…" />
             )}
             <div className="page-transition" key={location.pathname}>
-              <Suspense fallback={<LoadingState label="Loading page..." />}>{children}</Suspense>
+              <Suspense fallback={<LoadingState label="Loading page…" />}>{children}</Suspense>
             </div>
             <footer className="page-footer">
               <span>

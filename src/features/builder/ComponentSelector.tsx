@@ -1,6 +1,7 @@
 import { Check, Package, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatPHP } from '../../lib/format'
 import { availableStock } from '../../lib/workflow'
 import type { ComponentType, InventoryItem } from '../../types'
@@ -238,7 +239,7 @@ function ComponentPicker({
                 {error}
               </p>
             ) : loading ? (
-              <p role="status">Loading inventory…</p>
+              <LoadingState variant="compact" label="Loading inventory…" />
             ) : (
               <>
                 <p className="storage-caption">

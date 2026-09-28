@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { SearchField } from '../../components/ui/Filters'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useAuth } from '../../lib/auth-context'
@@ -42,12 +43,8 @@ export function ServiceWorkspace({ onCreate }: { onCreate: () => void }) {
       setBusy(false)
     }
   }
-  if (loading || storageError)
-    return (
-      <p role={storageError ? 'alert' : 'status'} className={storageError ? 'form-error' : ''}>
-        {storageError || 'Loading services...'}
-      </p>
-    )
+  if (storageError) return <p role="alert" className="form-error">{storageError}</p>
+  if (loading) return <LoadingState variant="table" label="Loading service jobs…" />
   return (
     <>
       <PageHeader

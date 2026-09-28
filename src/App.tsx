@@ -13,6 +13,11 @@ import './styles/payments.css'
 import './styles/v2.css'
 import './styles/customer.css'
 import './styles/admin.css'
+import './styles/auth.css'
+import './styles/customer-home.css'
+import './styles/customer-navigation.css'
+import './styles/customer-booking.css'
+import './styles/loading.css'
 import { AppRoutes } from './routes'
 
 const router = createBrowserRouter([{ path: '*', element: <AppRoutes /> }])
@@ -22,7 +27,7 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <ConfirmationProvider>
-          <Suspense fallback={<LoadingState />}>
+          <Suspense fallback={<LoadingState variant="screen" label="Opening JBC RigWorks…" />}>
             <RouterProvider router={router} />
           </Suspense>
         </ConfirmationProvider>
