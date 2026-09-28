@@ -29,6 +29,7 @@ export type AppUser = {
 }
 
 export type ServiceIntake = {
+  serviceType?: 'general' | 'assembly' | 'diagnosis' | 'upgrade'
   customerName: string
   contactPhone: string
   socialHandle: string
@@ -40,6 +41,18 @@ export type ServiceIntake = {
   motherboard: string
   psuOrCharger: string
   cooling: string
+  desktopCase?: string
+  laptopBattery?: string
+  laptopDisplay?: string
+  assemblyParts?: string
+  assemblyGoal?: string
+  assemblyOs?: string
+  diagnosisSymptoms?: string
+  diagnosisTriggers?: string
+  diagnosisError?: string
+  upgradeCurrent?: string
+  upgradeTarget?: string
+  upgradePartsSource?: string
   serialNumber: string
   accessories: string
   powerStatus: 'Powers on' | 'Intermittent' | 'Does not power on' | 'Not tested'
@@ -104,6 +117,7 @@ export type CustomerAppointment = {
 }
 
 export type CustomPcRequest = {
+  requestType?: 'Pre-order'
   approvedAt?: string
   approvedBy?: string
   approvalNote?: string
@@ -412,6 +426,7 @@ export type BookingSchedule = {
   windows: { id: string; start: string; end: string; capacity: number }[]
   blockedDates: string[]
   blockedPeriods: { date: string; start: string; end: string }[]
+  dateOverrides?: { date: string; windowId: string; capacity: number }[]
 }
 export type StockMovement = {
   id: string

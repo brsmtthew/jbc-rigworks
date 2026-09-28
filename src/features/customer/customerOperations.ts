@@ -1,13 +1,26 @@
-import { getDocFromServer, runTransaction, setDoc } from 'firebase/firestore'
+import { runTransaction, setDoc } from 'firebase/firestore'
 import { firestoreData, recordRef, shopRef } from '../../lib/database'
 import { today } from '../../lib/dates'
 import { firebaseFirestore } from '../../lib/firebase'
 import { defaultShop, normalizeShop } from '../../lib/shopSettings'
-import type { AppUser, CustomerAppointment, CustomPcRequest, InventoryItem } from '../../types'
+import type {
+  AppUser,
+  CustomerAppointment,
+  CustomPcRequest,
+  InventoryItem,
+  ServiceIntake,
+} from '../../types'
 import { reviewBuild } from '../builder/buildReview'
-import { availableWindows, slotKey, slotLabel } from '../services/serviceCatalog'
+import {
+  availableWindows,
+  slotKey,
+  slotLabel,
+  slotWithHold,
+  slotWithoutHold,
+  type AppointmentSlot,
+} from '../services/serviceCatalog'
 import { priceVisit } from '../services/visitPricing'
-import { validateServiceIntake } from './serviceIntake'
+import { intakeTypeForService, validateServiceIntake } from './serviceIntake'
 
 export async function savePcQuote(
   user: AppUser,
@@ -77,7 +90,16 @@ export async function changePendingRequest(
   user: AppUser,
   kind: 'appointments' | 'requests',
   id: string,
-  updates: { notes: string; preferredDate?: string; preferredTime?: string } | null,
+  updates: {
+    notes: string
+    preferredDate?: string
+    preferredTime?: string
+    device?: string
+    specifications?: string
+    unknownSpecifications?: boolean
+    serviceIntake?: ServiceIntake
+    visitAddress?: string
+  } | null,
 ) {
   const ref = recordRef(kind === 'appointments' ? 'appointments' : 'pcRequests', id)
   return runTransaction(firebaseFirestore, async (transaction) => {
@@ -88,15 +110,18 @@ export async function changePendingRequest(
     if (
       !request ||
       request.customerId !== user.id ||
-      !['Requested', 'Quote requested', 'Under review'].includes(request.status)
+      !(kind === 'appointments'
+        ? request.status === 'Requested' && !('reviewNote' in request && request.reviewNote)
+        : request.status === 'Quote requested')
     )
       throw new Error('This request is being processed. Reopen it to see the current status.')
     if (!updates) {
-      if ('slotId' in request && request.slotId) {
-        const slot = await transaction.get(recordRef('appointmentSlots', request.slotId))
-        if (slot.exists())
-          transaction.update(slot.ref, { count: Math.max(0, slot.data().count - 1) })
-      }
+      const slot =
+        'slotId' in request && request.slotId
+          ? await transaction.get(recordRef('appointmentSlots', request.slotId))
+          : null
+      if (slot?.exists() && (slot.data() as AppointmentSlot).holds?.[request.id])
+        transaction.set(slot.ref, slotWithoutHold(slot.data() as AppointmentSlot, request.id))
       transaction.update(ref, {
         status: 'Cancelled',
         cancelledBy: user.id,
@@ -104,32 +129,49 @@ export async function changePendingRequest(
       })
       return null
     }
-    if (request.status === 'Confirmed')
-      throw new Error('Contact JBC to reschedule a confirmed appointment.')
     if (
       'preferredDate' in request &&
       (!updates.preferredDate || updates.preferredDate < today() || !updates.preferredTime)
     )
       throw new Error('Select a current or future date and a time.')
+    let nextSlot: Awaited<ReturnType<typeof transaction.get>> | null = null
+    let previousSlot: Awaited<ReturnType<typeof transaction.get>> | null = null
+    let nextSlotId = ''
+    let changedIntake: ServiceIntake | undefined
     if ('preferredDate' in request) {
       const settingsDoc = await transaction.get(shopRef),
         settings = normalizeShop(settingsDoc.data() ?? {})
+      if (!updates.device?.trim()) throw new Error('Enter the device brand and model.')
+      changedIntake = validateServiceIntake({
+        ...(updates.serviceIntake ?? request.serviceIntake),
+        serviceType: intakeTypeForService(request.serviceId, request.service),
+      } as ServiceIntake)
+      const visit =
+        request.visit?.mode === 'Home service'
+          ? { ...request.visit, address: updates.visitAddress?.trim() ?? request.visit.address }
+          : request.visit
+      if (visit?.mode === 'Home service' && !visit.address)
+        throw new Error('Enter the home-service address.')
       const window = settings.schedule.windows.find(
         (slot) => slotLabel(slot) === updates.preferredTime,
       )
-      const slot = window
-        ? await transaction.get(
-            recordRef('appointmentSlots', slotKey(updates.preferredDate!, window.id)),
-          )
-        : null
+      nextSlotId = window ? slotKey(updates.preferredDate!, window.id) : ''
+      nextSlot = window ? await transaction.get(recordRef('appointmentSlots', nextSlotId)) : null
+      previousSlot =
+        request.slotId && request.slotId !== nextSlotId
+          ? await transaction.get(recordRef('appointmentSlots', request.slotId))
+          : null
+      const existing = nextSlot?.data() as AppointmentSlot | undefined
+      const holdsSame = !!existing?.holds?.[request.id]
       if (
         !window ||
-        !availableWindows(
-          updates.preferredDate!,
-          settings.schedule,
-          slot?.exists() ? [{ id: slot.id, count: slot.data().count }] : [],
-          settings.services.find((service) => service.id === request.serviceId)?.durationMinutes,
-        ).some((slot) => slot.id === window.id)
+        (!holdsSame &&
+          !availableWindows(
+            updates.preferredDate!,
+            settings.schedule,
+            [{ id: nextSlotId, count: Math.max(0, (existing?.count ?? 0) - (holdsSame ? 1 : 0)) }],
+            settings.services.find((service) => service.id === request.serviceId)?.durationMinutes,
+          ).some((slot) => slot.id === window.id))
       )
         throw new Error('Choose an available appointment window.')
     }
@@ -137,8 +179,41 @@ export async function changePendingRequest(
       ...request,
       notes: updates.notes,
       ...('preferredDate' in request
-        ? { preferredDate: updates.preferredDate, preferredTime: updates.preferredTime }
+        ? {
+            preferredDate: updates.preferredDate,
+            preferredTime: updates.preferredTime,
+            device: updates.device!.trim(),
+            specifications: updates.specifications?.trim() ?? request.specifications,
+            unknownSpecifications: updates.unknownSpecifications ?? request.unknownSpecifications,
+            serviceIntake: changedIntake,
+            visit:
+              request.visit?.mode === 'Home service'
+                ? {
+                    ...request.visit,
+                    address: updates.visitAddress?.trim() ?? request.visit.address,
+                  }
+                : request.visit,
+            slotId: nextSlotId,
+          }
         : {}),
+    }
+    if ('preferredDate' in request && nextSlot && nextSlotId !== request.slotId) {
+      if (previousSlot?.exists() && (previousSlot.data() as AppointmentSlot).holds?.[request.id])
+        transaction.set(
+          previousSlot.ref,
+          slotWithoutHold(previousSlot.data() as AppointmentSlot, request.id),
+        )
+      const windowId = nextSlotId.slice(updates.preferredDate!.length + 1)
+      transaction.set(
+        nextSlot.ref,
+        slotWithHold(
+          nextSlot.data() as AppointmentSlot | undefined,
+          updates.preferredDate!,
+          windowId,
+          request.id,
+          user.id,
+        ),
+      )
     }
     transaction.set(ref, firestoreData(changed))
     return changed
@@ -156,47 +231,55 @@ export async function saveAppointment(
     appointment.preferredDate < today()
   )
     throw new Error('Enter a device and a valid current or future appointment date and time.')
-  const shopSnapshot = await getDocFromServer(shopRef)
-  const settings = normalizeShop(shopSnapshot.exists() ? shopSnapshot.data() : defaultShop)
-  const offering = settings.services.find((service) => service.id === appointment.serviceId)
-  if (!offering?.active) throw new Error('Choose an available service.')
-  const window = settings.schedule.windows.find(
-    (slot) => slotLabel(slot) === appointment.preferredTime,
-  )
-  const slot = window
-    ? await getDocFromServer(
-        recordRef('appointmentSlots', slotKey(appointment.preferredDate, window.id)),
-      )
-    : null
-  if (
-    !window ||
-    !availableWindows(
-      appointment.preferredDate,
-      settings.schedule,
-      slot?.exists() ? [{ id: slot.id, count: slot.data().count }] : [],
-      offering.durationMinutes,
-    ).some((value) => value.id === window.id)
-  )
-    throw new Error('That time is no longer available. Choose another appointment window.')
-  const visit = priceVisit(appointment, settings)
-  const serviceIntake = appointment.visit
-    ? validateServiceIntake(appointment.serviceIntake)
-    : undefined
   const id = `APT-${crypto.randomUUID()}`
-  const record: CustomerAppointment = {
-    ...appointment,
-    schemaVersion: 2,
-    visit,
-    serviceIntake,
-    customerId: user.id,
-    customerName: serviceIntake?.customerName || user.name,
-    customerEmail: user.email,
-    id,
-    createdAt: new Date().toISOString(),
-    status: 'Requested',
-  }
-  await setDoc(recordRef('appointments', id), firestoreData(record))
-  return record
+  return runTransaction(firebaseFirestore, async (tx) => {
+    const settingsDoc = await tx.get(shopRef)
+    const settings = normalizeShop(settingsDoc.exists() ? settingsDoc.data() : defaultShop)
+    const offering = settings.services.find((service) => service.id === appointment.serviceId)
+    if (
+      !offering?.active ||
+      !(appointment.visit?.mode === 'Home service' ? offering.home : offering.workshop)
+    )
+      throw new Error('Choose an available service and visit location.')
+    const window = settings.schedule.windows.find(
+      (slot) => slotLabel(slot) === appointment.preferredTime,
+    )
+    const slotRef = window
+      ? recordRef('appointmentSlots', slotKey(appointment.preferredDate, window.id))
+      : null
+    const slot = slotRef ? await tx.get(slotRef) : null
+    const current = slot?.data() as AppointmentSlot | undefined
+    if (
+      !window ||
+      !availableWindows(
+        appointment.preferredDate,
+        settings.schedule,
+        current ? [{ id: current.id, count: current.count }] : [],
+        offering.durationMinutes,
+      ).some((value) => value.id === window.id)
+    )
+      throw new Error('That time is now booked. Choose another appointment window.')
+    const visit = priceVisit(appointment, settings)
+    const serviceIntake = appointment.visit
+      ? validateServiceIntake(appointment.serviceIntake)
+      : undefined
+    const record: CustomerAppointment = {
+      ...appointment,
+      schemaVersion: 2,
+      visit,
+      serviceIntake,
+      slotId: slotRef!.id,
+      customerId: user.id,
+      customerName: serviceIntake?.customerName || user.name,
+      customerEmail: user.email,
+      id,
+      createdAt: new Date().toISOString(),
+      status: 'Requested',
+    }
+    tx.set(recordRef('appointments', id), firestoreData(record))
+    tx.set(slotRef!, slotWithHold(current, appointment.preferredDate, window.id, id, user.id))
+    return record
+  })
 }
 
 export async function savePcRequest(
@@ -217,4 +300,34 @@ export async function savePcRequest(
   }
   await setDoc(recordRef('pcRequests', id), firestoreData(record))
   return record
+}
+
+export async function updatePendingPcRequest(
+  user: AppUser,
+  requestId: string,
+  changes: Pick<
+    CustomPcRequest,
+    | 'parts'
+    | 'tier'
+    | 'useCase'
+    | 'budget'
+    | 'processor'
+    | 'graphics'
+    | 'memory'
+    | 'storage'
+    | 'notes'
+  >,
+) {
+  if (!changes.parts?.length) throw new Error('Select at least one part.')
+  const ref = recordRef('pcRequests', requestId)
+  return runTransaction(firebaseFirestore, async (transaction) => {
+    const snapshot = await transaction.get(ref)
+    const current = snapshot.exists() ? (snapshot.data() as CustomPcRequest) : null
+    if (!current || current.customerId !== user.id || current.status !== 'Quote requested')
+      throw new Error(
+        'This pre-order is already under workshop review and can no longer be edited.',
+      )
+    transaction.update(ref, firestoreData(changes))
+    return { ...current, ...changes }
+  })
 }

@@ -64,7 +64,45 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     match /orderSnapshots/{id} { allow read, write: if isAdmin(); }
-    match /appointmentSlots/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /appointmentSlots/{id} {
+      function pairedAppointment(appointmentId) {
+        return getAfter(/databases/$(database)/documents/appointments/$(appointmentId)).data;
+      }
+      function validClaim() {
+        let data = request.resource.data;
+        let appointmentId = data.lastAppointmentId;
+        let appointment = pairedAppointment(appointmentId);
+        return signedIn() && appointmentId is string &&
+          data.keys().hasOnly(['id', 'date', 'windowId', 'count', 'holds', 'lastAppointmentId']) &&
+          data.id == id && data.date + '_' + data.windowId == id &&
+          appointment.customerId == request.auth.uid && appointment.status == 'Requested' &&
+          appointment.slotId == id && data.count == 1 &&
+          data.holds.keys().hasOnly([appointmentId]) && data.holds[appointmentId] == request.auth.uid;
+      }
+      function validChange() {
+        let data = request.resource.data;
+        let appointmentId = data.lastAppointmentId;
+        let before = resource.data.get('holds', {});
+        let after = data.get('holds', {});
+        let appointment = pairedAppointment(appointmentId);
+        return signedIn() && appointmentId is string &&
+          data.diff(resource.data).affectedKeys().hasOnly(['count', 'holds', 'lastAppointmentId']) &&
+          after.diff(before).affectedKeys().hasOnly([appointmentId]) &&
+          appointment.customerId == request.auth.uid &&
+          ((before.get(appointmentId, '') != request.auth.uid &&
+            after.get(appointmentId, '') == request.auth.uid &&
+            appointment.status == 'Requested' && appointment.slotId == id &&
+            data.count == resource.data.count + 1) ||
+           (before.get(appointmentId, '') == request.auth.uid &&
+            !after.keys().hasAny([appointmentId]) &&
+            (appointment.status == 'Cancelled' || appointment.slotId != id) &&
+            data.count == resource.data.count - 1));
+      }
+      allow read: if signedIn();
+      allow create: if isAdmin() || validClaim();
+      allow update: if isAdmin() || validChange();
+      allow delete: if false;
+    }
 
     match /inventory/{id} {
       function hasSkuClaim() {
@@ -155,7 +193,23 @@ service cloud.firestore {
         request.resource.data.receiptEmail.size() > 0 && request.resource.data.receiptEmail.size() <= 254 &&
         !request.resource.data.keys().hasAny(['serviceJobId', 'buildId', 'cashTendered', 'change', 'lastReceiptId', 'paidAt']) &&
         request.resource.data.paymentHistory.size() == 0);
-      allow update: if isAdmin() || submittingOwnProof();
+      allow update: if isAdmin() || submittingOwnProof() || (signedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        resource.data.get('orderStatus', 'Requested') == 'Requested' && resource.data.paid == 0 &&
+        ((request.resource.data.get('orderStatus', 'Requested') == 'Requested' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customer', 'contact', 'receiptEmail', 'notes', 'fulfillment']) &&
+          request.resource.data.customer is string && request.resource.data.customer.size() > 0 && request.resource.data.customer.size() <= 120 &&
+          request.resource.data.contact is string && request.resource.data.contact.size() <= 100 &&
+          request.resource.data.receiptEmail is string && request.resource.data.receiptEmail.size() > 0 && request.resource.data.receiptEmail.size() <= 254 &&
+          request.resource.data.notes is string && request.resource.data.notes.size() <= 1000 &&
+          request.resource.data.fulfillment.diff(resource.data.fulfillment).affectedKeys().hasOnly(['address']) &&
+          request.resource.data.fulfillment.get('address', '') is string && request.resource.data.fulfillment.get('address', '').size() <= 400 &&
+          (resource.data.fulfillment.mode == 'Pickup' ||
+            (request.resource.data.fulfillment.get('address', '').size() > 0 && request.resource.data.contact.size() > 0))) ||
+         (request.resource.data.orderStatus == 'Cancelled' &&
+          request.resource.data.cancelledBy == request.auth.uid &&
+          request.resource.data.cancelledAt is string &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'cancelledBy', 'cancelledAt']))));
       allow delete: if false;
     }
 
@@ -209,10 +263,22 @@ service cloud.firestore {
             intake.get('customerName', '') is string && intake.get('customerName', '').size() > 0 &&
             intake.get('contactPhone', '') is string && intake.get('contactPhone', '').size() > 0 &&
             intake.get('deviceType', '') in ['Desktop PC', 'Laptop'] &&
+            intake.get('serviceType', 'general') in ['general', 'assembly', 'diagnosis', 'upgrade'] &&
             intake.get('visibleDamage', []) is list &&
             intake.get('visibleCondition', '') is string && intake.get('visibleCondition', '').size() > 0 &&
-            intake.get('reportedIssues', '') is string && intake.get('reportedIssues', '').size() > 0 &&
-            intake.get('issueHistory', '') is string && intake.get('issueHistory', '').size() > 0 &&
+            intake.get('reportedIssues', '') is string &&
+            intake.get('issueHistory', '') is string &&
+            (intake.get('serviceType', 'general') != 'general' ||
+              (intake.get('reportedIssues', '').size() > 0 && intake.get('issueHistory', '').size() > 0)) &&
+            (intake.get('serviceType', 'general') != 'diagnosis' || intake.get('issueHistory', '').size() > 0) &&
+            (intake.get('serviceType', 'general') != 'assembly' ||
+              (intake.get('assemblyParts', '') is string && intake.get('assemblyParts', '').size() > 0 &&
+               intake.get('assemblyGoal', '') is string && intake.get('assemblyGoal', '').size() > 0)) &&
+            (intake.get('serviceType', 'general') != 'diagnosis' ||
+              (intake.get('diagnosisSymptoms', '') is string && intake.get('diagnosisSymptoms', '').size() > 0)) &&
+            (intake.get('serviceType', 'general') != 'upgrade' ||
+              (intake.get('upgradeCurrent', '') is string && intake.get('upgradeCurrent', '').size() > 0 &&
+               intake.get('upgradeTarget', '') is string && intake.get('upgradeTarget', '').size() > 0)) &&
             intake.get('powerStatus', '') in ['Powers on', 'Intermittent', 'Does not power on', 'Not tested'] &&
             intake.get('liquidExposure', '') in ['Yes', 'No', 'Unsure'] &&
             intake.get('backupStatus', '') in ['Backed up', 'Not backed up', 'Not applicable', 'Unsure']);
@@ -223,11 +289,27 @@ service cloud.firestore {
         request.resource.data.customerId == request.auth.uid &&
         request.resource.data.customerEmail == request.auth.token.email &&
         request.resource.data.status == 'Requested' &&
-        !request.resource.data.keys().hasAny(['jobId', 'slotId', 'cancelledBy', 'cancelledAt', 'reviewedEstimate', 'reviewNote', 'scheduleHistory', 'intakeSignedAt', 'intakeSignedBy']) && request.resource.data.device is string && request.resource.data.preferredDate is string && validServiceIntake();
+        !request.resource.data.keys().hasAny(['jobId', 'cancelledBy', 'cancelledAt', 'reviewedEstimate', 'reviewNote', 'scheduleHistory', 'intakeSignedAt', 'intakeSignedBy']) && request.resource.data.device is string && request.resource.data.preferredDate is string && validServiceIntake() &&
+        (!request.resource.data.keys().hasAny(['visit']) ||
+          (request.resource.data.slotId is string &&
+           getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.slotId)).data.holds[id] == request.auth.uid));
       allow update: if isAdmin() || (signedIn() &&
         resource.data.customerId == request.auth.uid &&
         resource.data.status == 'Requested' &&
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'preferredDate', 'preferredTime']) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.cancelledAt is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'cancellationReason']))));
+        !resource.data.keys().hasAny(['reviewNote']) &&
+        ((request.resource.data.status == 'Requested' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'preferredDate', 'preferredTime', 'device', 'specifications', 'unknownSpecifications', 'serviceIntake', 'visit', 'slotId']) &&
+          validServiceIntake() &&
+          (!request.resource.data.keys().hasAny(['visit']) ||
+            (request.resource.data.slotId is string &&
+             getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.slotId)).data.holds[id] == request.auth.uid)) &&
+          (!resource.data.keys().hasAny(['slotId']) || request.resource.data.slotId == resource.data.slotId ||
+            !getAfter(/databases/$(database)/documents/appointmentSlots/$(resource.data.slotId)).data.get('holds', {}).keys().hasAny([id])) &&
+          (!request.resource.data.keys().hasAny(['visit']) ||
+            request.resource.data.visit.diff(resource.data.visit).affectedKeys().hasOnly(['address']))) ||
+         (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.cancelledAt is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'cancellationReason']) &&
+          (!resource.data.keys().hasAny(['slotId']) ||
+            !getAfter(/databases/$(database)/documents/appointmentSlots/$(resource.data.slotId)).data.get('holds', {}).keys().hasAny([id])))));
       allow delete: if false;
     }
 
@@ -241,8 +323,8 @@ service cloud.firestore {
         !request.resource.data.keys().hasAny(['quote', 'transactionId']) && request.resource.data.get('reservationState', 'None') == 'None';
       allow update: if isAdmin() || (signedIn() &&
         resource.data.customerId == request.auth.uid &&
-        ((resource.data.status in ['Under review', 'Quote requested'] &&
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes']) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt'])))) ||
+        ((resource.data.status == 'Quote requested' &&
+          ((request.resource.data.status == 'Quote requested' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'parts', 'tier', 'useCase', 'budget', 'processor', 'graphics', 'memory', 'storage'])) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt'])))) ||
          (resource.data.status == 'Quoted' &&
           request.resource.data.status in ['Approved', 'Declined'] &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))));

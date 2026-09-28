@@ -17,6 +17,8 @@ export type Plan = {
   id: string
   name: string
   budget: string
+  useCase?: string
+  requestNotes?: string
   selection: Selection
   custom?: CustomParts
   legacyNotes?: string

@@ -16,6 +16,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Dialog } from '../../components/ui/Dialog'
+import { useConfirmation } from '../../components/ui/confirmation-context'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useLiveCollection } from '../../hooks/useLiveData'
@@ -29,13 +30,16 @@ import { priceVisit } from '../services/visitPricing'
 import { saveAppointment } from './customerOperations'
 import { ServiceIntakeFields } from './ServiceIntakeFields'
 import { ServiceIntakePrintRoot } from './ServiceIntakeDocument'
-import { emptyServiceIntake, validateServiceIntake } from './serviceIntake'
+import { ServiceIntakePreview } from './ServiceIntakePreview'
+import { emptyServiceIntake, intakeTypeForService, validateServiceIntake } from './serviceIntake'
 
 export function BookingPage() {
   const { user } = useAuth()
+  const { confirm } = useConfirmation()
   const [shop, , settingsStatus] = useShopSettings()
   const [profile] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [serviceId, setServiceId] = useState<string | null>(null)
+  const [intakePreview, setIntakePreview] = useState<CustomerAppointment | null>(null)
   const service = shop.services.find((item) => item.id === serviceId)
   const [deviceFilter, setDeviceFilter] = useState('All')
   const [query, setQuery] = useState('')
@@ -64,6 +68,7 @@ export function BookingPage() {
     date,
   )
   const windows = availableWindows(date, shop.schedule, slots.rows, service?.durationMinutes)
+  const scheduledWindows = availableWindows(date, shop.schedule, [], service?.durationMinutes)
   const available = service?.active && (mode === 'Home service' ? service.home : service.workshop)
   const visit =
     service && mode && available
@@ -98,6 +103,7 @@ export function BookingPage() {
   function choose(item: ServiceOffering) {
     setServiceId(item.id)
     setSent(null)
+    setIntakePreview(null)
     setStep(1)
     setError('')
     setIntake((current) => ({
@@ -105,6 +111,7 @@ export function BookingPage() {
       customerName: current.customerName || profile.name || user?.name || '',
       contactPhone: current.contactPhone || profile.phone,
       deviceType: item.deviceType === 'Laptop' ? 'Laptop' : 'Desktop PC',
+      serviceType: intakeTypeForService(item.id, item.name),
     }))
     if (mode && !(mode === 'Workshop' ? item.workshop : item.home)) setMode(null)
   }
@@ -144,6 +151,14 @@ export function BookingPage() {
     }
     void run(async () => {
       if (!service || !visit) throw new Error('Choose an available service.')
+      if (
+        !(await confirm({
+          title: 'Send booking request?',
+          message: `Request ${service.name} for ${date} at ${time}? JBC will review the appointment before confirming it.`,
+          confirmLabel: 'Send request',
+        }))
+      )
+        return
       const record = await saveAppointment(user!, {
         serviceId: service.id,
         service: `${service.name} / ${service.deviceType}`,
@@ -184,10 +199,18 @@ export function BookingPage() {
             <p>Reference {sent.id} · Requested. No payment collected.</p>
           </div>
           {sent.serviceIntake && (
-            <button type="button" className="secondary-button" onClick={() => window.print()}>
-              <Printer size={17} />
-              Print intake form
-            </button>
+            <>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setIntakePreview(sent)}
+              >
+                View authorization form
+              </button>
+              <button type="button" className="secondary-button" onClick={() => window.print()}>
+                <Printer size={17} /> Print form
+              </button>
+            </>
           )}
           <Link
             className="secondary-button"
@@ -198,28 +221,41 @@ export function BookingPage() {
         </div>
       )}
       {sent?.serviceIntake && <ServiceIntakePrintRoot appointment={sent} />}
+      {intakePreview && (
+        <ServiceIntakePreview
+          appointment={intakePreview}
+          onClose={() => setIntakePreview(null)}
+          onPrint={() => window.print()}
+        />
+      )}
       <section className="booking-intro" aria-label="Services introduction">
         <div>
           <span className="eyebrow">PLAN YOUR VISIT</span>
           <h2>Choose the care your device needs.</h2>
-          <p>Clear service estimates up front. JBC reviews your request before confirming a time.</p>
+          <p>
+            Clear service estimates up front. JBC reviews your request before confirming a time.
+          </p>
         </div>
       </section>
       <div className="service-catalog-tools">
-        <div className="record-tabs" role="group" aria-label="Device type">
-          {['All', ...new Set(offerings.map((item) => item.deviceType))].map((value) => (
-            <button
-              key={value}
-              aria-pressed={deviceFilter === value}
-              className={deviceFilter === value ? 'primary-button' : 'secondary-button'}
-              onClick={() => setDeviceFilter(value)}
-            >
-              {value === 'All' ? 'All devices' : value}
-            </button>
-          ))}
+        <div className="service-device-filter">
+          <span className="service-filter-label">Device type</span>
+          <div className="record-tabs" role="group" aria-label="Device type">
+            {['All', ...new Set(offerings.map((item) => item.deviceType))].map((value) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={deviceFilter === value}
+                className={deviceFilter === value ? 'primary-button' : 'secondary-button'}
+                onClick={() => setDeviceFilter(value)}
+              >
+                {value === 'All' ? 'All devices' : value}
+              </button>
+            ))}
+          </div>
         </div>
         <label className="service-search">
-          <span>Find a service</span>
+          <span className="service-filter-label">Find a service</span>
           <span className="service-search-field">
             <Search size={17} aria-hidden="true" />
             <input
@@ -241,7 +277,9 @@ export function BookingPage() {
         <>
           <div className="booking-results-heading">
             <h2>Available services</h2>
-            <span>{filtered.length} {filtered.length === 1 ? 'service' : 'services'}</span>
+            <span>
+              {filtered.length} {filtered.length === 1 ? 'service' : 'services'}
+            </span>
           </div>
           <div className="service-grid">
             {filtered.map((item) => (
@@ -342,10 +380,19 @@ export function BookingPage() {
         >
           <div className="booking-modal-summary">
             <span className="eyebrow">SERVICE REQUEST</span>
-            <strong>{service?.deviceType} · {service?.durationMinutes} min</strong>
-            <small>{service?.price === '' ? 'Quote after review' : formatPHP(Number(service?.price)) + ' estimate'}</small>
+            <strong>
+              {service?.deviceType} · {service?.durationMinutes} min
+            </strong>
+            <small>
+              {service?.price === ''
+                ? 'Quote after review'
+                : formatPHP(Number(service?.price)) + ' estimate'}
+            </small>
           </div>
-          <ol className={`booking-steps booking-steps-${steps.length}`} aria-label="Booking progress">
+          <ol
+            className={`booking-steps booking-steps-${steps.length}`}
+            aria-label="Booking progress"
+          >
             {steps.map((label, index) => (
               <li
                 key={label}
@@ -373,7 +420,9 @@ export function BookingPage() {
                 <div className="booking-section-heading">
                   <span className="eyebrow">STEP 01 · THE VISIT</span>
                   <h3>Where should we work?</h3>
-                  <p>Choose how you’d like JBC to care for your {service?.deviceType.toLowerCase()}.</p>
+                  <p>
+                    Choose how you’d like JBC to care for your {service?.deviceType.toLowerCase()}.
+                  </p>
                 </div>
                 <div className="visit-options">
                   {service?.workshop && (
@@ -457,7 +506,10 @@ export function BookingPage() {
                 <div className="booking-section-heading">
                   <span className="eyebrow">STEP 02 · SCHEDULE</span>
                   <h3>When works for you?</h3>
-                  <p>Your preferred time is a request until JBC confirms it.</p>
+                  <p>
+                    Available times are held as soon as you send the request. JBC still reviews and
+                    confirms the service.
+                  </p>
                 </div>
                 <div className="portal-form-grid">
                   <label>
@@ -484,14 +536,28 @@ export function BookingPage() {
                       <option value="">
                         {slots.loading ? 'Checking availability…' : 'Choose a time'}
                       </option>
-                      {windows.map((slot) => (
-                        <option key={slot.id}>{slotLabel(slot)}</option>
+                      {scheduledWindows.map((slot) => (
+                        <option
+                          key={slot.id}
+                          value={slotLabel(slot)}
+                          disabled={!windows.some((available) => available.id === slot.id)}
+                        >
+                          {slotLabel(slot)} ·{' '}
+                          {windows.some((available) => available.id === slot.id)
+                            ? 'Available'
+                            : 'Booked'}
+                        </option>
                       ))}
                     </select>
                   </label>
                 </div>
                 {date && !slots.loading && !slots.error && !windows.length && (
                   <p className="form-error">No available times on this date. Choose another day.</p>
+                )}
+                {date && !slots.loading && !slots.error && scheduledWindows.length > 0 && (
+                  <p className="booking-availability-status" role="status">
+                    {windows.length} available · {scheduledWindows.length - windows.length} booked
+                  </p>
                 )}
               </>
             )}
@@ -500,6 +566,7 @@ export function BookingPage() {
                 value={intake}
                 onChange={setIntake}
                 service={service?.name || ''}
+                serviceId={service?.id}
                 device={device}
                 concerns={notes}
                 acknowledged={intakeAcknowledged}
@@ -547,24 +614,62 @@ export function BookingPage() {
                     <dt>Concerns</dt>
                     <dd>{notes || 'None added'}</dd>
                   </div>
-                    <>
-                      <div>
-                        <dt>Intake contact</dt>
-                        <dd>{intake.customerName}<small>{intake.contactPhone}</small></dd>
-                      </div>
-                      <div>
-                        <dt>Device condition</dt>
-                        <dd>{intake.powerStatus}<small>{intake.visibleCondition}</small></dd>
-                      </div>
+                  <>
+                    <div>
+                      <dt>Intake contact</dt>
+                      <dd>
+                        {intake.customerName}
+                        <small>{intake.contactPhone}</small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Device condition</dt>
+                      <dd>
+                        {intake.powerStatus}
+                        <small>{intake.visibleCondition}</small>
+                      </dd>
+                    </div>
+                    {intake.serviceType === 'general' && (
                       <div>
                         <dt>Reported history</dt>
-                        <dd>{intake.reportedIssues}<small>{intake.issueHistory}</small></dd>
+                        <dd>
+                          {intake.reportedIssues}
+                          <small>{intake.issueHistory}</small>
+                        </dd>
                       </div>
+                    )}
+                    {intake.serviceType === 'assembly' && (
                       <div>
-                        <dt>Data backup</dt>
-                        <dd>{intake.backupStatus}</dd>
+                        <dt>Assembly plan</dt>
+                        <dd>
+                          {intake.assemblyGoal}
+                          <small>{intake.assemblyParts}</small>
+                        </dd>
                       </div>
-                    </>
+                    )}
+                    {intake.serviceType === 'diagnosis' && (
+                      <div>
+                        <dt>Diagnosis</dt>
+                        <dd>
+                          {intake.diagnosisSymptoms}
+                          <small>{intake.issueHistory}</small>
+                        </dd>
+                      </div>
+                    )}
+                    {intake.serviceType === 'upgrade' && (
+                      <div>
+                        <dt>Upgrade plan</dt>
+                        <dd>
+                          {intake.upgradeTarget}
+                          <small>{intake.upgradeCurrent}</small>
+                        </dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Data backup</dt>
+                      <dd>{intake.backupStatus}</dd>
+                    </div>
+                  </>
                 </dl>
                 <dl className="checkout-totals">
                   <div>
@@ -603,7 +708,8 @@ export function BookingPage() {
                   </div>
                 </dl>
                 <p className="fulfillment-note">
-                  Your time is a request until JBC confirms. No payment is collected now.
+                  Your time is held when this request is sent. JBC will confirm the service details.
+                  No payment is collected now.
                 </p>
                 <p className="home-intake-review-note">
                   The printed intake will be reviewed and signed with JBC before work begins.

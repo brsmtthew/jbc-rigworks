@@ -27,8 +27,45 @@ import {
 } from '../../src/features/inventory/inventoryIdentity.ts'
 import { runTransaction, recordRef } from './memory-db.mjs'
 import { slotLabel } from '../../src/features/services/serviceCatalog.ts'
+import { changePendingOrder } from '../../src/features/customer/customerOrderOperations.ts'
+import { updatePendingPcRequest } from '../../src/features/customer/customerOperations.ts'
 
 const admin = { id: 'admin', role: 'admin' }
+
+test('customer order details can change before confirmation and cancellation locks the order', async () => {
+  const buyer = { id: 'buyer', role: 'user' }
+  seed({
+    'orders/pending': {
+      id: 'pending',
+      customerId: 'buyer',
+      channel: 'Online',
+      orderStatus: 'Requested',
+      paid: 0,
+      reservationState: 'None',
+      customer: 'Buyer',
+      contact: '09171234567',
+      receiptEmail: 'buyer@example.test',
+      notes: '',
+      fulfillment: { mode: 'Delivery', address: 'Old address' },
+      total: 2000,
+    },
+  })
+  await changePendingOrder(buyer, 'pending', {
+    customer: 'Buyer',
+    contact: '09998887777',
+    receiptEmail: 'buyer@example.test',
+    notes: 'Call first',
+    address: 'New address',
+  })
+  assert.equal(read('orders/pending').fulfillment.address, 'New address')
+  await assert.rejects(
+    changePendingOrder({ id: 'other', role: 'user' }, 'pending', null),
+    /already entered/,
+  )
+  await changePendingOrder(buyer, 'pending', null)
+  assert.equal(read('orders/pending').orderStatus, 'Cancelled')
+  await assert.rejects(changePendingOrder(buyer, 'pending', null), /already entered/)
+})
 
 test('QR lookup prefers the issued invoice and rejects missing or declined orders', async () => {
   seed({
@@ -56,6 +93,50 @@ test('saved build plans preserve selections and ownership while invalid budgets 
   assert.deepEqual(read('users/buyer/plans/plan'), plan)
   await removeBuildPlan('buyer', 'plan')
   assert.equal(read('users/buyer/plans/plan'), undefined)
+})
+
+test('customer can revise selected pre-order parts only before workshop review', async () => {
+  const buyer = { id: 'buyer', role: 'user' }
+  seed({
+    'pcRequests/PC-pending': {
+      id: 'PC-pending',
+      customerId: 'buyer',
+      status: 'Quote requested',
+      useCase: 'Gaming',
+      budget: '30000',
+      processor: 'Old CPU',
+      graphics: 'Needs guidance',
+      memory: 'Needs guidance',
+      storage: 'Needs guidance',
+      notes: 'My build',
+      parts: [
+        { component: 'Processor', model: 'Old CPU', source: 'inventory', inventoryId: 'old' },
+      ],
+    },
+  })
+  const changes = {
+    useCase: 'Workstation',
+    budget: '40000',
+    processor: 'New CPU',
+    graphics: 'Needs guidance',
+    memory: 'Needs guidance',
+    storage: 'Needs guidance',
+    tier: 'Mid',
+    notes: 'My revised build',
+    parts: [{ component: 'Processor', model: 'New CPU', source: 'inventory', inventoryId: 'new' }],
+  }
+  await updatePendingPcRequest(buyer, 'PC-pending', changes)
+  assert.equal(read('pcRequests/PC-pending').parts[0].inventoryId, 'new')
+  assert.equal(read('pcRequests/PC-pending').status, 'Quote requested')
+  await assert.rejects(
+    updatePendingPcRequest({ id: 'other', role: 'user' }, 'PC-pending', changes),
+    /under workshop review/,
+  )
+  seed({ 'pcRequests/PC-pending': { ...read('pcRequests/PC-pending'), status: 'Under review' } })
+  await assert.rejects(
+    updatePendingPcRequest(buyer, 'PC-pending', changes),
+    /under workshop review/,
+  )
 })
 const item = {
   id: 'cpu',

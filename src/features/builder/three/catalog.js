@@ -14,7 +14,7 @@ export function normalizeCatalog(items) {
 export function reconcileSelection(catalog, selection = {}) {
   const result = {};
   for (const category of Object.keys(PARTS)) {
-    const item = catalog.find(i => i.id === selection[category] && i.category === category && i.stock > 0);
+    const item = catalog.find(i => i.id === selection[category] && i.category === category);
     if (item) result[category] = item.id;
   }
   return result;

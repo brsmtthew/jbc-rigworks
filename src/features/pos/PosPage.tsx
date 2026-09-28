@@ -1,5 +1,15 @@
 import { LoadingState } from '../../components/ui/LoadingState'
-import { Boxes, BrushCleaning, Eye, Package, Plus, ScanLine, ShoppingCart } from 'lucide-react'
+import {
+  ArrowRight,
+  Boxes,
+  BrushCleaning,
+  Eye,
+  Package,
+  Plus,
+  ScanLine,
+  ShoppingCart,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -14,6 +24,7 @@ import { CheckoutDialog } from './CheckoutDialog'
 import { CollectPayment } from './CollectPayment'
 import { OrderScanner } from './OrderScanner'
 import { usePos } from './usePos'
+import './customer-shop.css'
 
 export function PosPage() {
   const pos = usePos()
@@ -57,6 +68,26 @@ export function PosPage() {
     openScannedOrder,
   } = pos
   const cartPanel = <CartPanel {...pos} />
+  const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0)
+  const categories = ['All', ...new Set(products.map((item) => item.category))]
+  const hasBundles = workspace.bundles.some(
+    (bundle) => bundle.active !== false && bundle.published !== false,
+  )
+  const hasActiveFilters =
+    !!query ||
+    category !== 'All' ||
+    brand !== 'All' ||
+    availability !== 'All' ||
+    !!maxPrice ||
+    sort !== 'name'
+  const clearShopFilters = () => {
+    setQuery('')
+    setCategory('All')
+    setBrand('All')
+    setAvailability('All')
+    setMaxPrice('')
+    setSort('name')
+  }
   if (showOrders && !collectingSaleMode)
     return (
       <>
@@ -76,147 +107,172 @@ export function PosPage() {
 
   return (
     <>
-      <PageHeader
-        eyebrow={customerMode ? 'PC PARTS SHOP' : 'WORKSHOP CHECKOUT'}
-        title={customerMode ? 'Shop PC parts' : 'Point of sale'}
-        description={
-          customerMode
-            ? 'Browse parts, choose pickup or delivery, and track your order.'
-            : 'Scan customer orders and record payments at the counter.'
-        }
-      >
-        {customerMode ? (
-          <button className="primary-button" onClick={() => setCartOpen(true)}>
-            <ShoppingCart size={18} />
-            Cart ({cart.reduce((sum, line) => sum + line.quantity, 0)})
+      {!customerMode && (
+        <PageHeader
+          eyebrow="WORKSHOP CHECKOUT"
+          title="Point of sale"
+          description="Scan customer orders and record payments at the counter."
+        >
+          <button className="secondary-button" onClick={() => setShowOrders(true)}>
+            Online orders
           </button>
-        ) : (
-          <>
-            <button className="secondary-button" onClick={() => setShowOrders(true)}>
-              Online orders
-            </button>
-            <button className="secondary-button" onClick={() => setScannerOpen(true)}>
-              <ScanLine size={18} />
-              Scan order QR
-            </button>
-            <button className="secondary-button" onClick={() => setBundlesOpen(true)}>
-              <Boxes size={18} />
-              Bundles & PC sets
-            </button>
-          </>
-        )}
-      </PageHeader>
-      {customerMode &&
-        workspace.bundles.some(
-          (bundle) => bundle.active !== false && bundle.published !== false,
-        ) && (
+          <button className="secondary-button" onClick={() => setScannerOpen(true)}>
+            <ScanLine size={18} />
+            Scan order QR
+          </button>
           <button className="secondary-button" onClick={() => setBundlesOpen(true)}>
-            Browse bundles & PC sets
+            <Boxes size={18} />
+            Bundles & PC sets
           </button>
-        )}
+        </PageHeader>
+      )}
+      {customerMode && (
+        <section className="shop-hero" aria-label="Shop introduction">
+          <div className="shop-hero-copy">
+            <span className="shop-kicker">EXPLORE THE SHOP</span>
+            <h1>Find your next upgrade.</h1>
+            <p>
+              Explore PC components from JBC inventory, add your picks to cart, and choose pickup or
+              delivery at checkout.
+            </p>
+          </div>
+          <div className="shop-hero-cart">
+            <span className="shop-hero-cart-icon">
+              <ShoppingCart size={21} />
+            </span>
+            <span className="shop-hero-cart-label">YOUR CART</span>
+            <strong>
+              {cartCount} {cartCount === 1 ? 'item' : 'items'}
+            </strong>
+            <small>{formatPHP(pos.totals.subtotal)} subtotal</small>
+            <button type="button" onClick={() => setCartOpen(true)}>
+              View cart <ArrowRight size={16} />
+            </button>
+          </div>
+        </section>
+      )}
       {toast && (
         <div role="status" className="toast">
           {toast}
         </div>
       )}
-      <div className="list-toolbar pos-toolbar">
-        <SearchField
-          label={customerMode ? 'Search PC parts' : 'Search products and services'}
-          value={query}
-          onChange={setQuery}
-        />
-        {!customerMode && (
-          <select
-            aria-label="Product type"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option>All</option>
-            <option>Products</option>
-            <option>Services</option>
-          </select>
+      <div className={customerMode ? 'shop-discovery' : undefined}>
+        {customerMode && <span className="shop-kicker shop-search-kicker">EXPLORE PARTS</span>}
+        <div className="list-toolbar pos-toolbar">
+          <SearchField
+            label={customerMode ? 'Search PC parts' : 'Search products and services'}
+            value={query}
+            onChange={setQuery}
+          />
+          {customerMode && (
+            <button type="button" className="shop-toolbar-cart" onClick={() => setCartOpen(true)}>
+              <ShoppingCart size={16} /> Cart ({cartCount})
+            </button>
+          )}
+          {customerMode && hasBundles && (
+            <button type="button" className="shop-bundle-link" onClick={() => setBundlesOpen(true)}>
+              <Boxes size={16} /> Bundles & PC sets <ArrowRight size={14} />
+            </button>
+          )}
+          {!customerMode && (
+            <select
+              aria-label="Product type"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
+              <option>All</option>
+              <option>Products</option>
+              <option>Services</option>
+            </select>
+          )}
+        </div>
+        {customerMode && (
+          <div className="shop-category-tabs" role="group" aria-label="Product category">
+            {categories.map((value) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={category === value}
+                onClick={() => setCategory(value)}
+              >
+                {value === 'All' ? 'All parts' : value}
+              </button>
+            ))}
+          </div>
+        )}
+        {customerMode && (
+          <>
+            <details className="shop-filter-details">
+              <summary>
+                <SlidersHorizontal size={16} /> More filters
+                {hasActiveFilters && <span>Filters active</span>}
+              </summary>
+              <div className="shop-filters">
+                <label>
+                  Brand
+                  <select value={brand} onChange={(e) => setBrand(e.target.value)}>
+                    <option value="All">All brands</option>
+                    {[...new Set(products.map((item) => item.item?.brand).filter(Boolean))].map(
+                      (value) => (
+                        <option key={value}>{value}</option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <label>
+                  Availability
+                  <select value={availability} onChange={(e) => setAvailability(e.target.value)}>
+                    <option>All</option>
+                    <option>In stock</option>
+                  </select>
+                </label>
+                <label>
+                  Maximum price (PHP)
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="No limit"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Sort by
+                  <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                    <option value="name">Name</option>
+                    <option value="price-low">Price: low to high</option>
+                    <option value="price-high">Price: high to low</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+            <div className="shop-results">
+              <p aria-live="polite">
+                {workspace.loading
+                  ? 'Loading products…'
+                  : workspace.storageError
+                    ? 'Products unavailable'
+                    : `${filtered.length} of ${products.length} ${products.length === 1 ? 'part' : 'parts'}`}
+              </p>
+              {hasActiveFilters && (
+                <button type="button" className="text-button" onClick={clearShopFilters}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
-      {customerMode && (
-        <>
-          <div className="shop-filters">
-            <label>
-              Category
-              <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option>All</option>
-                {[...new Set(products.map((item) => item.category))].map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Brand
-              <select value={brand} onChange={(e) => setBrand(e.target.value)}>
-                <option>All</option>
-                {[...new Set(products.map((item) => item.item?.brand).filter(Boolean))].map(
-                  (value) => (
-                    <option key={value}>{value}</option>
-                  ),
-                )}
-              </select>
-            </label>
-            <label>
-              Availability
-              <select value={availability} onChange={(e) => setAvailability(e.target.value)}>
-                <option>All</option>
-                <option>In stock</option>
-              </select>
-            </label>
-            <label>
-              Maximum price (PHP)
-              <input
-                type="number"
-                min="0"
-                placeholder="No limit"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-              />
-            </label>
-            <label>
-              Sort by
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="name">Name</option>
-                <option value="price-low">Price: low to high</option>
-                <option value="price-high">Price: high to low</option>
-              </select>
-            </label>
-          </div>
-          <div className="shop-results">
-            <p>
-              {workspace.loading
-                ? 'Loading products…'
-                : workspace.storageError
-                  ? 'Products unavailable'
-                  : filtered.length + (filtered.length === 1 ? ' product' : ' products')}
-            </p>
-            <button
-              className="text-button"
-              onClick={() => {
-                setQuery('')
-                setCategory('All')
-                setBrand('All')
-                setAvailability('All')
-                setMaxPrice('')
-                setSort('name')
-              }}
-            >
-              Clear filters
-            </button>
-          </div>
-        </>
-      )}
       <div className={customerMode ? 'pos-layout shop-layout' : 'pos-layout'}>
         <div>
           <div className="pos-products">
             {!workspace.loading &&
               !workspace.storageError &&
               filtered.map((product) => (
-                <article className="pos-product" key={product.id}>
+                <article
+                  className={customerMode ? 'pos-product shop-product-card' : 'pos-product'}
+                  key={product.id}
+                >
                   <div className="product-visual">
                     {(customerMode || !product.item?.image) && (
                       <span className="service-icon">
@@ -235,19 +291,33 @@ export function PosPage() {
                         }}
                       />
                     )}
+                    {customerMode && (
+                      <>
+                        <span className="shop-card-category">{product.category}</span>
+                        <span
+                          className={
+                            product.stock > 0 ? 'shop-card-stock' : 'shop-card-stock is-empty'
+                          }
+                        >
+                          {product.stock > 0 ? `${product.stock} available` : 'Out of stock'}
+                        </span>
+                      </>
+                    )}
                   </div>
                   <h2>{product.name}</h2>
-                  <p>
-                    {product.service
-                      ? 'Workshop service'
-                      : `${product.item?.brand ? product.item.brand + (product.item.model ? ` / ${product.item.model}` : '') + ' · ' : ''}${product.stock} in stock`}
-                  </p>
+                  {!customerMode && (
+                    <p>
+                      {product.service
+                        ? 'Workshop service'
+                        : `${product.item?.brand ? product.item.brand + (product.item.model ? ` / ${product.item.model}` : '') + ' · ' : ''}${product.stock} in stock`}
+                    </p>
+                  )}
                   {product.item?.specs && <p className="shop-card-specs">{product.item.specs}</p>}
                   <strong>
                     {product.price === null ? 'Price not set' : formatPHP(product.price)}
                   </strong>
                   <button
-                    className="secondary-button"
+                    className={customerMode ? 'primary-button shop-add-button' : 'secondary-button'}
                     disabled={
                       product.price === null ||
                       product.stock <= (cart.find((line) => line.id === product.id)?.quantity ?? 0)
@@ -261,17 +331,26 @@ export function PosPage() {
                     aria-label={`${customerMode ? 'Add to cart' : 'Add to order'}: ${product.name}`}
                   >
                     <Plus size={18} />
-                    {customerMode ? 'Add to cart' : 'Add to order'}
+                    {customerMode
+                      ? cart.some((line) => line.id === product.id)
+                        ? 'Add another'
+                        : 'Add to cart'
+                      : 'Add to order'}
                   </button>
                   {!product.service && (
                     <button
-                      className="icon-button product-inspect"
+                      className={
+                        customerMode
+                          ? 'secondary-button product-inspect shop-details-button'
+                          : 'icon-button product-inspect'
+                      }
                       title={'View specs for ' + product.name}
                       aria-label={'View specs for ' + product.name}
                       onClick={() => setProductDetail(product.item!)}
                     >
-                      <Eye size={19} />
-                      <span>View details</span>
+                      <Eye size={18} />
+                      <span>{customerMode ? 'Details & specs' : 'View details'}</span>
+                      {customerMode && <ArrowRight className="shop-detail-arrow" size={15} />}
                     </button>
                   )}
                 </article>

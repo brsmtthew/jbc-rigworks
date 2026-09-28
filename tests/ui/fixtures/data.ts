@@ -1,5 +1,6 @@
 import { defaultShop } from '../../../src/lib/shopSettings'
 import { adaptServices } from '../../../src/features/services/serviceCatalog'
+import { emptyServiceIntake } from '../../../src/features/customer/serviceIntake'
 const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date())
 export const shop = {
   ...defaultShop,
@@ -41,8 +42,20 @@ export const inventory = names.map((component, i) => ({
   specs: 'Workshop selected component with manufacturer warranty.',
   socket: 'AM5',
   memoryType: 'DDR5',
+  ...(component === 'Processor' ? { cores: 8, powerDraw: 65 } : {}),
+  ...(component === 'Graphics' ? { vramGb: 12, powerDraw: 200 } : {}),
+  ...(component === 'Memory' ? { memoryGb: 32 } : {}),
   active: true,
 }))
+inventory.push({
+  ...inventory[1],
+  id: 'part-board-conflict',
+  sku: 'JBC-CONFLICT',
+  name: 'Fixture LGA1700 board',
+  socket: 'LGA1700',
+  stock: 0,
+  reserved: 0,
+})
 const sale = {
   id: 'INV-fixture',
   customerId: 'fixture-user',
@@ -121,6 +134,14 @@ export const collections: Record<string, unknown[]> = {
       preferredDate: date,
       preferredTime: '09:00–11:00',
       notes: 'Fan noise and high temperature',
+      serviceIntake: {
+        ...emptyServiceIntake,
+        customerName: 'Jamie Santos',
+        contactPhone: '09171234567',
+        visibleCondition: 'Light scratches on the lid',
+        reportedIssues: 'Fan noise and high temperature',
+        issueHistory: 'Issue started last week',
+      },
       status: 'Requested',
       createdAt: date,
     },
@@ -145,7 +166,33 @@ export const collections: Record<string, unknown[]> = {
       items: inventory.slice(0, 2).map((item) => ({ inventoryId: item.id, quantity: 1 })),
     },
   ],
-  pcRequests: [],
+  pcRequests: [
+    {
+      id: 'PC-fixture',
+      customerId: 'fixture-user',
+      customerName: 'Jamie Santos',
+      customerEmail: 'jamie@example.test',
+      requestType: 'Pre-order',
+      useCase: 'Gaming',
+      budget: '50000',
+      processor: 'AMD / Ryzen 7',
+      graphics: 'Needs guidance',
+      memory: 'Needs guidance',
+      storage: 'Needs guidance',
+      parts: [
+        {
+          component: 'Processor',
+          model: inventory[0].name,
+          source: 'inventory',
+          inventoryId: inventory[0].id,
+          price: inventory[0].price,
+        },
+      ],
+      notes: 'Fixture build\nQuiet cooling preferred',
+      status: 'Quote requested',
+      createdAt: date,
+    },
+  ],
   paymentProofs: [],
   paymentAccounts: [],
   appointmentSlots: [],

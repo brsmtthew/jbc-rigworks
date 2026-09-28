@@ -48,6 +48,42 @@ export function adaptServices(
 }
 export const slotLabel = (slot: BookingSchedule['windows'][number]) => `${slot.start}–${slot.end}`
 export const slotKey = (date: string, windowId: string) => `${date}_${windowId}`
+export type AppointmentSlot = {
+  id: string
+  date: string
+  windowId: string
+  count: number
+  holds?: Record<string, string>
+  lastAppointmentId?: string
+}
+export function slotWithHold(
+  slot: AppointmentSlot | undefined,
+  date: string,
+  windowId: string,
+  appointmentId: string,
+  customerId: string,
+): AppointmentSlot {
+  const holds = { ...slot?.holds, [appointmentId]: customerId }
+  return {
+    id: slotKey(date, windowId),
+    date,
+    windowId,
+    count: (slot?.count ?? 0) + (slot?.holds?.[appointmentId] ? 0 : 1),
+    holds,
+    lastAppointmentId: appointmentId,
+  }
+}
+export function slotWithoutHold(slot: AppointmentSlot, appointmentId: string): AppointmentSlot {
+  const holds = { ...slot.holds }
+  const hadHold = !!holds[appointmentId]
+  delete holds[appointmentId]
+  return {
+    ...slot,
+    count: Math.max(0, slot.count - (hadHold ? 1 : 0)),
+    holds,
+    lastAppointmentId: appointmentId,
+  }
+}
 export function availableWindows(
   date: string,
   schedule: BookingSchedule,
@@ -73,6 +109,9 @@ export function availableWindows(
       !schedule.blockedPeriods.some(
         (block) => block.date === date && block.start < slot.end && block.end > slot.start,
       ) &&
-      (counts.find((count) => count.id === slotKey(date, slot.id))?.count ?? 0) < slot.capacity,
+      (counts.find((count) => count.id === slotKey(date, slot.id))?.count ?? 0) <
+        (schedule.dateOverrides?.find(
+          (override) => override.date === date && override.windowId === slot.id,
+        )?.capacity ?? slot.capacity),
   )
 }

@@ -106,12 +106,9 @@ function ComponentPicker({
   )
   const [query, setQuery] = useState('')
   const [brand, setBrand] = useState('All')
+  const [detailId, setDetailId] = useState<string | null>(null)
   const available = inventory.filter(
-    (item) =>
-      isPcPart(item) &&
-      item.active !== false &&
-      componentOf(item) === part.name &&
-      availableStock(item) > 0,
+    (item) => isPcPart(item) && item.active !== false && componentOf(item) === part.name,
   )
   const options = available.filter(
     (item) =>
@@ -156,9 +153,7 @@ function ComponentPicker({
         Number(details.compatibility[field.key]) >= 0),
   )
   const valid =
-    source === 'owned'
-      ? !!details.model.trim() && numericValid
-      : !!chosen && !compatibility([...others, chosen]).length && !loading && !error
+    source === 'owned' ? !!details.model.trim() && numericValid : !!chosen && !loading && !error
   function apply() {
     if (!valid) return
     onChange()
@@ -243,40 +238,101 @@ function ComponentPicker({
             ) : (
               <>
                 <p className="storage-caption">
-                  {options.length} available {options.length === 1 ? 'option' : 'options'}
+                  {options.length} {options.length === 1 ? 'part' : 'parts'} in the catalog
                 </p>
                 <div className="component-options">
                   {options.map((item) => {
                     const issues = compatibility([...others, item])
                     return (
-                      <button
-                        type="button"
-                        className="component-option"
-                        key={item.id}
-                        aria-pressed={selectedId === item.id}
-                        disabled={!!issues.length}
-                        onClick={() => setSelectedId(item.id)}
-                      >
-                        <span className="component-option-image">
-                          {item.image ? (
-                            <img loading="lazy" src={item.image} alt="" />
-                          ) : (
-                            <Package size={28} />
-                          )}
-                        </span>
-                        <span>
-                          <strong>{item.name}</strong>
-                          <small>{item.specs || item.model || item.brand}</small>
-                          <small>{availableStock(item)} available</small>
-                          {issues.map((issue) => (
-                            <small className="form-error" key={issue}>
-                              {issue}
+                      <div className="pcb-catalog-entry" key={item.id}>
+                        <button
+                          type="button"
+                          className="component-option"
+                          aria-pressed={selectedId === item.id}
+                          onClick={() => setSelectedId(item.id)}
+                        >
+                          <span className="component-option-image">
+                            {item.image ? (
+                              <img loading="lazy" src={item.image} alt="" />
+                            ) : (
+                              <Package size={28} />
+                            )}
+                          </span>
+                          <span>
+                            <strong>{item.name}</strong>
+                            <small>{item.specs || item.model || item.brand}</small>
+                            <small>
+                              {availableStock(item) > 0
+                                ? `${availableStock(item)} in stock`
+                                : 'Out of stock · preorder review'}
                             </small>
-                          ))}
-                        </span>
-                        <strong>{formatPHP(item.price)}</strong>
-                        {selectedId === item.id && <Check size={18} />}
-                      </button>
+                            {issues.map((issue) => (
+                              <small className="pcb-catalog-issue" key={issue}>
+                                {issue}
+                              </small>
+                            ))}
+                          </span>
+                          <strong>{formatPHP(item.price)}</strong>
+                          {selectedId === item.id && <Check size={18} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="pcb-detail-toggle"
+                          aria-expanded={detailId === item.id}
+                          onClick={() => setDetailId(detailId === item.id ? null : item.id)}
+                        >
+                          {detailId === item.id ? 'Hide details' : 'View part details'}
+                        </button>
+                        {detailId === item.id && (
+                          <dl className="pcb-part-details">
+                            {(
+                              [
+                                ['Brand', item.brand],
+                                ['Model', item.model || item.name],
+                                ['Specifications', item.specs],
+                                ['SKU', item.sku],
+                                ['Socket', item.socket],
+                                ['Memory type', item.memoryType],
+                                ['CPU cores', item.cores],
+                                ['Memory', item.memoryGb && `${item.memoryGb} GB`],
+                                ['Video memory', item.vramGb && `${item.vramGb} GB`],
+                                ['Form factor', item.formFactor],
+                                ['Power draw', item.powerDraw && `${item.powerDraw} W`],
+                                ['Rated wattage', item.wattage && `${item.wattage} W`],
+                                ['Supported board sizes', item.supportedFormFactors],
+                                ['Graphics card length', item.lengthMm && `${item.lengthMm} mm`],
+                                [
+                                  'Graphics clearance',
+                                  item.gpuClearanceMm && `${item.gpuClearanceMm} mm`,
+                                ],
+                                ['Cooler height', item.heightMm && `${item.heightMm} mm`],
+                                [
+                                  'Cooler clearance',
+                                  item.coolerClearanceMm && `${item.coolerClearanceMm} mm`,
+                                ],
+                                ['Supported sockets', item.supportedSockets],
+                                ['Storage interface', item.storageInterface],
+                                ['Supported storage', item.storageInterfaces],
+                                [
+                                  'Recommended PSU',
+                                  item.recommendedPsu && `${item.recommendedPsu} W`,
+                                ],
+                                [
+                                  'Warranty',
+                                  item.warrantyMonths && `${item.warrantyMonths} months`,
+                                ],
+                              ] as [string, string | number | undefined][]
+                            )
+                              .filter(([, value]) => value !== undefined && value !== '')
+                              .map(([label, value]) => (
+                                <div key={label}>
+                                  <dt>{label}</dt>
+                                  <dd>{value}</dd>
+                                </div>
+                              ))}
+                          </dl>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
@@ -286,7 +342,7 @@ function ComponentPicker({
                     <p>
                       {available.length
                         ? 'No components match your filters.'
-                        : 'No in-stock components in this category yet.'}
+                        : 'No components in this category yet.'}
                     </p>
                     <button
                       className="text-button"

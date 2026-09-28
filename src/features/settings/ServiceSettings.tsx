@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useConfirmation } from '../../components/ui/confirmation-context'
 import { useShopSettings } from '../../lib/preferences'
 import { humanError } from '../../lib/workflow'
 import type { ServiceOffering } from '../../types'
 
 export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }) {
+  const { confirm } = useConfirmation()
   const [shop, saveShop] = useShopSettings()
   const [services, setServices] = useState(shop.services),
     [schedule, setSchedule] = useState(shop.schedule)
@@ -60,8 +62,34 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
         )
       )
         throw new Error('Add at least one appointment window and valid blocked dates or periods.')
+      if (
+        (schedule.dateOverrides ?? []).some(
+          (override) =>
+            !/^\d{4}-\d{2}-\d{2}$/.test(override.date) ||
+            !schedule.windows.some((window) => window.id === override.windowId) ||
+            !Number.isInteger(override.capacity) ||
+            override.capacity < 0,
+        )
+      )
+        throw new Error('Check the date-specific window capacities.')
+      if (
+        new Set(
+          (schedule.dateOverrides ?? []).map((override) => `${override.date}_${override.windowId}`),
+        ).size !== (schedule.dateOverrides ?? []).length
+      )
+        throw new Error('Each date and window can have only one capacity override.')
       if (sorted.some((slot, i) => i > 0 && slot.start < sorted[i - 1].end))
         throw new Error('Appointment windows cannot overlap.')
+      if (
+        scheduling &&
+        !(await confirm({
+          title: 'Save booking availability?',
+          message:
+            'Update operating days, time windows, and date-specific capacity for future bookings?',
+          confirmLabel: 'Save availability',
+        }))
+      )
+        return
       await saveShop({ ...shop, ...(scheduling ? { schedule } : { services }) })
       setMessage('Settings saved.')
     } catch (err) {
@@ -75,8 +103,8 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
       {scheduling ? (
         <>
           <p>
-            Confirmed appointments count toward capacity. Changes apply to future confirmations;
-            review existing appointments before blocking dates.
+            Requested and confirmed appointments reserve capacity. Set regular windows below, then
+            adjust a specific date when technician availability changes.
           </p>
           <div className="schedule-days" role="group" aria-label="Operating days">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((name, day) => (
@@ -191,6 +219,97 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
             }
           >
             Add window
+          </button>
+          <h3>Date-specific availability</h3>
+          <p>
+            Set capacity to 0 to close one window on a date. The capacity is shared by workshop and
+            home-service bookings.
+          </p>
+          {(schedule.dateOverrides ?? []).map((override, index) => (
+            <div
+              className="portal-form-grid schedule-window"
+              key={`${override.date}_${override.windowId}_${index}`}
+            >
+              <label>
+                Date
+                <input
+                  type="date"
+                  value={override.date}
+                  onChange={(e) =>
+                    setSchedule({
+                      ...schedule,
+                      dateOverrides: (schedule.dateOverrides ?? []).map((value, i) =>
+                        i === index ? { ...value, date: e.target.value } : value,
+                      ),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Window
+                <select
+                  value={override.windowId}
+                  onChange={(e) =>
+                    setSchedule({
+                      ...schedule,
+                      dateOverrides: (schedule.dateOverrides ?? []).map((value, i) =>
+                        i === index ? { ...value, windowId: e.target.value } : value,
+                      ),
+                    })
+                  }
+                >
+                  {schedule.windows.map((window) => (
+                    <option key={window.id} value={window.id}>
+                      {window.start}–{window.end}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Available bookings
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={override.capacity}
+                  onChange={(e) =>
+                    setSchedule({
+                      ...schedule,
+                      dateOverrides: (schedule.dateOverrides ?? []).map((value, i) =>
+                        i === index ? { ...value, capacity: Number(e.target.value) } : value,
+                      ),
+                    })
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() =>
+                  setSchedule({
+                    ...schedule,
+                    dateOverrides: (schedule.dateOverrides ?? []).filter((_, i) => i !== index),
+                  })
+                }
+              >
+                Remove date override
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() =>
+              setSchedule({
+                ...schedule,
+                dateOverrides: [
+                  ...(schedule.dateOverrides ?? []),
+                  { date: '', windowId: schedule.windows[0]?.id ?? '', capacity: 0 },
+                ],
+              })
+            }
+          >
+            Add date override
           </button>
           <label>
             Blocked dates (one YYYY-MM-DD per line)

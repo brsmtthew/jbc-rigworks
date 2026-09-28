@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { useConfirmation } from '../../components/ui/confirmation-context'
 import { useAuth } from '../../lib/auth-context'
 import { formatPHP } from '../../lib/format'
 import { humanError } from '../../lib/workflow'
@@ -9,6 +10,7 @@ import { usePaymentAccounts, usePaymentProofs } from '../finance/usePayments'
 
 export function PaymentProofPanel({ order }: { order: Sale }) {
   const { user } = useAuth()
+  const { confirm } = useConfirmation()
   const accounts = usePaymentAccounts(),
     proofs = usePaymentProofs(user)
   const [accountId, setAccountId] = useState(''),
@@ -123,6 +125,14 @@ export function PaymentProofPanel({ order }: { order: Sale }) {
             className="primary-button"
             disabled={busy || !image || !reference.trim()}
             onClick={async () => {
+              if (
+                !(await confirm({
+                  title: 'Submit payment proof?',
+                  message: `Send this transfer proof for order ${order.id} to the workshop for verification?`,
+                  confirmLabel: 'Submit proof',
+                }))
+              )
+                return
               setBusy(true)
               setError('')
               try {

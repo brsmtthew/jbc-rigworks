@@ -161,6 +161,30 @@ test('unverified customers create unpaid orders and can query only their own ord
   await assertSucceeds(getDocs(collection(customer('owner'), 'orders')))
 })
 
+test('customers can edit or cancel only their own unconfirmed orders', async () => {
+  const alice = customer('alice'),
+    owner = customer('owner')
+  await put(alice, 'orders/editable', order('editable'))
+  const ref = doc(alice, 'orders/editable')
+  await assertSucceeds(
+    updateDoc(ref, { customer: 'Alice', contact: '09171234567', notes: 'Call first' }),
+  )
+  await assertFails(updateDoc(ref, { total: 1 }))
+  await assertFails(updateDoc(ref, { fulfillment: { mode: 'Delivery', address: 'Manila' } }))
+  await assertFails(updateDoc(doc(customer('bob'), 'orders/editable'), { notes: 'Other customer' }))
+  await assertSucceeds(
+    updateDoc(ref, {
+      orderStatus: 'Cancelled',
+      cancelledBy: 'alice',
+      cancelledAt: '2026-09-28T00:00:00Z',
+    }),
+  )
+  await assertFails(updateDoc(ref, { notes: 'Too late' }))
+  await put(alice, 'orders/confirmed', order('confirmed'))
+  await updateDoc(doc(owner, 'orders/confirmed'), { orderStatus: 'Confirmed' })
+  await assertFails(updateDoc(doc(alice, 'orders/confirmed'), { notes: 'Too late' }))
+})
+
 test('customers cannot submit paid orders, payment histories or service-job invoices', async () => {
   for (const changes of [
     { paid: 100 },
@@ -282,25 +306,115 @@ test('customers can edit pending booking details but cannot confirm or reassign 
 test('home and workshop bookings require intake details and customers cannot mark paper signatures collected', async () => {
   const alice = customer('alice')
   const base = {
-    id: 'home-booking', customerId: 'alice', customerEmail: 'alice@example.test',
-    status: 'Requested', device: 'Test PC', preferredDate: '2026-10-01',
+    id: 'home-booking',
+    customerId: 'alice',
+    customerEmail: 'alice@example.test',
+    status: 'Requested',
+    device: 'Test PC',
+    preferredDate: '2026-10-01',
+    preferredTime: '09:00–11:00',
     visit: { mode: 'Home service', address: 'Manila' },
   }
   const intake = {
-    customerName: 'Alice', contactPhone: '09171234567', deviceType: 'Desktop PC',
-    visibleDamage: ['Scratches'], visibleCondition: 'Small scratch',
-    reportedIssues: 'Fan noise', issueHistory: 'Started last month', powerStatus: 'Powers on',
-    liquidExposure: 'No', backupStatus: 'Backed up',
+    customerName: 'Alice',
+    contactPhone: '09171234567',
+    deviceType: 'Desktop PC',
+    visibleDamage: ['Scratches'],
+    visibleCondition: 'Small scratch',
+    reportedIssues: 'Fan noise',
+    issueHistory: 'Started last month',
+    powerStatus: 'Powers on',
+    liquidExposure: 'No',
+    backupStatus: 'Backed up',
   }
   const ref = doc(alice, 'appointments/home-booking')
+  const claim = (appointment, windowId) => {
+    const batch = writeBatch(alice)
+    const slotId = `2026-10-01_${windowId}`
+    batch.set(doc(alice, `appointments/${appointment.id}`), { ...appointment, slotId })
+    batch.set(doc(alice, `appointmentSlots/${slotId}`), {
+      id: slotId,
+      date: '2026-10-01',
+      windowId,
+      count: 1,
+      holds: { [appointment.id]: 'alice' },
+      lastAppointmentId: appointment.id,
+    })
+    return batch.commit()
+  }
   await assertFails(setDoc(ref, base))
   await assertFails(setDoc(ref, { ...base, serviceIntake: intake, intakeSignedAt: '2026-10-01' }))
-  await assertSucceeds(setDoc(ref, { ...base, serviceIntake: intake }))
+  await assertFails(claim(base, 'morning'))
+  await assertSucceeds(claim({ ...base, serviceIntake: intake }, 'morning'))
   await assertFails(updateDoc(ref, { intakeSignedAt: '2026-10-01' }))
+  await assertSucceeds(
+    updateDoc(doc(customer('owner'), 'appointments/home-booking'), {
+      reviewNote: 'Reviewed by staff',
+    }),
+  )
+  await assertFails(updateDoc(ref, { notes: 'Too late after review' }))
   const workshop = { ...base, id: 'workshop-booking', visit: { mode: 'Workshop', address: '' } }
   const workshopRef = doc(alice, 'appointments/workshop-booking')
   await assertFails(setDoc(workshopRef, workshop))
-  await assertSucceeds(setDoc(workshopRef, { ...workshop, serviceIntake: intake }))
+  await assertSucceeds(
+    claim({ ...workshop, serviceIntake: intake, preferredTime: '11:00–13:00' }, 'midday'),
+  )
+})
+
+test('booking holds are paired with one pending appointment and released on cancellation', async () => {
+  const alice = customer('alice')
+  const appointmentId = 'hold-check'
+  const slotId = '2026-10-01_morning'
+  const appointment = {
+    id: appointmentId,
+    customerId: 'alice',
+    customerEmail: 'alice@example.test',
+    status: 'Requested',
+    device: 'Desktop',
+    preferredDate: '2026-10-01',
+    preferredTime: '09:00–11:00',
+    slotId,
+    visit: { mode: 'Workshop', address: '' },
+    serviceIntake: {
+      customerName: 'Alice',
+      contactPhone: '09171234567',
+      deviceType: 'Desktop PC',
+      visibleDamage: [],
+      visibleCondition: 'No visible damage',
+      reportedIssues: 'Fan noise',
+      issueHistory: 'Started last week',
+      powerStatus: 'Powers on',
+      liquidExposure: 'No',
+      backupStatus: 'Backed up',
+    },
+  }
+  const slot = {
+    id: slotId,
+    date: '2026-10-01',
+    windowId: 'morning',
+    count: 1,
+    holds: { [appointmentId]: 'alice' },
+    lastAppointmentId: appointmentId,
+  }
+  await assertFails(put(alice, `appointmentSlots/${slotId}`, slot))
+  const batch = writeBatch(alice)
+  batch.set(doc(alice, `appointments/${appointmentId}`), appointment)
+  batch.set(doc(alice, `appointmentSlots/${slotId}`), slot)
+  await assertSucceeds(batch.commit())
+  await assertFails(updateDoc(doc(alice, `appointmentSlots/${slotId}`), { count: 2 }))
+  const release = writeBatch(alice)
+  release.update(doc(alice, `appointments/${appointmentId}`), {
+    status: 'Cancelled',
+    cancelledBy: 'alice',
+    cancelledAt: '2026-09-28T00:00:00Z',
+  })
+  release.update(doc(alice, `appointmentSlots/${slotId}`), {
+    count: 0,
+    holds: {},
+    lastAppointmentId: appointmentId,
+  })
+  await assertSucceeds(release.commit())
+  await assertFails(updateDoc(doc(alice, `appointments/${appointmentId}`), { notes: 'Too late' }))
 })
 
 test('customers respond to workshop quotes without altering their prices', async () => {
@@ -310,13 +424,28 @@ test('customers respond to workshop quotes without altering their prices', async
     id: 'build',
     customerId: 'alice',
     customerEmail: 'alice@example.test',
-    status: 'Under review',
+    status: 'Quote requested',
     notes: '',
   }
   await assertFails(setDoc(ref, { ...request, quote: { amount: 1 } }))
   await assertSucceeds(setDoc(ref, request))
   await assertSucceeds(updateDoc(ref, { notes: 'Build notes' }))
+  await assertSucceeds(
+    updateDoc(ref, {
+      parts: [
+        { component: 'Processor', model: 'Ryzen 7', source: 'inventory', inventoryId: 'cpu-1' },
+      ],
+      tier: 'Mid',
+      processor: 'Ryzen 7',
+      budget: '40000',
+    }),
+  )
   await assertFails(updateDoc(ref, { status: 'Approved' }))
+  await assertSucceeds(
+    updateDoc(doc(customer('owner'), 'pcRequests/build'), { status: 'Under review' }),
+  )
+  await assertFails(updateDoc(ref, { notes: 'Too late' }))
+  await assertFails(updateDoc(ref, { parts: [] }))
   await assertSucceeds(
     updateDoc(doc(customer('owner'), 'pcRequests/build'), {
       status: 'Quoted',

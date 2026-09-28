@@ -7,7 +7,7 @@ import { today } from '../../lib/dates'
 import { useShopSettings } from '../../lib/preferences'
 import { humanError } from '../../lib/workflow'
 import type { CustomerAppointment } from '../../types'
-import { availableWindows, slotKey, slotLabel } from './serviceCatalog'
+import { availableWindows, slotKey, slotLabel, type AppointmentSlot } from './serviceCatalog'
 import { reviewAppointment } from './serviceOperations'
 
 export function AppointmentReview({
@@ -27,7 +27,7 @@ export function AppointmentReview({
     [note, setNote] = useState('')
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('')
-  const slots = useLiveCollection<{ id: string; count: number }>(
+  const slots = useLiveCollection<AppointmentSlot>(
     'appointmentSlots',
     !!date,
     [where('date', '==', date)],
@@ -37,7 +37,7 @@ export function AppointmentReview({
     ...slot,
     count: Math.max(
       0,
-      slot.count - (appointment.status === 'Confirmed' && appointment.slotId === slot.id ? 1 : 0),
+      slot.count - (appointment.slotId === slot.id && slot.holds?.[appointment.id] ? 1 : 0),
     ),
   }))
   const windows = availableWindows(

@@ -1,0 +1,201 @@
+/* Customer dialogs include confirmation dialogs mounted outside the portal shell. */
+body:has(.customer-shell) .app-dialog {
+  width: min(620px, calc(100vw - 32px));
+  border: 1px solid #cfdeec;
+  border-radius: 16px;
+  background: #f8fbff;
+  box-shadow: 0 28px 80px #041d3d48;
+}
+body:has(.customer-shell) .app-dialog.dialog-wide {
+  width: min(900px, calc(100vw - 32px));
+}
+body:has(.customer-shell) .app-dialog::backdrop {
+  background: #071d37ad;
+  backdrop-filter: blur(3px);
+}
+body:has(.customer-shell) .app-dialog .dialog-heading {
+  min-height: 77px;
+  padding: 17px 24px;
+  border-bottom: 1px solid #d8e6f2;
+  background: linear-gradient(115deg, #fafdff, #eaf4ff);
+}
+body:has(.customer-shell) .app-dialog .dialog-heading h2 {
+  color: #0a315a;
+  font-family: var(--font-heading);
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+body:has(.customer-shell) .app-dialog .dialog-heading .icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid #d5e5f4;
+  border-radius: 9px;
+  background: white;
+  color: #406586;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+body:has(.customer-shell) .app-dialog .dialog-heading .icon-button:hover {
+  background: #edf6ff;
+  color: #075eb9;
+}
+body:has(.customer-shell) .app-dialog .dialog-body {
+  background: #f8fbff;
+}
+body:has(.customer-shell) .app-dialog .dialog-footer,
+body:has(.customer-shell) .app-dialog .dialog-body .dialog-actions {
+  border-top: 1px solid #dce7f1;
+  background: #f3f8fd;
+}
+body:has(.customer-shell) .app-dialog .portal-form :is(label, .check-row),
+.customer-shell .customer-settings-form label {
+  color: #385878;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+}
+body:has(.customer-shell)
+  .app-dialog
+  .portal-form
+  :is(input:not([type='checkbox']), select, textarea),
+.customer-shell .customer-settings-form :is(input:not([type='checkbox']), select, textarea) {
+  min-height: 43px;
+  border: 1px solid #cedfed;
+  border-radius: 9px;
+  background: white;
+  color: #102f50;
+  font-size: 13px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+body:has(.customer-shell)
+  .app-dialog
+  .portal-form
+  :is(input:not([type='checkbox']), select, textarea):hover,
+.customer-shell .customer-settings-form :is(input:not([type='checkbox']), select, textarea):hover {
+  border-color: #a7c9e8;
+}
+body:has(.customer-shell)
+  .app-dialog
+  .portal-form
+  :is(input:not([type='checkbox']), select, textarea):focus-visible,
+.customer-shell
+  .customer-settings-form
+  :is(input:not([type='checkbox']), select, textarea):focus-visible {
+  border-color: #2976ca;
+  outline: 0;
+  box-shadow: 0 0 0 3px #0870d91b;
+}
+body:has(.customer-shell) .app-dialog .portal-form :is(input, select, textarea):disabled {
+  background: #f1f5f9;
+  color: #6b8298;
+}
+body:has(.customer-shell)
+  .app-dialog
+  .portal-form
+  :is(.form-section, .quote-card, .customer-intake-summary) {
+  border: 1px solid #dbe8f3;
+  border-radius: 11px;
+  background: white;
+}
+body:has(.customer-shell) .app-dialog .portal-form h3 {
+  color: #0b315c;
+  font-family: var(--font-heading);
+  letter-spacing: -0.025em;
+}
+body:has(.customer-shell) .app-dialog .portal-form :is(.primary-button, .secondary-button),
+body:has(.customer-shell)
+  .app-dialog
+  :is(.dialog-footer, .dialog-actions)
+  :is(.primary-button, .secondary-button) {
+  border-radius: 8px;
+  font-weight: 750;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+body:has(.customer-shell)
+  .app-dialog
+  .portal-form
+  :is(.primary-button, .secondary-button):not(:disabled):hover,
+body:has(.customer-shell)
+  .app-dialog
+  :is(.dialog-footer, .dialog-actions)
+  :is(.primary-button, .secondary-button):not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.customer-shell .customer-settings-form {
+  border: 1px solid #dce7f1;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px #102a4308;
+}
+body:has(.customer-shell) .app-dialog:has(.confirmation-content) {
+  width: min(450px, calc(100vw - 24px));
+}
+body:has(.customer-shell) .confirmation-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid #dce9f5;
+  border-radius: 11px;
+  background: white;
+}
+body:has(.customer-shell) .confirmation-message > span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eaf4ff;
+  color: #1264b1;
+}
+body:has(.customer-shell) .confirmation-message.is-danger > span {
+  background: #fff0f2;
+  color: #b53943;
+}
+body:has(.customer-shell) .confirmation-message p {
+  margin: 1px 0 0;
+  color: #3e5d79;
+  font-size: 13px;
+  line-height: 1.55;
+}
+body:has(.customer-shell) .app-dialog .dialog-body .confirmation-content .dialog-actions {
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-bottom: 0;
+  border-top: 0;
+  background: transparent;
+}
+@media (max-width: 600px) {
+  body:has(.customer-shell) .app-dialog,
+  body:has(.customer-shell) .app-dialog.dialog-wide {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  body:has(.customer-shell) .app-dialog .dialog-heading {
+    min-height: 64px;
+    padding: 13px 16px;
+  }
+  body:has(.customer-shell) .app-dialog .dialog-heading h2 {
+    font-size: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(.customer-shell) .app-dialog *,
+  .customer-shell .customer-settings-form * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

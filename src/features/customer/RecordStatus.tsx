@@ -1,6 +1,6 @@
 import { StatusBadge } from '../../components/ui/StatusBadge'
 
-export function RecordStatus({ status }: { status: string }) {
+export function RecordStatus({ status, label }: { status: string; label?: string }) {
   const tone = ['Paid', 'Completed', 'Approved'].includes(status)
     ? 'green'
     : ['Cancelled', 'Declined', 'Rejected', 'No show'].includes(status)
@@ -18,5 +18,5 @@ export function RecordStatus({ status }: { status: string }) {
             ].includes(status)
           ? 'amber'
           : 'gray'
-  return <StatusBadge tone={tone}>{status}</StatusBadge>
+  return <StatusBadge tone={tone}>{label ?? status}</StatusBadge>
 }

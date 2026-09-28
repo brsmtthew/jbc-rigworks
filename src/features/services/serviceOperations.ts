@@ -4,7 +4,14 @@ import { firebaseFirestore } from '../../lib/firebase'
 import { normalizeShop } from '../../lib/shopSettings'
 import { assertTransition, serviceState, serviceTransitions } from '../../lib/workflow'
 import type { AppUser, CustomerAppointment, Job, ServiceStatus } from '../../types'
-import { availableWindows, slotKey, slotLabel } from './serviceCatalog'
+import {
+  availableWindows,
+  slotKey,
+  slotLabel,
+  slotWithHold,
+  slotWithoutHold,
+  type AppointmentSlot,
+} from './serviceCatalog'
 import { priceVisit } from './visitPricing'
 
 export async function updateAppointmentStatus(user: AppUser, id: string, status: ServiceStatus) {
@@ -40,7 +47,9 @@ export async function updateAppointmentStatus(user: AppUser, id: string, status:
         )
       const slotRef = recordRef('appointmentSlots', slotKey(appointment.preferredDate, window.id)),
         slot = await tx.get(slotRef)
-      const count = slot.data()?.count ?? 0
+      const current = slot.data() as AppointmentSlot | undefined
+      const holdsSameSlot = !!current?.holds?.[appointment.id]
+      const count = Math.max(0, (current?.count ?? 0) - (holdsSameSlot ? 1 : 0))
       if (
         !availableWindows(
           appointment.preferredDate,
@@ -51,17 +60,30 @@ export async function updateAppointmentStatus(user: AppUser, id: string, status:
         ).some((value) => value.id === window.id)
       )
         throw new Error('This appointment time is full or unavailable.')
-      tx.set(slotRef, {
-        id: slotRef.id,
-        date: appointment.preferredDate,
-        windowId: window.id,
-        count: count + 1,
-      })
+      if (!holdsSameSlot)
+        tx.set(
+          slotRef,
+          slotWithHold(
+            current,
+            appointment.preferredDate,
+            window.id,
+            appointment.id,
+            appointment.customerId ?? 'admin',
+          ),
+        )
       updated.slotId = slotRef.id
     } else {
       if (appointment.slotId) {
         const slot = await tx.get(recordRef('appointmentSlots', appointment.slotId))
-        if (slot.exists()) tx.update(slot.ref, { count: Math.max(0, slot.data().count - 1) })
+        if (slot.exists()) {
+          const current = slot.data() as AppointmentSlot
+          tx.set(
+            slot.ref,
+            current.holds?.[appointment.id]
+              ? slotWithoutHold(current, appointment.id)
+              : { ...current, count: Math.max(0, current.count - 1) },
+          )
+        }
       }
       updated.cancelledAt = new Date().toISOString()
       updated.cancelledBy = user.id
@@ -102,9 +124,14 @@ export async function reviewAppointment(
         ? tx.get(recordRef('appointmentSlots', appointment.slotId))
         : Promise.resolve(null),
     ])
-    const holdsSameSlot = appointment.status === 'Confirmed' && appointment.slotId === nextRef.id
-    const count = nextSlot.data()?.count ?? 0
-    const counts = [{ id: nextRef.id, count: Math.max(0, count - (holdsSameSlot ? 1 : 0)) }]
+    const nextCurrent = nextSlot.data() as AppointmentSlot | undefined
+    const holdsSameSlot = !!nextCurrent?.holds?.[appointment.id]
+    const ownsLegacySlot =
+      appointment.status === 'Confirmed' && appointment.slotId === nextRef.id && !holdsSameSlot
+    const count = nextCurrent?.count ?? 0
+    const counts = [
+      { id: nextRef.id, count: Math.max(0, count - (holdsSameSlot || ownsLegacySlot ? 1 : 0)) },
+    ]
     if (
       !availableWindows(
         review.date,
@@ -132,12 +159,24 @@ export async function reviewAppointment(
         },
       ],
     }
-    if (appointment.status === 'Confirmed' && !holdsSameSlot) {
-      if (previousSlot?.exists())
-        tx.update(previousSlot.ref, { count: Math.max(0, previousSlot.data().count - 1) })
-      tx.set(nextRef, { id: nextRef.id, date: review.date, windowId: window.id, count: count + 1 })
-      updated.slotId = nextRef.id
+    if (previousSlot?.exists()) {
+      const previous = previousSlot.data() as AppointmentSlot
+      if (previous.holds?.[appointment.id])
+        tx.set(previousSlot.ref, slotWithoutHold(previous, appointment.id))
+      else if (appointment.status === 'Confirmed')
+        tx.set(previousSlot.ref, { ...previous, count: Math.max(0, previous.count - 1) })
     }
+    if (!holdsSameSlot) {
+      const held = slotWithHold(
+        nextCurrent,
+        review.date,
+        window.id,
+        appointment.id,
+        appointment.customerId ?? 'admin',
+      )
+      tx.set(nextRef, ownsLegacySlot ? { ...held, count } : held)
+    }
+    updated.slotId = nextRef.id
     tx.set(ref, firestoreData(updated))
     return updated
   })
@@ -153,7 +192,9 @@ export async function receiveAppointmentAsJob(user: AppUser, id: string) {
     if (!appointment || appointment.status !== 'Confirmed')
       throw new Error('Confirm the appointment before starting service.')
     if (appointment.visit && !appointment.intakeSignedAt)
-      throw new Error('Review the paper device intake and collect signatures before starting service.')
+      throw new Error(
+        'Review the paper device intake and collect signatures before starting service.',
+      )
     const status: ServiceStatus =
       appointment.visit?.mode === 'Home service' ? 'In service' : 'Checked in'
     const visit = appointment.visit

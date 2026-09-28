@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { CircleHelp, TriangleAlert } from 'lucide-react'
 import { ConfirmationContext, type ConfirmationOptions } from './confirmation-context'
 import { Dialog } from './Dialog'
 
@@ -35,7 +36,12 @@ export function ConfirmationProvider({ children }: { children: ReactNode }) {
       {pending && (
         <Dialog title={pending.title} onClose={() => finish(false)}>
           <div className="confirmation-content">
-            <p>{pending.message}</p>
+            <div className={`confirmation-message ${pending.tone === 'danger' ? 'is-danger' : ''}`}>
+              <span aria-hidden="true">
+                {pending.tone === 'danger' ? <TriangleAlert size={20} /> : <CircleHelp size={20} />}
+              </span>
+              <p>{pending.message}</p>
+            </div>
             <div className="dialog-actions">
               <button type="button" className="secondary-button" onClick={() => finish(false)}>
                 Cancel
