@@ -1,14 +1,26 @@
-import { Eye, Package, Pencil, Plus, QrCode, ScanLine } from 'lucide-react'
+import {
+  Boxes,
+  Coins,
+  Eye,
+  Layers3,
+  Package,
+  PackagePlus,
+  Pencil,
+  Plus,
+  Power,
+  QrCode,
+  RotateCcw,
+  ScanLine,
+  TriangleAlert,
+} from 'lucide-react'
 import { useState } from 'react'
-import { ActionButton } from '../../components/ui/ActionButton'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { DataTable } from '../../components/ui/DataTable'
 import { Dialog } from '../../components/ui/Dialog'
-import { ListToolbar } from '../../components/ui/ListToolbar'
+import { ExcelButton } from '../../components/ui/ExcelButton'
+import { SearchField } from '../../components/ui/Filters'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { Panel } from '../../components/ui/Panel'
-import { StatStrip } from '../../components/ui/StatStrip'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useListFilters } from '../../hooks/useListFilters'
 import { useWorkspace } from '../../hooks/useWorkspace'
@@ -35,7 +47,9 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
   const [kindFilter, setKindFilter] = useState('all')
   const workspace = useWorkspace()
   const { inventory } = workspace
-  const lowStock = inventory.filter((item) => availableStock(item) <= item.minimum)
+  const lowStock = inventory.filter(
+    (item) => item.active !== false && availableStock(item) <= item.minimum,
+  )
   const stockValue = inventory.reduce((sum, item) => sum + item.stock * item.cost, 0)
   const filters = useListFilters()
   const categories = [...new Set(inventory.map((item) => item.category))]
@@ -60,6 +74,8 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
       (categoryFilter === 'all' || item.category === categoryFilter) &&
       (kindFilter === 'all' || inventoryKind(item) === kindFilter),
   )
+  const hasFilters =
+    !!filters.query || filters.filter !== 'all' || categoryFilter !== 'all' || kindFilter !== 'all'
   const kindLabel = (kind: string) =>
     ({
       part: 'PC part',
@@ -67,6 +83,42 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
       asset: 'Tool / equipment',
       consumable: 'Consumable',
     })[kind] || kind
+  const exportInventory = () =>
+    prepareExcel('inventory', [
+      [
+        'Role',
+        'SKU',
+        'Brand',
+        'Model',
+        'Item',
+        'Category',
+        'Stock',
+        'Minimum',
+        'Cost PHP',
+        'Price PHP',
+        'Asset tag',
+        'Location',
+      ],
+      ...filtered.map((item) => [
+        kindLabel(inventoryKind(item)),
+        item.sku,
+        item.brand || '',
+        item.model || '',
+        item.name,
+        item.category,
+        item.stock,
+        item.minimum,
+        item.cost,
+        item.price,
+        item.assetTag || '',
+        item.location || '',
+      ]),
+    ])
+  const clearFilters = () => {
+    filters.reset()
+    setCategoryFilter('all')
+    setKindFilter('all')
+  }
   if (workspace.storageError)
     return (
       <p role="alert" className="form-error">
@@ -75,137 +127,154 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
     )
   if (workspace.loading) return <LoadingState variant="table" label="Loading inventory…" />
   return (
-    <>
-      <PageHeader
-        eyebrow="STOCK CONTROL"
-        title="Inventory"
-        description="Master product catalog, stock, reservations, and bundles."
-      >
-        <button className="primary-button" onClick={onCreate}>
-          <Plus size={18} />
-          Add item
-        </button>
-        <button className="secondary-button" onClick={() => setBundlesOpen(true)}>
-          Manage bundles
-        </button>
-        <ActionButton variant="labeled" label="Scan inventory QR" onClick={() => setScanner(true)}>
-          <ScanLine size={18} />
-        </ActionButton>
-      </PageHeader>
-      <StatStrip
-        stats={[
-          { label: 'Stock value at cost', value: formatPHP(stockValue, true) },
-          { label: 'Unique items', value: inventory.length },
-          { label: 'Low-stock items', value: lowStock.length },
-          { label: 'Categories', value: categories.length },
-        ]}
-      />
-      <div className="inventory-filter-toolbar">
-        <ListToolbar
-          {...filters}
-          label="Search inventory"
-          count={filtered.length}
-          onReset={() => {
-            filters.reset()
-            setCategoryFilter('all')
-            setKindFilter('all')
-          }}
-          options={[
-            { value: 'all', label: 'All stock statuses' },
-            { value: 'low', label: 'Low stock' },
-            { value: 'out', label: 'Out of stock' },
-          ]}
-          onExport={() =>
-            prepareExcel('inventory', [
-              [
-                'Role',
-                'SKU',
-                'Brand',
-                'Model',
-                'Item',
-                'Category',
-                'Stock',
-                'Minimum',
-                'Cost PHP',
-                'Price PHP',
-                'Asset tag',
-                'Location',
-              ],
-              ...filtered.map((item) => [
-                kindLabel(inventoryKind(item)),
-                item.sku,
-                item.brand || '',
-                item.model || '',
-                item.name,
-                item.category,
-                item.stock,
-                item.minimum,
-                item.cost,
-                item.price,
-                item.assetTag || '',
-                item.location || '',
-              ]),
-            ])
-          }
-        />
-        <label className="inventory-category-filter">
-          <span>Inventory role</span>
-          <select
-            aria-label="Filter by inventory role"
-            value={kindFilter}
-            onChange={(event) => setKindFilter(event.target.value)}
-          >
-            <option value="all">All roles</option>
-            <option value="part">PC parts</option>
-            <option value="product">Retail products</option>
-            <option value="asset">Tools & equipment</option>
-            <option value="consumable">Consumables</option>
-          </select>
-        </label>
-        <label className="inventory-category-filter">
-          Part category
-          <select
-            aria-label="Filter by part category"
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-          >
-            <option value="all">All categories</option>
-            {categories.map((value) => (
-              <option value={value} key={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        {(categoryFilter !== 'all' || kindFilter !== 'all') && (
-          <button
-            className="text-button inventory-filter-reset"
-            onClick={() => {
-              setCategoryFilter('all')
-              setKindFilter('all')
-            }}
-          >
-            Clear filters
+    <div className="admin-inventory">
+      <section className="inventory-hero jbc-blue-hero" aria-labelledby="inventory-title">
+        <div className="inventory-hero-copy">
+          <span className="eyebrow">STOCK CONTROL</span>
+          <h1 id="inventory-title">Inventory</h1>
+          <p>Track every part, product, and supply from one organized catalog.</p>
+        </div>
+        <div className="inventory-hero-actions" aria-label="Inventory actions">
+          <span className="inventory-hero-actions-label">QUICK ACTIONS</span>
+          <button type="button" className="primary-button" onClick={onCreate}>
+            <Plus size={17} /> Add item
           </button>
-        )}
-      </div>
-      <Panel title="Inventory" subtitle="Parts, products, equipment, and consumables">
+          <div>
+            <button type="button" className="secondary-button" onClick={() => setBundlesOpen(true)}>
+              <Boxes size={16} /> Bundles
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              aria-label="Scan inventory QR"
+              onClick={() => setScanner(true)}
+            >
+              <ScanLine size={16} /> Scan QR
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <dl className="inventory-metrics" aria-label="Inventory overview">
+        {[
+          {
+            label: 'Stock value at cost',
+            value: formatPHP(stockValue, true),
+            detail: 'On-hand inventory',
+            icon: Coins,
+          },
+          {
+            label: 'Catalog items',
+            value: inventory.length,
+            detail: 'Across all roles',
+            icon: Package,
+          },
+          {
+            label: 'Needs attention',
+            value: lowStock.length,
+            detail: 'At or below minimum',
+            icon: TriangleAlert,
+          },
+          {
+            label: 'Categories',
+            value: categories.length,
+            detail: 'In the catalog',
+            icon: Layers3,
+          },
+        ].map(({ label, value, detail, icon: Icon }) => (
+          <div
+            key={label}
+            className={label === 'Needs attention' && lowStock.length ? 'is-attention' : ''}
+          >
+            <span className="inventory-metric-icon">
+              <Icon size={19} strokeWidth={1.8} />
+            </span>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+            <small>{detail}</small>
+          </div>
+        ))}
+      </dl>
+
+      <section className="inventory-discovery" aria-labelledby="inventory-discovery-title">
+        <div className="inventory-discovery-heading">
+          <div>
+            <span className="eyebrow">FIND A RECORD</span>
+            <h2 id="inventory-discovery-title">Explore the catalog</h2>
+          </div>
+          <span className="inventory-discovery-count" role="status">
+            {filtered.length} {filtered.length === 1 ? 'item' : 'items'} shown
+          </span>
+        </div>
+        <div className="inventory-filter-toolbar">
+          <SearchField label="Search inventory" value={filters.query} onChange={filters.setQuery} />
+          <label className="inventory-category-filter">
+            <span>Stock status</span>
+            <select
+              aria-label="Filter by stock status"
+              value={filters.filter}
+              onChange={(event) => filters.setFilter(event.target.value)}
+            >
+              <option value="all">All stock statuses</option>
+              <option value="low">Low stock</option>
+              <option value="out">Out of stock</option>
+            </select>
+          </label>
+          <label className="inventory-category-filter">
+            <span>Inventory role</span>
+            <select
+              aria-label="Filter by inventory role"
+              value={kindFilter}
+              onChange={(event) => setKindFilter(event.target.value)}
+            >
+              <option value="all">All roles</option>
+              <option value="part">PC parts</option>
+              <option value="product">Retail products</option>
+              <option value="asset">Tools & equipment</option>
+              <option value="consumable">Consumables</option>
+            </select>
+          </label>
+          <label className="inventory-category-filter">
+            <span>Category</span>
+            <select
+              aria-label="Filter by part category"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="all">All categories</option>
+              {categories.map((value) => (
+                <option value={value} key={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="inventory-discovery-footer">
+          <span>Availability reflects reserved units.</span>
+          <div>
+            {hasFilters && (
+              <button type="button" className="inventory-clear-button" onClick={clearFilters}>
+                <RotateCcw size={15} /> Clear filters
+              </button>
+            )}
+            <ExcelButton disabled={!filtered.length} onExport={exportInventory} />
+          </div>
+        </div>
+      </section>
+
+      <Panel title="Catalog records" subtitle="Parts, products, equipment, and consumables">
         <DataTable
-          filtered={
-            !!filters.query ||
-            filters.filter !== 'all' ||
-            categoryFilter !== 'all' ||
-            kindFilter !== 'all'
-          }
+          filtered={hasFilters}
           rows={filtered}
           label="Inventory"
           columns={[
             {
-              label: 'Item / SKU',
+              label: 'Item',
               sortValue: (item) => item.name,
               render: (item) => (
                 <div className="item-cell">
-                  <span className="stock-icon">
+                  <span className="inventory-item-icon" aria-hidden="true">
                     <Package size={20} />
                   </span>
                   <span>
@@ -214,38 +283,58 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
                       {item.sku}
                       {item.assetTag ? ` · ${item.assetTag}` : ''}
                     </small>
+                    {(item.brand || item.model) && (
+                      <small>{[item.brand, item.model].filter(Boolean).join(' / ')}</small>
+                    )}
                   </span>
                 </div>
               ),
             },
             {
-              label: 'Role',
+              label: 'Type & category',
               sortValue: (item) => kindLabel(inventoryKind(item)),
-              render: (item) => <span>{kindLabel(inventoryKind(item))}</span>,
-            },
-            {
-              label: 'Category',
-              sortValue: (item) => item.category,
-              render: (item) => item.category,
-            },
-            { label: 'On hand', render: (item) => item.stock },
-            { label: 'Reserved', render: (item) => item.reserved ?? 0 },
-            { label: 'Unit cost', numeric: true, render: (item) => formatPHP(item.cost) },
-            {
-              label: 'Available',
-              sortValue: (item) => availableStock(item),
               render: (item) => (
-                <>
-                  <strong>{availableStock(item)} units</strong>
-                  <small>Minimum {item.minimum}</small>
-                </>
+                <div className="inventory-type-cell">
+                  <strong>{kindLabel(inventoryKind(item))}</strong>
+                  <small>{item.category}</small>
+                </div>
               ),
             },
             {
-              label: 'Stock status',
-              sortValue: (item) => (availableStock(item) <= item.minimum ? 0 : 1),
+              label: 'Stock position',
+              sortValue: (item) => availableStock(item),
               render: (item) => (
-                <StatusBadge tone={availableStock(item) <= item.minimum ? 'amber' : 'green'}>
+                <div className="inventory-stock-cell">
+                  <strong>{availableStock(item)} available</strong>
+                  <small>
+                    {item.stock} on hand · {item.reserved ?? 0} reserved
+                  </small>
+                  <small>Minimum {item.minimum}</small>
+                </div>
+              ),
+            },
+            {
+              label: 'Status',
+              sortValue: (item) =>
+                item.active === false
+                  ? 3
+                  : availableStock(item) === 0
+                    ? 0
+                    : availableStock(item) <= item.minimum
+                      ? 1
+                      : 2,
+              render: (item) => (
+                <StatusBadge
+                  tone={
+                    item.active === false
+                      ? 'gray'
+                      : availableStock(item) === 0
+                        ? 'red'
+                        : availableStock(item) <= item.minimum
+                          ? 'amber'
+                          : 'green'
+                  }
+                >
                   {item.active === false
                     ? 'Inactive'
                     : availableStock(item) === 0
@@ -257,26 +346,62 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
               ),
             },
             {
-              label: 'Selling price',
+              label: 'Pricing',
               sortValue: (item) => item.price,
-              numeric: true,
-              render: (item) => <strong>{formatPHP(item.price)}</strong>,
+              render: (item) => (
+                <div className="inventory-price-cell">
+                  <strong>{formatPHP(item.price)}</strong>
+                  <small>Cost {formatPHP(item.cost)}</small>
+                </div>
+              ),
             },
             {
               label: 'Actions',
               render: (record) => (
-                <div className="part-actions">
+                <div
+                  className="inventory-row-actions"
+                  role="group"
+                  aria-label={`Actions for ${record.name}`}
+                >
                   <button
-                    className="text-button"
+                    type="button"
+                    className="inventory-row-action is-primary"
+                    aria-label={`View ${record.name}`}
+                    onClick={() => setDetail(record)}
+                  >
+                    <Eye size={15} /> View
+                  </button>
+                  <button
+                    type="button"
+                    className="inventory-row-action"
+                    aria-label={`Edit ${record.id}`}
+                    onClick={() => setEditing(record)}
+                  >
+                    <Pencil size={15} /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="inventory-row-action"
+                    aria-label={`Adjust stock for ${record.name}`}
                     onClick={() => {
                       setAdjusting(record)
                       setAdjustError('')
                     }}
                   >
-                    Adjust stock
+                    <PackagePlus size={15} /> Adjust
                   </button>
                   <button
-                    className="text-button"
+                    type="button"
+                    className="inventory-row-action"
+                    aria-label={`QR ${record.sku}`}
+                    onClick={() => setScanner(record)}
+                  >
+                    <QrCode size={15} /> QR label
+                  </button>
+                  <button
+                    type="button"
+                    className="inventory-row-action is-muted"
+                    aria-label={`${record.active === false ? 'Activate' : 'Deactivate'} ${record.name}`}
                     onClick={async () => {
                       if (
                         await confirm({
@@ -298,18 +423,9 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
                         }
                     }}
                   >
-                    {' '}
+                    <Power size={15} />
                     {record.active === false ? 'Activate' : 'Deactivate'}
                   </button>
-                  <ActionButton label={'Edit ' + record.id} onClick={() => setEditing(record)}>
-                    <Pencil size={18} />
-                  </ActionButton>
-                  <ActionButton label={'QR ' + record.sku} onClick={() => setScanner(record)}>
-                    <QrCode size={18} />
-                  </ActionButton>
-                  <ActionButton label={'View ' + record.name} onClick={() => setDetail(record)}>
-                    <Eye size={18} />
-                  </ActionButton>
                 </div>
               ),
             },
@@ -431,6 +547,6 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
       )}
       {detail && <ProductDialog item={detail} onClose={() => setDetail(null)} />}
       {editing && <InventoryEditor item={editing} onClose={() => setEditing(null)} />}
-    </>
+    </div>
   )
 }

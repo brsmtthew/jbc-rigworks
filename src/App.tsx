@@ -27,6 +27,7 @@ import './styles/customer-settings.css'
 import './styles/customer-invoice.css'
 import './styles/loading.css'
 import './styles/blue-hero.css'
+import './styles/admin-inventory.css'
 import { AppRoutes } from './routes'
 
 const router = createBrowserRouter([{ path: '*', element: <AppRoutes /> }])
