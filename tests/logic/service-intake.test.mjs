@@ -13,11 +13,17 @@ import {
   saveAppointment,
 } from '../../src/features/customer/customerOperations.ts'
 import {
+  advanceService,
   receiveAppointmentAsJob,
   recordSignedServiceIntake,
+  recordSignedWalkInIntake,
   reviewAppointment,
+  saveServiceJob,
   updateAppointmentStatus,
 } from '../../src/features/services/serviceOperations.ts'
+import { createWalkInJob } from '../../src/features/services/walkInJob.ts'
+import { walkInDocumentAppointment } from '../../src/features/services/walkInDocument.ts'
+import { checkout } from '../../src/features/pos/checkoutOperations.ts'
 import { availableWindows, slotLabel } from '../../src/features/services/serviceCatalog.ts'
 import { defaultShop, normalizeShop } from '../../src/lib/shopSettings.ts'
 import { read, seed } from './memory-db.mjs'
@@ -354,4 +360,62 @@ test('printed workshop authorization includes the named intake and omits later p
   )
   assert.match(homeHtml, /123 Manila Street/)
   assert.match(homeHtml, /Jamie Santos/)
+})
+
+test('walk-in intake checks in directly, prints with the customer name, and can be paid before signed service starts', async () => {
+  const settings = { ...normalizeShop(defaultShop), taxRate: 0 }
+  seed({ 'settings/shop': settings })
+  const offering = settings.services.find((service) => service.active && service.workshop && service.deviceType === 'Desktop')
+  assert.ok(offering)
+  const intake = {
+    ...emptyServiceIntake,
+    customerName: 'Jamie Santos',
+    contactPhone: '09171234567',
+    visibleCondition: 'Small scratch on case',
+    reportedIssues: 'Dusty fans',
+    issueHistory: 'No prior repair',
+  }
+  const job = createWalkInJob({
+    id: 'JOB-WALKIN',
+    offering,
+    intake,
+    device: 'ThinkCentre M720',
+    due: '2099-01-05',
+    quote: 799,
+    confirmedAt: '2026-09-29T00:00:00.000Z',
+  })
+  await saveServiceJob(admin, job)
+  const saved = read('jobs/JOB-WALKIN')
+  assert.equal(saved.channel, 'Walk-in')
+  assert.equal(saved.status, 'Checked in')
+  assert.ok(saved.confirmedAt)
+  assert.equal(saved.serviceIntake.visibleCondition, 'Small scratch on case')
+  await assert.rejects(advanceService(admin, job.id, 'In service'), /signed walk-in intake/)
+  const appointment = walkInDocumentAppointment(saved)
+  assert.notEqual(appointment.preferredDate, job.due)
+  const html = renderToStaticMarkup(createElement(ServiceIntakeDocument, { appointment, walkIn: true }))
+  assert.match(html, /Jamie Santos/)
+  assert.match(html, /Method:.*Walk-in/)
+  assert.match(html, /Small scratch on case/)
+  assert.doesNotMatch(html, /2099-01-05/)
+  const sale = await checkout(admin, {
+    idempotencyKey: 'walkin-payment',
+    customer: saved.customer,
+    contact: saved.contact,
+    paymentMethod: 'Cash',
+    paid: 799,
+    cashTendered: 799,
+    lines: [{ id: `job-service:${job.id}`, quantity: 1 }],
+    customServices: [{ id: `job-service:${job.id}`, description: saved.service, unitPrice: 799 }],
+    jobId: job.id,
+    charges: { labor: 0, delivery: 0, other: 0, otherLabel: '', discount: 0, taxRate: 0 },
+    notes: '',
+  })
+  assert.equal(sale.orderStatus, 'Processing')
+  assert.equal(read('jobs/JOB-WALKIN').paymentStatus, 'Paid')
+  await assert.rejects(recordSignedWalkInIntake({ id: 'customer', role: 'user' }, job.id), /Only JBC/)
+  await recordSignedWalkInIntake(admin, job.id)
+  assert.equal(read('jobs/JOB-WALKIN').intakeSignedBy, admin.id)
+  await advanceService(admin, job.id, 'In service')
+  assert.equal(read('jobs/JOB-WALKIN').status, 'In service')
 })

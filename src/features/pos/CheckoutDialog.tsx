@@ -132,8 +132,17 @@ export function CheckoutDialog({
         </>
       }
     >
-      <div className="checkout-layout">
-        <div className="portal-form settings-fields">
+      <div className={customerMode ? 'checkout-layout' : 'checkout-layout admin-pos-checkout'}>
+        <div className="portal-form settings-fields pos-checkout-form">
+          {!customerMode && (
+            <div className="pos-checkout-section-title">
+              <span>01</span>
+              <div>
+                <h3>Customer details</h3>
+                <p>Confirm who this sale is for and where to send the receipt.</p>
+              </div>
+            </div>
+          )}
           <label>
             Customer name
             <input
@@ -161,6 +170,15 @@ export function CheckoutDialog({
               onChange={(event) => setReceiptEmail(event.target.value)}
             />
           </label>
+          {!customerMode && (
+            <div className="pos-checkout-section-title">
+              <span>02</span>
+              <div>
+                <h3>Payment &amp; fulfillment</h3>
+                <p>Review charges, delivery and how the customer will pay.</p>
+              </div>
+            </div>
+          )}
           {!customerMode && (
             <details className="charge-details">
               <summary>Charges, discount & tax</summary>
@@ -350,8 +368,14 @@ export function CheckoutDialog({
             </details>
           )}
         </div>
-        <div className="portal-form settings-fields checkout-review">
-          {' '}
+        <div className="portal-form settings-fields checkout-review pos-checkout-review">
+          {!customerMode && (
+            <div className="pos-checkout-review-intro">
+              <span>ORDER REVIEW</span>
+              <h3>Sale summary</h3>
+              <p>{cart.reduce((sum, line) => sum + line.quantity, 0)} items in this order</p>
+            </div>
+          )}
           <dl className="checkout-totals">
             {[
               ['Items', totals.subtotal],

@@ -11,6 +11,7 @@ export function ServiceIntakeFields({
   acknowledged,
   onAcknowledge,
   editing = false,
+  walkIn = false,
 }: {
   value: ServiceIntake
   onChange: (value: ServiceIntake) => void
@@ -21,6 +22,7 @@ export function ServiceIntakeFields({
   acknowledged: boolean
   onAcknowledge: (value: boolean) => void
   editing?: boolean
+  walkIn?: boolean
 }) {
   function update<K extends keyof ServiceIntake>(key: K, next: ServiceIntake[K]) {
     onChange({ ...value, [key]: next })
@@ -55,11 +57,14 @@ export function ServiceIntakeFields({
   return (
     <div className="home-intake-fields">
       <div className="booking-section-heading">
-        <span className="eyebrow">{editing ? 'CUSTOMER INTAKE' : 'STEP 03 · CUSTOMER INTAKE'}</span>
-        <h3>Tell us about your device</h3>
+        <span className="eyebrow">
+          {walkIn ? 'WALK-IN INTAKE' : editing ? 'CUSTOMER INTAKE' : 'STEP 03 · CUSTOMER INTAKE'}
+        </span>
+        <h3>{walkIn ? 'Record the device together' : 'Tell us about your device'}</h3>
         <p>
-          Complete what you know now. At your visit, JBC will review the condition and collect your
-          signature on the printed authorization before work starts.
+          {walkIn
+            ? 'Document the device condition and history with the customer. Print the authorization and collect signatures before work starts.'
+            : 'Complete what you know now. At your visit, JBC will review the condition and collect your signature on the printed authorization before work starts.'}
         </p>
       </div>
       <div className="home-intake-group">

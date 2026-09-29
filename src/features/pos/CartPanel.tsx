@@ -30,10 +30,11 @@ export function CartPanel({
   return (
     <Panel
       title={customerMode ? 'Your items' : 'Current order'}
+      subtitle={customerMode ? undefined : 'Review items before checkout'}
       action={<ShoppingCart size={22} />}
+      className={customerMode ? '' : 'admin-pos-cart'}
     >
       <div className="order-body">
-        {' '}
         <div className="cart-lines">
           {cart.length ? (
             cart.map((line) => {
@@ -78,7 +79,7 @@ export function CartPanel({
           ) : (
             <div className="customer-empty">
               <ShoppingCart size={28} />
-              <h3>Your cart is empty</h3>
+              <h3>{customerMode ? 'Your cart is empty' : 'No items added yet'}</h3>
               <p>
                 {customerMode
                   ? 'Find the right parts for your next upgrade.'
@@ -94,8 +95,12 @@ export function CartPanel({
         </div>
         {cart.length > 0 && (
           <>
-            <div className="order-summary">
-              <span>{cart.reduce((sum, line) => sum + line.quantity, 0)} items</span>
+            <div className="order-summary" aria-live="polite">
+              <span>
+                {customerMode
+                  ? `${cart.reduce((sum, line) => sum + line.quantity, 0)} items`
+                  : 'Estimated order total'}
+              </span>
               <strong>{formatPHP(totals.total)}</strong>
             </div>
             {bundleName && (

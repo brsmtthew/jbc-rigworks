@@ -4,6 +4,7 @@ import { firebaseFirestore } from '../../lib/firebase'
 import { normalizeShop } from '../../lib/shopSettings'
 import { assertTransition, serviceState, serviceTransitions } from '../../lib/workflow'
 import type { AppUser, CustomerAppointment, Job, ServiceStatus } from '../../types'
+import { validateServiceIntake } from '../customer/serviceIntake'
 import {
   availableWindows,
   slotKey,
@@ -250,6 +251,8 @@ export async function advanceService(user: AppUser, id: string, next: ServiceSta
     if (!snapshot.exists()) throw new Error('Service unavailable.')
     const job = snapshot.data() as Job
     assertTransition(serviceTransitions, serviceState(job.status), next)
+    if (next === 'In service' && job.channel === 'Walk-in' && !job.intakeSignedAt)
+      throw new Error('Collect the signed walk-in intake before starting service.')
     if (next === 'Completed' && job.paymentStatus !== 'Paid')
       throw new Error('Collect payment through POS before releasing the device.')
     if (next === 'Ready for checkout' && (!Number.isFinite(job.quote) || job.quote <= 0))
@@ -261,6 +264,21 @@ export async function advanceService(user: AppUser, id: string, next: ServiceSta
       if (job.customerId)
         tx.update(recordRef('orders', job.transactionId), { orderStatus: 'Completed' })
     }
+  })
+}
+
+export async function recordSignedWalkInIntake(user: AppUser, id: string) {
+  if (user.role !== 'admin') throw new Error('Only JBC can record a signed intake.')
+  return runTransaction(firebaseFirestore, async (tx) => {
+    const ref = recordRef('jobs', id)
+    const snapshot = await tx.get(ref)
+    const job = snapshot.data() as Job | undefined
+    if (!job || job.channel !== 'Walk-in' || !job.serviceIntake)
+      throw new Error('Walk-in intake unavailable.')
+    if (job.intakeSignedAt) return job
+    const signedAt = new Date().toISOString()
+    tx.update(ref, { intakeSignedAt: signedAt, intakeSignedBy: user.id })
+    return { ...job, intakeSignedAt: signedAt, intakeSignedBy: user.id }
   })
 }
 
@@ -278,10 +296,44 @@ export async function saveServiceJob(user: AppUser, record: Job) {
       (current.paymentStatus === 'Paid' || serviceState(current.status) === 'Completed')
     )
       throw new Error('Paid or completed services cannot be edited.')
+    let serviceIntake = draft.serviceIntake
+    if (!current && draft.channel === 'Walk-in') {
+      const settingsDoc = await transaction.get(shopRef)
+      const offering = normalizeShop(settingsDoc.data() ?? {}).services.find(
+        (service) => service.id === draft.serviceId && service.active && service.workshop,
+      )
+      if (!offering) throw new Error('Choose an available workshop service.')
+      if (draft.service !== `${offering.name} / ${offering.deviceType}`)
+        throw new Error('The selected service changed. Review the walk-in intake.')
+      serviceIntake = validateServiceIntake(draft.serviceIntake)
+      if (
+        offering.deviceType !== 'Any' &&
+        serviceIntake.deviceType !== `${offering.deviceType === 'Desktop' ? 'Desktop PC' : 'Laptop'}`
+      )
+        throw new Error('The device type does not match the selected service.')
+    }
+    if (current?.channel === 'Walk-in') serviceIntake = current.serviceIntake
     transaction.set(
       ref,
       firestoreData({
         ...draft,
+        serviceIntake,
+        ...(current?.channel === 'Walk-in'
+          ? {
+              channel: current.channel,
+              serviceId: current.serviceId,
+              service: current.service,
+              customer: current.customer,
+              contact: current.contact,
+              device: current.device,
+              concern: current.concern,
+              intakeNotes: current.intakeNotes,
+              accessories: current.accessories,
+              confirmedAt: current.confirmedAt,
+              intakeSignedAt: current.intakeSignedAt,
+              intakeSignedBy: current.intakeSignedBy,
+            }
+          : {}),
         ...(current
           ? {
               status: current.status,
@@ -290,7 +342,12 @@ export async function saveServiceJob(user: AppUser, record: Job) {
               appointmentId: current.appointmentId,
               customerId: current.customerId,
             }
-          : { status: 'Checked in', paymentStatus: 'Unpaid', schemaVersion: 2 }),
+          : {
+              status: 'Checked in',
+              paymentStatus: 'Unpaid',
+              schemaVersion: 2,
+              ...(draft.channel === 'Walk-in' ? { confirmedAt: new Date().toISOString() } : {}),
+            }),
       }),
     )
   })

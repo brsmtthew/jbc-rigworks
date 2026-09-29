@@ -14,9 +14,11 @@ import { readPaymentImage } from '../finance/payments'
 export function BundleCatalog({
   onSelect,
   manage = false,
+  showHeading = true,
 }: {
   onSelect: (bundle: ProductBundle) => void
   manage?: boolean
+  showHeading?: boolean
 }) {
   const workspace = useWorkspace(),
     { user } = useAuth()
@@ -25,6 +27,9 @@ export function BundleCatalog({
     [error, setError] = useState('')
   const [kind, setKind] = useState('PC set'),
     [busy, setBusy] = useState(false)
+  const visibleBundles = workspace.bundles.filter(
+    (bundle) => manage || (bundle.active !== false && bundle.published !== false),
+  )
   async function save(event: FormEvent) {
     event.preventDefault()
     if (!draft || busy) return
@@ -90,7 +95,7 @@ export function BundleCatalog({
   }
   return (
     <section className="bundle-catalog" aria-label="Item bundles">
-      <div className="section-toolbar">
+      {showHeading && <div className="section-toolbar">
         <h2>
           <Boxes size={22} /> Bundles & PC sets
         </h2>
@@ -113,11 +118,14 @@ export function BundleCatalog({
             <Plus size={18} />
           </ActionButton>
         )}
-      </div>
+      </div>}
+      {!showHeading && (
+        <p className="bundle-catalog-count" role="status">
+          {visibleBundles.length} {visibleBundles.length === 1 ? 'bundle' : 'bundles'} listed
+        </p>
+      )}
       <div className="pos-products">
-        {workspace.bundles
-          .filter((bundle) => manage || (bundle.active !== false && bundle.published !== false))
-          .map((bundle) => {
+        {visibleBundles.map((bundle) => {
             const available =
               bundle.items.length >= 2 &&
               bundle.items.every((part) =>
@@ -222,7 +230,13 @@ export function BundleCatalog({
             )
           })}
       </div>
-      {!workspace.bundles.length && <p className="storage-caption">No bundles listed yet.</p>}
+      {!visibleBundles.length && (
+        <div className="bundle-catalog-empty">
+          <Boxes size={25} aria-hidden="true" />
+          <h3>No bundles available yet</h3>
+          <p>Published bundles and PC sets will appear here when their parts are available.</p>
+        </div>
+      )}
       {error && !draft && (
         <p role="alert" className="form-error">
           {error}

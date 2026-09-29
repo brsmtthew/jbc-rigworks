@@ -10,6 +10,7 @@ import { formAmount, formText } from '../../lib/forms'
 import { useShopSettings } from '../../lib/preferences'
 import type { Job } from '../../types'
 import { saveServiceJob } from './serviceOperations'
+import { WalkInServiceIntake } from './WalkInServiceIntake'
 
 const fields: RecordField[] = [
   { name: 'customer', label: 'Customer name' },
@@ -24,31 +25,40 @@ const fields: RecordField[] = [
 ]
 
 export function ServiceIntake({ job, onClose }: { job?: Job; onClose: () => void }) {
+  return job ? <EditServiceJob job={job} onClose={onClose} /> : <WalkInServiceIntake onClose={onClose} />
+}
+
+function EditServiceJob({ job, onClose }: { job: Job; onClose: () => void }) {
   const { user } = useAuth()
   const { confirm } = useConfirmation()
   const [shop] = useShopSettings()
   const { busy, error, run } = useAsyncAction()
+  const walkIn = job.channel === 'Walk-in'
+  const editableFields = walkIn ? fields.filter((field) => ['due', 'quote'].includes(field.name)) : fields
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     void run(async () => {
       if (!user) throw new Error('Sign in to save this service.')
-      const record: Job = {
-        ...job,
-        id: job?.id ?? `JOB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-        customer: formText(form, 'customer'),
-        device: formText(form, 'device'),
-        service: formText(form, 'service'),
-        due: formText(form, 'due'),
-        quote: formAmount(form, 'quote', true),
-        contact: formText(form, 'contact'),
-        concern: formText(form, 'concern'),
-        intakeNotes: formText(form, 'intakeNotes'),
-        accessories: formText(form, 'accessories'),
-        status: job?.status ?? 'Checked in',
-        paymentStatus: job?.paymentStatus ?? 'Unpaid',
-        schemaVersion: 2,
-      }
+      const record: Job = walkIn
+        ? {
+            ...job,
+            due: formText(form, 'due'),
+            quote: formAmount(form, 'quote', true),
+          }
+        : {
+            ...job,
+            customer: formText(form, 'customer'),
+            device: formText(form, 'device'),
+            service: formText(form, 'service'),
+            due: formText(form, 'due'),
+            quote: formAmount(form, 'quote', true),
+            contact: formText(form, 'contact'),
+            concern: formText(form, 'concern'),
+            intakeNotes: formText(form, 'intakeNotes'),
+            accessories: formText(form, 'accessories'),
+            schemaVersion: 2,
+          }
       if (
         !(await confirm({
           title: job ? 'Save changes?' : 'Save record?',
@@ -63,7 +73,7 @@ export function ServiceIntake({ job, onClose }: { job?: Job; onClose: () => void
   }
   return (
     <Dialog
-      title={job ? 'Edit service job' : 'New service job'}
+      title={walkIn ? 'Edit walk-in estimate' : 'Edit service job'}
       onClose={() => {
         if (!busy) onClose()
       }}
@@ -80,13 +90,14 @@ export function ServiceIntake({ job, onClose }: { job?: Job; onClose: () => void
       }
     >
       <form id="service-intake" className="portal-form entry-form" onSubmit={submit}>
+        {walkIn && <p className="storage-caption">The customer and device details are stored in the printable intake. Update the target date or approved price here.</p>}
         <fieldset disabled={busy} className="record-fields">
           <RecordFields
-            fields={fields}
+            fields={editableFields}
             values={
               job
                 ? Object.fromEntries(
-                    fields.map((field) => [field.name, String(job[field.name as keyof Job] ?? '')]),
+                    editableFields.map((field) => [field.name, String(job[field.name as keyof Job] ?? '')]),
                   )
                 : { due: today() }
             }

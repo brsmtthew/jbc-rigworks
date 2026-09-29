@@ -1,4 +1,4 @@
-import { ChevronDown, Clock3, LogOut, Menu, UserRound } from 'lucide-react'
+import { Clock3, LogOut, Menu, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
@@ -49,7 +49,7 @@ export function Topbar({
             <Menu size={21} />
           </button>
           <div className="topbar-title-block">
-            <span>{customer ? 'JBC RIGWORKS · CUSTOMER PORTAL' : 'WORKSHOP WORKSPACE'}</span>
+            <span>{customer ? 'JBC RIGWORKS · CUSTOMER PORTAL' : 'JBC RIGWORKS · ADMIN WORKSPACE'}</span>
             <strong>{title}</strong>
           </div>
         </div>
@@ -102,34 +102,40 @@ export function Topbar({
               </button>
             </nav>
           ) : (
-            <>
-              {' '}
+            <nav className="admin-topbar-links" aria-label="Account actions">
               <Link
                 to="/settings"
-                className="topbar-account"
-                title="Account and settings"
-                aria-label="Account and settings"
+                className="admin-account-link"
+                title="Profile and settings"
+                aria-label="Profile and settings"
               >
                 <span className="topbar-avatar">
                   {account.photo ? <img src={account.photo} alt="" /> : <UserRound size={18} />}
                 </span>
-                <span className="topbar-account-meta">
-                  <strong>{account.name || user?.name || 'Account'}</strong>
-                  <small>{user?.role === 'admin' ? 'Workshop admin' : 'User account'}</small>
-                </span>
-                <ChevronDown size={16} aria-hidden="true" />
+                <span>{account.name || user?.name || 'Profile & settings'}</span>
               </Link>
               <button
                 type="button"
-                className="topbar-signout secondary-button"
                 disabled={busy}
-                onClick={() => void run(signOut)}
+                onClick={() =>
+                  void run(async () => {
+                    if (
+                      await confirm({
+                        title: 'Sign out?',
+                        message: 'End your admin session on this device?',
+                        confirmLabel: 'Sign out',
+                      })
+                    )
+                      await signOut()
+                  })
+                }
                 aria-label="Sign out"
+                title="Sign out"
               >
                 <LogOut size={17} />
                 <span>{busy ? 'Signing out…' : 'Sign out'}</span>
               </button>
-            </>
+            </nav>
           )}
         </div>
       </header>

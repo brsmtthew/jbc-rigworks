@@ -70,13 +70,9 @@ export function Sidebar({
                     : '')
                 }
               >
-                {isCustomer ? (
-                  <span className="customer-nav-icon">
-                    <Icon size={19} aria-hidden="true" />
-                  </span>
-                ) : (
+                <span className={isCustomer ? 'customer-nav-icon' : 'admin-nav-icon'}>
                   <Icon size={19} aria-hidden="true" />
-                )}
+                </span>
                 <span>{label}</span>
               </NavLink>
             </Fragment>

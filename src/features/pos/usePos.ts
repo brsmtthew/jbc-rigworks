@@ -162,7 +162,7 @@ export function usePos() {
     contactChoice ??
     (customerMode
       ? [profile.phone, profile.contactEmail || user!.email].filter(Boolean).join(' / ')
-      : '')
+      : (jobDraft?.contact ?? ''))
   const channel = customerMode ? 'Online' : 'Walk-in'
   const [notes, setNotes] = useState('')
   const [receiptEmailChoice, setReceiptEmail] = useState<string | null>(null)

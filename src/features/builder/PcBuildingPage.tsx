@@ -12,7 +12,6 @@ import {
 import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ExcelButton } from '../../components/ui/ExcelButton'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useAuth } from '../../lib/auth-context'
 import { formatPHP } from '../../lib/format'
 import type { ComponentType } from '../../types'
@@ -23,6 +22,7 @@ import { componentOf, components } from './pc'
 import { Pc3dBuilder } from './Pc3dBuilder'
 import { usePcBuilder } from './usePcBuilder'
 import './pc-builder-page.css'
+import './admin-builds.css'
 
 const steps = [
   { title: 'Build brief', detail: 'Name and purpose' },
@@ -30,27 +30,72 @@ const steps = [
   { title: 'Review & pre-order', detail: 'Check and submit for review' },
 ]
 
+function BuilderHero({ admin }: { admin: boolean }) {
+  return (
+    <header className="pcb-hero jbc-blue-hero">
+      <div className="pcb-hero-copy">
+        <span className="pcb-eyebrow">PLAN YOUR BUILD</span>
+        {admin ? (
+          <h2>Build a PC that fits your plans.</h2>
+        ) : (
+          <h1>Build a PC that fits your plans.</h1>
+        )}
+        <p>
+          Choose any catalog parts or add parts you own. See the build in 3D, check fit, and send
+          a pre-order for workshop review.
+        </p>
+      </div>
+      <div className="pcb-hero-mark" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+    </header>
+  )
+}
+
 export function PcBuildingPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState(user?.role === 'admin' ? 'requests' : 'builder')
   return (
-    <>
+    <div className={user?.role === 'admin' ? 'admin-builds-page' : undefined}>
       {user?.role === 'admin' && (
         <>
-          <PageHeader
-            eyebrow="PC BUILDS"
-            title="PC Builds"
-            description="Review customer quotations and use the shared 3D builder."
-          />
-          <div className="record-tabs">
+          {tab === 'requests' && (
+            <section className="admin-builds-hero jbc-blue-hero" aria-labelledby="admin-builds-title">
+              <div className="admin-builds-hero-copy">
+                <div>
+                  <span className="eyebrow">CUSTOM BUILD WORKSHOP</span>
+                  <h1 id="admin-builds-title">PC Builds</h1>
+                  <p>Review customer plans, prepare quotes, and follow each build through completion.</p>
+                </div>
+              </div>
+              <div className="admin-builds-hero-note">
+                <span>BUILD WORKFLOW</span>
+                <strong>Review <ArrowRight size={15} /> Quote <ArrowRight size={15} /> Build</strong>
+                <small>Customer approval comes before parts are reserved.</small>
+              </div>
+            </section>
+          )}
+          {tab === 'builder' && (
+            <>
+              <h1 className="sr-only">PC Builds</h1>
+              <BuilderHero admin />
+            </>
+          )}
+          <div className="record-tabs admin-builds-tabs" role="group" aria-label="PC builds view">
             <button
+              type="button"
               className={tab === 'requests' ? 'primary-button' : 'secondary-button'}
+              aria-pressed={tab === 'requests'}
               onClick={() => setTab('requests')}
             >
               Requests & quotes
             </button>
             <button
+              type="button"
               className={tab === 'builder' ? 'primary-button' : 'secondary-button'}
+              aria-pressed={tab === 'builder'}
               onClick={() => setTab('builder')}
             >
               Builder tool
@@ -58,12 +103,12 @@ export function PcBuildingPage() {
           </div>
         </>
       )}
-      {tab === 'requests' ? <RequestQueue scope="builds" /> : <BuilderTool />}
-    </>
+      {tab === 'requests' ? <RequestQueue scope="builds" /> : <BuilderTool showHero={user?.role !== 'admin'} />}
+    </div>
   )
 }
 
-function BuilderTool() {
+function BuilderTool({ showHero }: { showHero: boolean }) {
   const [params] = useSearchParams()
   const [step, setStep] = useState(params.has('edit') ? 1 : 0)
   const stepsRef = useRef<HTMLOListElement>(null)
@@ -150,25 +195,7 @@ function BuilderTool() {
 
   return (
     <div className="pc-builder-redesign" data-step={step} aria-busy={busy}>
-      <header className="pcb-hero">
-        <div className="pcb-hero-copy">
-          <span className="pcb-eyebrow">PLAN YOUR BUILD</span>
-          {user?.role === 'admin' ? (
-            <h2>Build a PC that fits your plans.</h2>
-          ) : (
-            <h1>Build a PC that fits your plans.</h1>
-          )}
-          <p>
-            Choose any catalog parts or add parts you own. See the build in 3D, check fit, and send
-            a pre-order for workshop review.
-          </p>
-        </div>
-        <div className="pcb-hero-mark" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-      </header>
+      {showHero && <BuilderHero admin={user?.role === 'admin'} />}
 
       <div className="pcb-workflow-intro">
         <strong>Three steps to your PC pre-order</strong>

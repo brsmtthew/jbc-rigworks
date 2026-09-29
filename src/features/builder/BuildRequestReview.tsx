@@ -4,6 +4,7 @@ import { useWorkspace } from '../../hooks/useWorkspace'
 import { formatPHP } from '../../lib/format'
 import { availableStock } from '../../lib/workflow'
 import type { CustomPcRequest } from '../../types'
+import { RecordStatus } from '../customer/RecordStatus'
 import { reviewBuild } from './buildReview'
 
 export function BuildRequestReview({
@@ -43,11 +44,16 @@ export function BuildRequestReview({
         </>
       }
     >
-      <div className="portal-form settings-fields">
-        <h3>
-          {request.customerName || 'Customer'} / {request.useCase}
-        </h3>
-        <p>{request.notes}</p>
+      <div className="portal-form settings-fields admin-build-review">
+        <div className="admin-build-review-heading">
+          <div>
+            <span className="eyebrow">COMPATIBILITY REVIEW</span>
+            <h3>{request.useCase} PC build</h3>
+            <p>{request.customerName || 'Customer'} · {request.id}</p>
+          </div>
+          <RecordStatus status={request.status} />
+        </div>
+        {request.notes && <p className="admin-build-review-notes">Customer brief: {request.notes}</p>}
         <div className="build-intelligence">
           <div>
             <strong>
@@ -70,8 +76,12 @@ export function BuildRequestReview({
             customer to submit component selections before reservation.
           </p>
         )}
+        <div className="admin-build-review-parts-heading">
+          <h4>Submitted components</h4>
+          <span>{review.rows.length} listed</span>
+        </div>
         {review.rows.map((row, index) => (
-          <section className="form-section" key={`${row.part.component}-${index}`}>
+          <section className="form-section admin-build-review-part" key={`${row.part.component}-${index}`}>
             <h3>
               {row.part.component}: {row.item?.name || row.part.model}
             </h3>
@@ -123,11 +133,11 @@ export function BuildRequestReview({
             <TriangleAlert size={16} aria-hidden="true" /> {check}: specifications need review.
           </p>
         ))}
-        <p>
-          Budget: {request.budget || 'Not specified'}
-          {request.quote ? ` / Final quote ${formatPHP(request.quote.amount)}` : ''}
-        </p>
-        {request.quote && <p>{request.quote.message}</p>}
+        <div className="admin-build-review-total">
+          <div><span>Customer budget</span><strong>{request.budget || 'Not specified'}</strong></div>
+          <div><span>Final quote</span><strong>{request.quote ? formatPHP(request.quote.amount) : 'Pending review'}</strong></div>
+          {request.quote?.message && <p>{request.quote.message}</p>}
+        </div>
       </div>
     </Dialog>
   )

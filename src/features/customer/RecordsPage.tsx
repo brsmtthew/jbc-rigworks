@@ -8,7 +8,7 @@ export function RecordsPage() {
   const tab = params.get('tab') || 'orders'
   return (
     <div className="customer-records">
-      <header className="customer-records-hero">
+      <header className="customer-records-hero jbc-blue-hero">
         <span className="customer-records-kicker">TRACK YOUR ACTIVITY</span>
         <h1>Your records, all in one place.</h1>
         <p>Orders, receipts, service appointments, and custom PC requests in one place.</p>

@@ -24,7 +24,7 @@ export function CustomerHomePage() {
 
   return (
     <div className="customer-home">
-      <header className="customer-home-hero">
+      <header className="customer-home-hero jbc-blue-hero">
         <div className="customer-home-hero-copy">
           <span className="customer-home-kicker">YOUR JBC WORKSPACE</span>
           <h1>Hello, {firstName}.</h1>

@@ -4,7 +4,13 @@ import { appointmentIntake, damageOptions, intakeTypeForService } from './servic
 
 const entry = (value?: string) => value?.trim() || '________________________'
 
-export function ServiceIntakeDocument({ appointment }: { appointment: CustomerAppointment }) {
+export function ServiceIntakeDocument({
+  appointment,
+  walkIn = false,
+}: {
+  appointment: CustomerAppointment
+  walkIn?: boolean
+}) {
   const intake = appointmentIntake(appointment)
   const deviceType =
     intake?.deviceType ||
@@ -33,7 +39,7 @@ export function ServiceIntakeDocument({ appointment }: { appointment: CustomerAp
         <div className="home-intake-print-reference">
           <strong>Service Order # {appointment.id}</strong>
           <span>Date: ____________________</span>
-          <span>Method: {appointment.visit?.mode ?? 'Workshop'}</span>
+          <span>Method: {walkIn ? 'Walk-in' : (appointment.visit?.mode ?? 'Workshop')}</span>
         </div>
       </header>
       <section>
@@ -46,8 +52,10 @@ export function ServiceIntakeDocument({ appointment }: { appointment: CustomerAp
           {appointment.visit?.mode === 'Home service' &&
             field('Service address', appointment.visit.address)}
           {field(
-            'Preferred date / time',
-            `${appointment.preferredDate} · ${appointment.preferredTime}`,
+            walkIn ? 'Intake date' : 'Preferred date / time',
+            walkIn
+              ? appointment.preferredDate
+              : `${appointment.preferredDate} · ${appointment.preferredTime}`,
           )}
         </dl>
       </section>
@@ -187,10 +195,16 @@ export function ServiceIntakeDocument({ appointment }: { appointment: CustomerAp
   )
 }
 
-export function ServiceIntakePrintRoot({ appointment }: { appointment: CustomerAppointment }) {
+export function ServiceIntakePrintRoot({
+  appointment,
+  walkIn = false,
+}: {
+  appointment: CustomerAppointment
+  walkIn?: boolean
+}) {
   return createPortal(
     <div className="home-intake-print-root">
-      <ServiceIntakeDocument appointment={appointment} />
+      <ServiceIntakeDocument appointment={appointment} walkIn={walkIn} />
     </div>,
     document.body,
   )

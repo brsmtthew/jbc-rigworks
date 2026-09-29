@@ -1,4 +1,4 @@
-import { Camera, Search, Square } from 'lucide-react'
+import { Camera, ImageUp, Keyboard, ScanLine, Search, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
 import { parseOrderQr } from '../finance/payments'
@@ -97,42 +97,59 @@ export function OrderScanner({
         onClose()
       }}
     >
-      <div className="portal-form settings-fields">
-        <video
-          ref={video}
-          muted
-          playsInline
-          className={running ? 'scanner-video' : 'scanner-video is-hidden'}
-          aria-label="Order QR camera"
-        />
-        <div className="dialog-actions">
-          <button className="secondary-button" disabled={running || busy} onClick={start}>
-            <Camera size={18} />
-            Start camera
-          </button>
-          {running && (
-            <button className="secondary-button" onClick={stop}>
-              <Square size={18} />
-              Stop camera
-            </button>
-          )}
+      <div className="pos-order-scanner">
+        <div className="admin-pos-dialog-intro">
+          <span className="admin-pos-dialog-icon" aria-hidden="true"><ScanLine size={20} /></span>
+          <div>
+            <span className="eyebrow">ORDER LOOKUP</span>
+            <h3>Find a customer order</h3>
+            <p>Use the camera, upload a QR image, or enter a reference from a USB scanner.</p>
+          </div>
         </div>
-        <label>
-          Upload order QR
-          <input
-            type="file"
-            accept="image/*"
-            disabled={busy}
-            onChange={(event) => void upload(event.target.files?.[0])}
-          />
-        </label>
+        <div className="pos-scanner-methods">
+          <section className="pos-scanner-method" aria-label="Scan with camera">
+            <span className="pos-scanner-method-icon" aria-hidden="true"><Camera size={20} /></span>
+            <strong>Use camera</strong>
+            <p>Point your camera at the customer’s order QR.</p>
+            <video
+              ref={video}
+              muted
+              playsInline
+              className={running ? 'scanner-video' : 'scanner-video is-hidden'}
+              aria-label="Order QR camera"
+            />
+            {running ? (
+              <button type="button" className="secondary-button" onClick={stop}>
+                <Square size={16} /> Stop camera
+              </button>
+            ) : (
+              <button type="button" className="secondary-button" disabled={busy} onClick={start}>
+                <Camera size={16} /> Start camera
+              </button>
+            )}
+          </section>
+          <section className="pos-scanner-method" aria-label="Upload order QR">
+            <span className="pos-scanner-method-icon" aria-hidden="true"><ImageUp size={20} /></span>
+            <strong>Upload QR image</strong>
+            <p>Choose a clear image of the QR code from this device.</p>
+            <label className="pos-scanner-upload">
+              <span className="sr-only">Upload order QR</span>
+              <input type="file" accept="image/*" disabled={busy}
+                onChange={(event) => void upload(event.target.files?.[0])} />
+            </label>
+          </section>
+        </div>
         <form
-          className="portal-form"
+          className="pos-scanner-reference"
           onSubmit={(event) => {
             event.preventDefault()
             void find(code)
           }}
         >
+          <div className="pos-scanner-reference-heading">
+            <Keyboard size={18} aria-hidden="true" />
+            <div><strong>Enter a reference</strong><span>USB readers can scan directly into this field.</span></div>
+          </div>
           <label>
             Order QR or reference
             <input
@@ -144,7 +161,7 @@ export function OrderScanner({
               placeholder="Scan with a USB reader or enter the reference"
             />
           </label>
-          <button className="primary-button" disabled={busy}>
+          <button type="submit" className="primary-button" disabled={busy}>
             <Search size={18} />
             {busy ? 'Opening…' : 'Open order in POS'}
           </button>
@@ -154,7 +171,7 @@ export function OrderScanner({
             {error}
           </p>
         )}
-        <p className="storage-caption">
+        <p className="pos-scanner-note">
           Scanning opens the saved order. Confirm the customer and payment before handing over the
           items.
         </p>

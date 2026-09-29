@@ -3,8 +3,10 @@ import {
   ArrowRight,
   Boxes,
   BrushCleaning,
+  CircleCheck,
   Eye,
   Package,
+  PackageOpen,
   Plus,
   ScanLine,
   ShoppingCart,
@@ -12,7 +14,6 @@ import {
 } from 'lucide-react'
 import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { formatPHP } from '../../lib/format'
 import { availableStock } from '../../lib/workflow'
 import { InvoiceDialog } from '../finance/InvoiceDialog'
@@ -88,46 +89,12 @@ export function PosPage() {
     setMaxPrice('')
     setSort('name')
   }
-  if (showOrders && !collectingSaleMode)
-    return (
-      <>
-        <PageHeader
-          eyebrow="POINT OF SALE"
-          title="Online orders"
-          description="Confirm requests, reserve stock, and collect payments."
-        >
-          <button className="secondary-button" onClick={() => setShowOrders(false)}>
-            Back to POS
-          </button>
-        </PageHeader>
-        <RequestQueue scope="orders" />
-      </>
-    )
   if (collectingSaleMode) return <CollectPayment {...pos} />
 
   return (
     <>
-      {!customerMode && (
-        <PageHeader
-          eyebrow="WORKSHOP CHECKOUT"
-          title="Point of sale"
-          description="Scan customer orders and record payments at the counter."
-        >
-          <button className="secondary-button" onClick={() => setShowOrders(true)}>
-            Online orders
-          </button>
-          <button className="secondary-button" onClick={() => setScannerOpen(true)}>
-            <ScanLine size={18} />
-            Scan order QR
-          </button>
-          <button className="secondary-button" onClick={() => setBundlesOpen(true)}>
-            <Boxes size={18} />
-            Bundles & PC sets
-          </button>
-        </PageHeader>
-      )}
       {customerMode && (
-        <section className="shop-hero" aria-label="Shop introduction">
+        <section className="shop-hero jbc-blue-hero" aria-label="Shop introduction">
           <div className="shop-hero-copy">
             <span className="shop-kicker">EXPLORE THE SHOP</span>
             <h1>Find your next upgrade.</h1>
@@ -151,13 +118,65 @@ export function PosPage() {
           </div>
         </section>
       )}
+      {!customerMode && (
+        <section className="admin-pos-overview jbc-blue-hero" aria-label="Counter overview">
+          <div className="admin-pos-overview-copy">
+            <div>
+              <span className="admin-pos-kicker">READY AT THE COUNTER</span>
+              <h1>Point of sale</h1>
+              <p>Build the next order, then review payment at checkout.</p>
+            </div>
+          </div>
+          <div className="admin-pos-overview-side" aria-label="Counter tools">
+            <span className="admin-pos-overview-side-label">COUNTER TOOLS</span>
+            <div className="admin-pos-overview-stats">
+              <div>
+                <strong>{products.filter((product) => !product.service && product.stock > 0).length}</strong>
+                <span>Products in stock</span>
+              </div>
+              <div>
+                <strong>{products.filter((product) => product.service).length}</strong>
+                <span>Services</span>
+              </div>
+              <div>
+                <strong>{cartCount}</strong>
+                <span>In this order</span>
+              </div>
+            </div>
+            <div className="admin-pos-overview-actions">
+              <button type="button" className="primary-button" onClick={() => setScannerOpen(true)}>
+                <ScanLine size={17} />
+                Scan order QR
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setShowOrders(true)}>
+                Online orders
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setBundlesOpen(true)}>
+                <Boxes size={17} />
+                Bundles &amp; PC sets
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       {toast && (
         <div role="status" className="toast">
           {toast}
         </div>
       )}
-      <div className={customerMode ? 'shop-discovery' : undefined}>
+      <div className={customerMode ? 'shop-discovery' : 'admin-pos-discovery'}>
         {customerMode && <span className="shop-kicker shop-search-kicker">EXPLORE PARTS</span>}
+        {!customerMode && (
+          <div className="admin-pos-discovery-heading">
+            <div>
+              <span className="eyebrow">CATALOG</span>
+              <h2>Find items and services</h2>
+            </div>
+            <span>
+              <CircleCheck size={15} /> Availability checked against inventory
+            </span>
+          </div>
+        )}
         <div className="list-toolbar pos-toolbar">
           <SearchField
             label={customerMode ? 'Search PC parts' : 'Search products and services'}
@@ -175,17 +194,29 @@ export function PosPage() {
             </button>
           )}
           {!customerMode && (
-            <select
-              aria-label="Product type"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option>All</option>
-              <option>Products</option>
-              <option>Services</option>
-            </select>
+            <div className="admin-pos-type-filter" role="group" aria-label="Product type">
+              {['All', 'Products', 'Services'].map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  aria-pressed={filter === value}
+                  onClick={() => setFilter(value)}
+                >
+                  {value === 'All' ? 'All items' : value}
+                </button>
+              ))}
+            </div>
           )}
         </div>
+        {!customerMode && (
+          <div className="admin-pos-results" aria-live="polite">
+            {workspace.loading
+              ? 'Loading catalog…'
+              : workspace.storageError
+                ? 'Catalog unavailable'
+                : `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`}
+          </div>
+        )}
         {customerMode && (
           <div className="shop-category-tabs" role="group" aria-label="Product category">
             {categories.map((value) => (
@@ -263,23 +294,23 @@ export function PosPage() {
           </>
         )}
       </div>
-      <div className={customerMode ? 'pos-layout shop-layout' : 'pos-layout'}>
+      <div className={customerMode ? 'pos-layout shop-layout' : 'pos-layout admin-pos-layout'}>
         <div>
           <div className="pos-products">
             {!workspace.loading &&
               !workspace.storageError &&
               filtered.map((product) => (
                 <article
-                  className={customerMode ? 'pos-product shop-product-card' : 'pos-product'}
+                  className={
+                    customerMode ? 'pos-product shop-product-card' : 'pos-product admin-pos-product'
+                  }
                   key={product.id}
                 >
                   <div className="product-visual">
-                    {(customerMode || !product.item?.image) && (
-                      <span className="service-icon">
-                        {product.service ? <BrushCleaning size={32} /> : <Package size={32} />}
-                        {customerMode && <small>Image not available</small>}
-                      </span>
-                    )}
+                    <span className="service-icon">
+                      {product.service ? <BrushCleaning size={32} /> : <Package size={32} />}
+                      {customerMode && <small>Image not available</small>}
+                    </span>
                     {product.item?.image && (
                       <img
                         className="product-image"
@@ -303,6 +334,20 @@ export function PosPage() {
                         </span>
                       </>
                     )}
+                    {!customerMode && (
+                      <>
+                        <span className="admin-pos-product-category">
+                          {product.service ? 'Service' : product.category}
+                        </span>
+                        <span className={`admin-pos-stock ${product.stock <= 0 ? 'is-empty' : ''}`}>
+                          {product.service
+                            ? 'Workshop'
+                            : product.stock > 0
+                              ? `${product.stock} in stock`
+                              : 'Out of stock'}
+                        </span>
+                      </>
+                    )}
                   </div>
                   <h2>{product.name}</h2>
                   {!customerMode && (
@@ -313,11 +358,20 @@ export function PosPage() {
                     </p>
                   )}
                   {product.item?.specs && <p className="shop-card-specs">{product.item.specs}</p>}
+                  {!customerMode && (
+                    <span className="admin-pos-price-label">
+                      {product.service ? 'Service price' : 'Unit price'}
+                    </span>
+                  )}
                   <strong>
                     {product.price === null ? 'Price not set' : formatPHP(product.price)}
                   </strong>
                   <button
-                    className={customerMode ? 'primary-button shop-add-button' : 'secondary-button'}
+                    className={
+                      customerMode
+                        ? 'primary-button shop-add-button'
+                        : 'primary-button admin-pos-add'
+                    }
                     disabled={
                       product.price === null ||
                       product.stock <= (cart.find((line) => line.id === product.id)?.quantity ?? 0)
@@ -365,13 +419,15 @@ export function PosPage() {
           {!workspace.loading && !workspace.storageError && !filtered.length && (
             <div className="empty-state">
               <Package size={26} />
-              <h3>No matching products</h3>
+              <h3>{customerMode ? 'No matching products' : 'No matching items'}</h3>
               <p>
                 {customerMode
                   ? products.length
                     ? 'Try a different search or clear your filters.'
                     : 'No products are available yet. Please check back.'
-                  : 'Add inventory to make products available here.'}
+                  : products.length
+                    ? 'Try another search or choose a different product type.'
+                    : 'Add inventory or workshop services to make them available here.'}
               </p>
             </div>
           )}
@@ -384,9 +440,38 @@ export function PosPage() {
         </Dialog>
       )}
       {checkoutOpen && <CheckoutDialog {...pos} />}
+      {!customerMode && showOrders && (
+        <Dialog title="Online orders" wide onClose={() => setShowOrders(false)}>
+          <div className="admin-pos-orders-dialog">
+            <div className="admin-pos-dialog-intro">
+              <span className="admin-pos-dialog-icon" aria-hidden="true"><ShoppingCart size={20} /></span>
+              <div>
+                <span className="eyebrow">CUSTOMER ORDERS</span>
+                <h3>Review and fulfill online purchases</h3>
+                <p>Confirm requests, reserve stock, and open orders in POS to collect payment.</p>
+              </div>
+            </div>
+            <RequestQueue scope="orders" />
+          </div>
+        </Dialog>
+      )}
       {bundlesOpen && (
         <Dialog title="Bundles & PC sets" wide onClose={() => setBundlesOpen(false)}>
-          <BundleCatalog onSelect={selectBundle} />
+          {customerMode ? (
+            <BundleCatalog onSelect={selectBundle} />
+          ) : (
+            <div className="admin-pos-bundle-dialog">
+              <div className="admin-pos-dialog-intro">
+                <span className="admin-pos-dialog-icon" aria-hidden="true"><PackageOpen size={20} /></span>
+                <div>
+                  <span className="eyebrow">READY-MADE COMBINATIONS</span>
+                  <h3>Choose a bundle for this order</h3>
+                  <p>Available sets can be added to the cart with their included parts and price.</p>
+                </div>
+              </div>
+              <BundleCatalog onSelect={selectBundle} showHeading={false} />
+            </div>
+          )}
         </Dialog>
       )}
       {productDetail && (

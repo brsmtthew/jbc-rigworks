@@ -228,7 +228,7 @@ export function BookingPage() {
           onPrint={() => window.print()}
         />
       )}
-      <section className="booking-intro" aria-label="Services introduction">
+      <section className="booking-intro jbc-blue-hero" aria-label="Services introduction">
         <div>
           <span className="eyebrow">PLAN YOUR VISIT</span>
           <h2>Choose the care your device needs.</h2>

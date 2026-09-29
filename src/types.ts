@@ -177,6 +177,12 @@ export type JobStatus = ServiceStatus | 'Queued' | 'In progress' | 'Ready'
 
 export type Job = {
   schemaVersion?: 2
+  channel?: 'Walk-in' | 'Online'
+  serviceId?: string
+  serviceIntake?: ServiceIntake
+  confirmedAt?: string
+  intakeSignedAt?: string
+  intakeSignedBy?: string
   customerId?: string
   contact?: string
   appointmentId?: string

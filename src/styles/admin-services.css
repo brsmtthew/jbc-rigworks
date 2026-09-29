@@ -1,0 +1,998 @@
+.admin-services {
+  min-width: 0;
+}
+
+.admin-services-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.admin-services-hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 370px;
+  height: 370px;
+  top: -285px;
+  right: 15%;
+  border: 1px solid #ffffff1e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 42px #ffffff08, 0 0 0 84px #ffffff05;
+  pointer-events: none;
+}
+
+.admin-services-hero-copy {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  min-width: 0;
+}
+
+.admin-services-hero-copy > div {
+  min-width: 0;
+}
+
+
+.admin-services-hero-side {
+  display: grid;
+  justify-items: stretch;
+  gap: 10px;
+  flex: 0 0 230px;
+  padding: 14px;
+  border: 1px solid #ffffff32;
+  border-radius: 12px;
+  background: #ffffff14;
+}
+
+.admin-services-hero-side-label {
+  color: #d4eaff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.admin-services-hero-count {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #d4e9fb;
+  font-size: 11px;
+}
+
+.admin-services-hero-count strong {
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-shell .admin-services-hero .primary-button {
+  min-height: 39px;
+  padding: 9px 14px;
+  border-color: white;
+  border-radius: 9px;
+  background: white;
+  color: #075cab;
+  font-size: 12px;
+  box-shadow: 0 5px 16px #001c3a29;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.admin-shell .admin-services-hero .primary-button:hover {
+  background: #e8f4ff;
+  transform: translateY(-2px);
+}
+
+.admin-services-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border: 1px solid #d9e5f1;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 7px 24px #072d570a;
+}
+
+.admin-shell .admin-services-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 560px;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-shell .admin-services-tabs button {
+  min-width: 0;
+  white-space: normal;
+}
+
+.admin-shell .admin-services-filters {
+  flex: 0 1 340px;
+  min-width: 220px;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-wrap: nowrap;
+}
+
+.admin-shell .admin-services-filters .search-field {
+  flex: 1 1 150px;
+  max-width: none;
+}
+
+.admin-shell .admin-services-filters:has(.admin-filter-label) {
+  flex-basis: 370px;
+}
+
+.admin-shell .admin-services-filters .admin-filter-label {
+  flex: 0 1 170px;
+  min-width: 0;
+}
+
+.admin-shell .admin-services-filters .admin-filter-label select {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-services-list-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.admin-services-list-heading .eyebrow {
+  color: #587a9c;
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+
+.admin-services-list-heading h2 {
+  margin: 4px 0 0;
+  color: #0b3158;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  letter-spacing: -.035em;
+}
+
+.admin-services-list-heading .result-count {
+  flex: 0 0 auto;
+}
+
+.admin-services .service-request-inbox {
+  gap: 0;
+  margin: 0;
+}
+
+.admin-services .service-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-services .service-record-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dae6f2;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 14px #102a4308;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.admin-services .service-record-row:hover {
+  border-color: #adcfec;
+  box-shadow: 0 9px 22px #102a4314;
+  transform: translateY(-2px);
+}
+
+.service-record-main,
+.service-record-title {
+  min-width: 0;
+}
+
+.service-record-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 18px 12px;
+}
+
+.service-record-icon {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #edf5fd;
+  color: #1369b9;
+}
+
+.service-record-title {
+  flex: 1;
+}
+
+.service-record-title h3 {
+  margin: 0 0 2px;
+  color: #0c3158;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.service-record-title > span {
+  color: #66839d;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.service-record-heading .status-badge {
+  flex: 0 0 auto;
+}
+
+.service-record-channel {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #cce2f7;
+  border-radius: 7px;
+  background: #edf6ff;
+  color: #1766a7;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.service-record-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
+  margin: 0 18px 14px;
+  padding: 12px 0;
+  border-top: 1px solid #eaf0f6;
+}
+
+.service-record-values > div {
+  min-width: 0;
+  padding: 0 12px;
+  border-left: 1px solid #eaf0f6;
+}
+
+.service-record-values > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.service-record-values dt,
+.service-record-actions-label {
+  margin-bottom: 6px;
+  color: #6b839a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.service-record-values dd {
+  min-width: 0;
+  margin: 0;
+  color: #0b315c;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.service-record-values dd small {
+  display: block;
+  margin-top: 3px;
+  color: #66839d;
+  font-size: 11px;
+  font-weight: 450;
+}
+
+.service-record-values .service-record-reference {
+  color: #526d86;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.service-record-note,
+.service-record-intake-note {
+  margin: 0 18px 14px;
+  color: #516d88;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.service-record-note strong {
+  color: #315d84;
+  font-weight: 750;
+}
+
+.service-record-intake-note {
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #eef6ff;
+  color: #315d84;
+}
+
+.service-record-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 1px solid #eaf0f6;
+  background: #f8fbff;
+}
+
+.service-record-actions-label {
+  display: block;
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+
+.admin-shell .service-record-actions > button {
+  grid-column: auto;
+  justify-content: center;
+  width: 100%;
+  white-space: normal;
+}
+
+.admin-shell .service-record-actions > button:last-of-type:nth-of-type(odd),
+.admin-shell .service-record-actions > .service-record-action-full {
+  grid-column: 1 / -1;
+}
+
+.admin-appointment-view {
+  display: grid;
+  gap: 18px;
+  color: #214260;
+}
+
+.admin-appointment-view-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4edf5;
+}
+
+.admin-appointment-view-heading h3 {
+  margin: 4px 0;
+  color: #0b3158;
+  font-family: var(--font-heading);
+  font-size: 20px;
+}
+
+.admin-appointment-view-heading small {
+  color: #65809b;
+  overflow-wrap: anywhere;
+}
+
+.admin-appointment-view-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.admin-appointment-view-grid > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e0eaf3;
+  border-radius: 9px;
+  background: #f9fcff;
+}
+
+.admin-appointment-view dt {
+  margin-bottom: 5px;
+  color: #69829a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.admin-appointment-view dd {
+  margin: 0;
+  color: #0e345b;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.admin-appointment-view-section {
+  padding: 16px;
+  border: 1px solid #e0eaf3;
+  border-radius: 10px;
+}
+
+.admin-appointment-view-section h4 {
+  margin: 0 0 12px;
+  color: #0c3158;
+  font-family: var(--font-heading);
+  font-size: 14px;
+}
+
+.admin-appointment-view-section p {
+  margin: 6px 0 0;
+  color: #4b6884;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.admin-appointment-view-section .admin-appointment-view-grid > div {
+  background: #fff;
+}
+
+.service-record-closed {
+  grid-column: 1 / -1;
+  color: #387a5c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-services-hero,
+  .admin-services .service-record-row {
+    animation: admin-services-enter 280ms ease-out both;
+  }
+}
+
+@keyframes admin-services-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1150px) {
+  .service-record-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 0;
+  }
+
+  .service-record-values > div:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-services-controls {
+    gap: 12px;
+  }
+
+  .admin-shell .admin-services-filters {
+    flex-basis: 250px;
+  }
+
+  .admin-services .service-record-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .service-record-actions {
+    border-top: 1px solid #eaf0f6;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-appointment-view-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-services-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-shell .admin-services-tabs,
+  .admin-shell .admin-services-filters {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .admin-shell .admin-services-filters {
+    min-width: 0;
+  }
+
+  .admin-services-hero {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .admin-services-hero-side {
+    display: grid;
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 540px) {
+  .admin-services-controls {
+    padding: 12px;
+  }
+
+  .admin-shell .admin-services-tabs {
+    width: 100%;
+  }
+
+  .admin-shell .admin-services-tabs button {
+    min-height: 46px;
+    padding: 8px 6px;
+    font-size: 10px;
+  }
+
+  .admin-services-list-heading h2 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-services-hero-side {
+    align-items: stretch;
+  }
+
+  .admin-services-hero-count strong {
+    font-size: 17px;
+  }
+
+  .admin-shell .admin-services-hero .primary-button {
+    width: 100%;
+  }
+
+  .service-record-heading {
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+
+  .service-record-heading .status-badge {
+    margin-left: 50px;
+  }
+
+  .service-record-values {
+    margin-inline: 14px;
+  }
+
+  .service-record-values > div {
+    padding-inline: 10px;
+  }
+
+  .service-record-note,
+  .service-record-intake-note {
+    margin-inline: 14px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-services-hero,
+  .admin-services .service-record-row {
+    animation: none;
+    transition: none;
+  }
+}
+
+.admin-shell.reduce-motion .admin-services-hero,
+.admin-shell.reduce-motion .admin-services .service-record-row {
+  animation: none;
+  transition: none;
+}
+
+.admin-shell.reduce-motion .admin-services .service-record-row:hover,
+.admin-shell.reduce-motion .admin-services-hero .primary-button:hover {
+  transform: none;
+}
+
+/* Walk-in intake and signed authorization. */
+.app-dialog:has(.walkin-form) {
+  width: min(940px, calc(100vw - 32px));
+}
+
+.app-dialog:has(.walkin-form) .dialog-body {
+  padding: 0;
+}
+
+.app-dialog:has(.walkin-form) .dialog-footer {
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.walkin-form {
+  min-width: 0;
+  padding: 22px 26px 28px;
+}
+
+.walkin-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.walkin-steps > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e1eaf3;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #68819b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.walkin-steps > div > span {
+  display: grid;
+  flex: 0 0 25px;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #e7eef6;
+  color: #607d9a;
+  font-size: 11px;
+}
+
+.walkin-steps > .is-current {
+  border-color: #b3d6f6;
+  background: #edf6ff;
+  color: #0b4c89;
+}
+
+.walkin-steps > .is-current > span {
+  background: #0866dc;
+  color: white;
+}
+
+.walkin-steps > .is-done > span {
+  background: #e0f3e9;
+  color: #25805b;
+}
+
+.walkin-form-intro {
+  margin-bottom: 19px;
+}
+
+.walkin-form-intro .eyebrow,
+.walkin-success .eyebrow {
+  color: #3774ae;
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+.walkin-form-intro h3,
+.walkin-success h3 {
+  margin: 5px 0 6px;
+  color: #0b3158;
+  font-family: var(--font-heading);
+  font-size: 23px;
+  letter-spacing: -.035em;
+}
+
+.walkin-form-intro p,
+.walkin-success p {
+  margin: 0;
+  color: #56728d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.walkin-form-section,
+.walkin-review {
+  padding: 21px;
+  border: 1px solid #dde8f2;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.walkin-form-grid,
+.walkin-review dl,
+.walkin-success dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.walkin-form-grid label,
+.walkin-intake-fields label:not(.check-row) {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  color: #3d5f80;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.walkin-form :is(input:not([type='checkbox']), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #cdddec;
+  border-radius: 8px;
+  background: white;
+  color: #0d3158;
+  font: inherit;
+  font-weight: 500;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.walkin-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.walkin-form :is(input:not([type='checkbox']), select, textarea):focus-visible {
+  border-color: #4c98df;
+  outline: 0;
+  box-shadow: 0 0 0 3px #0b75d51c;
+}
+
+.walkin-service-selection {
+  margin-top: 17px;
+  padding: 14px 16px;
+  border: 1px solid #cbe1f5;
+  border-radius: 10px;
+  background: #eff7ff;
+}
+
+.walkin-service-selection strong {
+  color: #0c4a83;
+  font-family: var(--font-heading);
+  font-size: 13px;
+}
+
+.walkin-service-selection p,
+.walkin-service-selection small {
+  display: block;
+  margin: 5px 0 0;
+  color: #4d6c89;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.walkin-intake-fields .home-intake-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.walkin-intake-fields .booking-section-heading {
+  padding: 2px 0 4px;
+}
+
+.walkin-intake-fields .booking-section-heading h3 {
+  margin: 5px 0 6px;
+  color: #0b3158;
+  font-family: var(--font-heading);
+  font-size: 20px;
+}
+
+.walkin-intake-fields .booking-section-heading p {
+  max-width: 680px;
+  margin: 0;
+  color: #59748e;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.walkin-intake-fields .home-intake-group {
+  display: grid;
+  gap: 15px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e1eaf3;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.walkin-intake-fields .home-intake-group h4 {
+  margin: 0;
+  color: #0e345d;
+  font-family: var(--font-heading);
+  font-size: 14px;
+}
+
+.walkin-intake-fields .home-intake-group .portal-form-grid {
+  gap: 15px;
+}
+
+.walkin-intake-fields .home-intake-selected {
+  margin: 0;
+  color: #345774;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.walkin-review-banner,
+.walkin-price-note,
+.walkin-signature-guidance {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 18px;
+  padding: 11px 13px;
+  border: 1px solid #bed8f1;
+  border-radius: 9px;
+  background: #eff7ff;
+  color: #28527b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.walkin-review-banner svg {
+  flex: 0 0 auto;
+}
+
+.walkin-review dl,
+.walkin-success dl {
+  margin: 0 0 18px;
+}
+
+.walkin-review dl > div,
+.walkin-success dl > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e1eaf3;
+  border-radius: 9px;
+  background: white;
+}
+
+.walkin-review dt,
+.walkin-success dt {
+  margin-bottom: 5px;
+  color: #6b839a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.walkin-review dd,
+.walkin-success dd {
+  margin: 0;
+  color: #0c3158;
+  font-size: 12px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.walkin-review > p {
+  color: #56728d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.walkin-review .walkin-price-note,
+.walkin-success .walkin-price-note {
+  margin-top: 16px;
+}
+
+.walkin-success {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.walkin-success-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 15px;
+  border-radius: 13px;
+  background: #e0f3e9;
+  color: #25805b;
+}
+
+.walkin-success > p {
+  margin-bottom: 20px;
+}
+
+.walkin-review-dialog {
+  display: grid;
+  gap: 16px;
+}
+
+.walkin-review-dialog .home-intake-document {
+  min-width: 0;
+}
+
+.walkin-signature-guidance {
+  margin: 0;
+}
+
+.walkin-signature-check {
+  padding: 13px;
+  border: 1px solid #cbe1f5;
+  border-radius: 9px;
+  background: #f1f8ff;
+  color: #315c82;
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .walkin-form-section,
+  .walkin-intake-fields,
+  .walkin-review,
+  .walkin-success {
+    animation: admin-services-enter 220ms ease-out both;
+  }
+}
+
+@media (max-width: 700px) {
+  .walkin-form {
+    padding: 18px;
+  }
+
+  .walkin-steps > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 9px;
+    font-size: 10px;
+  }
+
+  .walkin-form-grid,
+  .walkin-review dl,
+  .walkin-success dl,
+  .walkin-intake-fields .portal-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .walkin-form-section,
+  .walkin-review,
+  .walkin-intake-fields .home-intake-group {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-dialog:has(.walkin-form) .dialog-footer > button {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .walkin-steps > div {
+    font-size: 9px;
+  }
+
+  .walkin-form-intro h3,
+  .walkin-success h3 {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walkin-form-section,
+  .walkin-intake-fields,
+  .walkin-review,
+  .walkin-success {
+    animation: none;
+  }
+}

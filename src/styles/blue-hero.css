@@ -1,0 +1,57 @@
+/* Shared large blue page card used by customer and admin workspaces. */
+.app-shell .page-transition .jbc-blue-hero {
+  isolation: isolate;
+  min-height: 180px;
+  padding: 30px clamp(24px, 3.2vw, 42px);
+  border: 1px solid #174a80;
+  border-radius: 18px;
+  background: linear-gradient(113deg, #09294f 0%, #0b3e72 67%, #0867b8 100%);
+  color: white;
+  box-shadow: 0 15px 35px #062c5517;
+}
+
+.app-shell .page-transition .jbc-blue-hero :is(h1, h2) {
+  margin: 7px 0 6px;
+  color: white;
+  font-family: var(--font-heading);
+  font-size: clamp(23px, 2.3vw, 31px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+}
+
+.app-shell .page-transition .jbc-blue-hero :is(
+  .admin-dashboard-hero-kicker,
+  .admin-pos-kicker,
+  .customer-home-kicker,
+  .customer-records-kicker,
+  .shop-kicker,
+  .pcb-eyebrow,
+  .eyebrow
+) {
+  display: block;
+  margin: 0;
+  color: #abd5ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.3;
+}
+
+.app-shell .page-transition .jbc-blue-hero p {
+  margin: 0;
+  color: #d7e7f7;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .app-shell .page-transition .jbc-blue-hero {
+    min-height: 160px;
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell .page-transition .jbc-blue-hero { min-height: 150px; }
+}

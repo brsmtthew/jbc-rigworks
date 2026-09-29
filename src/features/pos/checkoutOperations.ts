@@ -83,14 +83,18 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
     }
     if (draft.jobId) {
       const job = current.jobs.find((value) => value.id === draft.jobId)
+      const status = job ? serviceState(job.status) : null
+      const walkInPayNow =
+        job?.channel === 'Walk-in' &&
+        (status === 'Checked in' || status === 'In service')
       if (
         user.role !== 'admin' ||
         !job ||
-        serviceState(job.status) !== 'Ready for checkout' ||
+        (status !== 'Ready for checkout' && !walkInPayNow) ||
         job.transactionId ||
         job.paymentStatus === 'Paid'
       )
-        throw new Error('Only an unpaid, ready service can be sent to checkout.')
+        throw new Error('Only an unpaid, ready service or confirmed walk-in can be sent to checkout.')
       if (draft.customServices?.[0]?.unitPrice !== job.quote)
         throw new Error('The approved service quote changed. Open the service in POS again.')
     }
@@ -275,7 +279,13 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
       status: adminCheckout ? 'Paid' : 'Unpaid',
       paymentStatus: adminCheckout ? 'Paid' : 'Unpaid',
       reservationState: adminCheckout ? 'Consumed' : 'None',
-      orderStatus: adminCheckout ? (draft.jobId ? 'Ready' : 'Completed') : 'Requested',
+      orderStatus: adminCheckout
+        ? draft.jobId
+          ? serviceState(current.jobs[0].status) === 'Ready for checkout'
+            ? 'Ready'
+            : 'Processing'
+          : 'Completed'
+        : 'Requested',
       paidAt: adminCheckout ? createdAt : undefined,
       fulfillment: lines.some((line) => line.inventoryId)
         ? {
