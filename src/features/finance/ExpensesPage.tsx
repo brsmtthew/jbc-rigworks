@@ -1,19 +1,20 @@
-import { Pencil, Plus } from 'lucide-react'
+import { History, Pencil, Plus, Repeat2 } from 'lucide-react'
 import { useState } from 'react'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { DataTable } from '../../components/ui/DataTable'
 import { Dialog } from '../../components/ui/Dialog'
+import { ExcelButton } from '../../components/ui/ExcelButton'
 import { ListToolbar } from '../../components/ui/ListToolbar'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { Panel } from '../../components/ui/Panel'
-import { StatStrip } from '../../components/ui/StatStrip'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useListFilters } from '../../hooks/useListFilters'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useAuth } from '../../lib/auth-context'
 import { today } from '../../lib/dates'
 import { prepareExcel } from '../../lib/excel'
 import { formatDate, formatPHP } from '../../lib/format'
+import { shortReference } from '../../lib/reference'
 import { humanError } from '../../lib/workflow'
 import type { Expense } from '../../types'
 import { ExpenseEditor } from './ExpenseEditor'
@@ -56,6 +57,29 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
       (method === 'all' || expense.method === method) &&
       (recurrence === 'all' || (expense.recurrence ?? 'One-time') === recurrence),
   )
+  const activeExpenses = expenses.filter((expense) => !expense.voided)
+  const filteredSpending = filtered
+    .filter((expense) => !expense.voided)
+    .reduce((sum, expense) => sum + expense.amount, 0)
+  const metrics = [
+    { label: 'Recorded expenses', value: formatPHP(summary.spent, true), note: 'Operating costs excluding voids' },
+    { label: 'Active entries', value: activeExpenses.length, note: 'Expenses in the ledger' },
+    { label: 'Categories', value: categories.length, note: 'Types of workshop spending' },
+    { label: 'Filtered spending', value: formatPHP(filteredSpending), note: 'Total for the current view' },
+  ]
+  function exportExpenses() {
+    return prepareExcel('expenses', [
+      [
+        'Reference', 'Description', 'Date', 'Category', 'Vendor', 'Method', 'Amount PHP',
+        'Receipt reference', 'Frequency', 'Status', 'Notes',
+      ],
+      ...filtered.map((expense) => [
+        expense.id, expense.description, expense.date, expense.category, expense.vendor || '',
+        expense.method, expense.amount, expense.reference || '', expense.recurrence || 'One-time',
+        expense.voided ? 'Voided' : 'Recorded', expense.notes || '',
+      ]),
+    ])
+  }
   const nextDate = (expense: Expense) => {
     try {
       return nextExpenseDate(expense)
@@ -109,113 +133,98 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
     )
   if (workspace.loading) return <LoadingState variant="table" label="Loading expenses…" />
   return (
-    <>
-      <PageHeader
-        eyebrow="MONEY OUT"
-        title="Expenses"
-        description="Recorded workshop costs with a retained history of corrections."
-      >
-        <button className="primary-button" onClick={onCreate}>
-          <Plus size={18} />
-          Record expense
-        </button>
-      </PageHeader>
-      <StatStrip
-        stats={[
-          { label: 'Recorded expenses', value: formatPHP(summary.spent, true) },
-          { label: 'Entries', value: expenses.length },
-          { label: 'Categories', value: categories.length },
-          {
-            label: 'Filtered spending',
-            value: formatPHP(
-              filtered.filter((item) => !item.voided).reduce((sum, item) => sum + item.amount, 0),
-            ),
-          },
-        ]}
-      />
-      <ListToolbar
-        {...filters}
-        label="Search expenses"
-        count={filtered.length}
-        onReset={reset}
-        options={[
-          { value: 'all', label: 'All categories' },
-          ...categories.map((value) => ({ value, label: value })),
-        ]}
-        onExport={() =>
-          prepareExcel('expenses', [
-            [
-              'Reference',
-              'Description',
-              'Date',
-              'Category',
-              'Vendor',
-              'Method',
-              'Amount PHP',
-              'Receipt reference',
-              'Frequency',
-              'Status',
-              'Notes',
-            ],
-            ...filtered.map((expense) => [
-              expense.id,
-              expense.description,
-              expense.date,
-              expense.category,
-              expense.vendor || '',
-              expense.method,
-              expense.amount,
-              expense.reference || '',
-              expense.recurrence || 'One-time',
-              expense.voided ? 'Voided' : 'Recorded',
-              expense.notes || '',
-            ]),
-          ])
-        }
-      />
-      <div className="portal-form portal-form-grid admin-expense-filters">
-        <label>
-          From date
-          <input
-            type="date"
-            value={from}
-            max={to || undefined}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-        </label>
-        <label>
-          To date
-          <input
-            type="date"
-            value={to}
-            min={from || undefined}
-            onChange={(event) => setTo(event.target.value)}
-          />
-        </label>
-        <label>
-          Payment method
-          <select value={method} onChange={(event) => setMethod(event.target.value)}>
-            <option value="all">All methods</option>
-            {methods.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Frequency
-          <select value={recurrence} onChange={(event) => setRecurrence(event.target.value)}>
-            <option value="all">All frequencies</option>
-            {['One-time', 'Monthly', 'Yearly'].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {(from || to || method !== 'all' || recurrence !== 'all') && (
-        <button className="text-button" onClick={reset}>
-          Clear expense filters
-        </button>
-      )}
+    <div className="admin-expenses-page">
+      <section className="admin-expenses-hero jbc-blue-hero" aria-labelledby="admin-expenses-title">
+        <div className="admin-expenses-hero-copy">
+          <span className="admin-expenses-kicker">WORKSHOP COSTS</span>
+          <h1 id="admin-expenses-title">Expenses</h1>
+          <p>Track spending, review recurring payments, and keep a clear record of corrections.</p>
+        </div>
+        <div className="admin-expenses-hero-actions admin-hero-tool-panel" role="group" aria-label="Expense actions">
+          <span className="admin-expenses-hero-actions-label">EXPENSE TOOLS</span>
+          <strong>{expenses.length} {expenses.length === 1 ? 'entry' : 'entries'} in your ledger</strong>
+          <div>
+            <button type="button" className="primary-button" onClick={onCreate}>
+              <Plus size={16} /> Record expense
+            </button>
+            <ExcelButton disabled={!filtered.length} onExport={exportExpenses} />
+          </div>
+        </div>
+      </section>
+      <dl className="admin-expenses-metrics">
+        {metrics.map((metric) => (
+          <div key={metric.label}>
+            <dt>{metric.label}</dt>
+            <dd>{metric.value}</dd>
+            <small>{metric.note}</small>
+          </div>
+        ))}
+      </dl>
+      <section className="admin-expenses-discovery discovery-card" aria-label="Find an expense">
+        <div className="admin-expenses-discovery-heading">
+          <div>
+            <span className="eyebrow">FIND A RECORD</span>
+            <h2>Search your expenses</h2>
+          </div>
+          <span className="discovery-card-count" role="status">{filtered.length} {filtered.length === 1 ? 'result' : 'results'}</span>
+        </div>
+        <ListToolbar
+          {...filters}
+          label="Search expenses"
+          filterLabel="Category"
+          onReset={reset}
+          options={[
+            { value: 'all', label: 'All categories' },
+            ...categories.map((value) => ({ value, label: value })),
+          ]}
+        />
+        <details className="admin-expense-more-filters">
+          <summary>More filters{from || to || method !== 'all' || recurrence !== 'all' ? ' · Active' : ''}</summary>
+        <div className="portal-form portal-form-grid admin-expense-filters">
+          <label>
+            From date
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </label>
+          <label>
+            To date
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </label>
+          <label>
+            Payment method
+            <select value={method} onChange={(event) => setMethod(event.target.value)}>
+              <option value="all">All methods</option>
+              {methods.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Frequency
+            <select value={recurrence} onChange={(event) => setRecurrence(event.target.value)}>
+              <option value="all">All frequencies</option>
+              {['One-time', 'Monthly', 'Yearly'].map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        </details>
+        {(from || to || method !== 'all' || recurrence !== 'all') && (
+          <button type="button" className="text-button admin-expenses-clear" onClick={reset}>
+            Clear expense filters
+          </button>
+        )}
+      </section>
       {error && (
         <p role="alert" className="form-error">
           {error}
@@ -227,6 +236,7 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
         </p>
       )}
       <Panel
+        className="admin-expenses-ledger"
         title="Operating expenses"
         subtitle="Recurring entries are recorded only when you confirm payment."
       >
@@ -260,14 +270,14 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
             {
               label: 'Category',
               sortValue: (expense) => expense.category,
-              render: (expense) => expense.category,
+              render: (expense) => <span className="admin-expenses-category">{expense.category}</span>,
             },
             {
               label: 'Vendor / receipt',
               render: (expense) => (
                 <>
                   {expense.vendor || 'Not specified'}
-                  <small>{expense.reference || 'No receipt reference'}</small>
+                  <small title={expense.reference}>{expense.reference ? shortReference(expense.reference) : 'No receipt reference'}</small>
                 </>
               ),
             },
@@ -282,33 +292,43 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
               numeric: true,
               render: (expense) => <strong>{formatPHP(expense.amount)}</strong>,
             },
-            { label: 'Status', render: (expense) => (expense.voided ? 'Voided' : 'Recorded') },
+            {
+              label: 'Status',
+              render: (expense) => (
+                <StatusBadge tone={expense.voided ? 'gray' : 'green'}>
+                  {expense.voided ? 'Voided' : 'Recorded'}
+                </StatusBadge>
+              ),
+            },
             {
               label: 'Actions',
               render: (expense) => (
-                <>
-                  <button className="text-button" onClick={() => setAudit(expense)}>
-                    Audit history
+                <div className="admin-expenses-row-actions">
+                  <button type="button" className="secondary-button" onClick={() => setAudit(expense)}>
+                    <History size={15} /> Audit
                   </button>
                   <button
+                    type="button"
                     disabled={expense.voided}
-                    className="text-button"
+                    className="secondary-button"
                     onClick={() => setEditing(expense)}
                     title="Edit expense"
                     aria-label={`Edit ${expense.description}`}
                   >
-                    <Pencil size={18} />
+                    <Pencil size={15} /> Edit
                   </button>
                   {unrecordedNext(expense) && (
                     <button
-                      className="text-button"
+                      type="button"
+                      className="secondary-button admin-expenses-repeat"
                       disabled={busy || nextDate(expense) > today()}
                       onClick={() => recordOccurrence(expense)}
                     >
+                      <Repeat2 size={15} />
                       Record next occurrence ({formatDate(nextDate(expense))})
                     </button>
                   )}
-                </>
+                </div>
               ),
             },
           ]}
@@ -354,6 +374,6 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
         </Dialog>
       )}
       {editing && <ExpenseEditor expense={editing} onClose={() => setEditing(null)} />}
-    </>
+    </div>
   )
 }

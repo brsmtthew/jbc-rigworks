@@ -4,16 +4,13 @@ export function useListFilters() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
   const filter = params.get('filter') ?? 'all'
-  const update = (key: string, value: string) =>
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (!value || value === 'all') next.delete(key)
-        else next.set(key, value)
-        return next
-      },
-      { replace: true },
-    )
+  const update = (key: string, value: string) => {
+    // The current URL includes the last navigation even when React has not rendered it yet.
+    const next = new URLSearchParams(window.location.search)
+    if (!value || value === 'all') next.delete(key)
+    else next.set(key, value)
+    setParams(next, { replace: true })
+  }
   return {
     query,
     filter,

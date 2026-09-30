@@ -1,0 +1,163 @@
+/* Search cards use the same header, aligned fields, and secondary footer. */
+.app-shell .discovery-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid #d9e6f2;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 8px 24px #092d5108;
+}
+
+.app-shell :is(.admin-sales-discovery-heading, .admin-expenses-discovery-heading, .inventory-discovery-heading, .admin-pos-discovery-heading, .service-catalog-heading) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  min-width: 0;
+  margin: 0;
+}
+
+.app-shell :is(.admin-sales-discovery-heading, .admin-expenses-discovery-heading, .inventory-discovery-heading, .admin-pos-discovery-heading, .service-catalog-heading) > div { min-width: 0; }
+.app-shell .discovery-card .eyebrow { color: #3d78b1; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.app-shell .discovery-card :is(h2, .admin-pos-discovery-heading h2) {
+  margin: 3px 0 0;
+  color: #0b3158;
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -.035em;
+  line-height: 1.3;
+}
+
+.app-shell .discovery-card-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: #edf5ff;
+  color: #2463a0;
+  font-size: 11px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.app-shell .toolbar-field { display: grid; align-content: end; gap: 5px; min-width: 0; margin: 0; }
+.app-shell .toolbar-field-label,
+.app-shell .inventory-category-filter > span,
+.app-shell .service-filter-label { color: #466785; font-size: 11px; font-weight: 700; line-height: 1.35; }
+.app-shell .toolbar-field > :is(.search-field, select) { width: 100%; min-width: 0; margin: 0; }
+.app-shell .discovery-card :is(.search-field, select, .service-search-field) {
+  min-height: 40px;
+  border: 1px solid #cbddeb;
+  border-radius: 9px;
+  background: #f8fbff;
+  color: #173f65;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.app-shell .discovery-card :is(.search-field, select, .service-search-field):hover { border-color: #86b6df; background: #fff; }
+.app-shell .discovery-card :is(.search-field, select, .service-search-field):focus-within { border-color: #4d98d9; box-shadow: 0 0 0 3px #147bd31c; background: #fff; }
+.app-shell .discovery-card .search-field input { min-width: 0; min-height: 38px; height: 38px; border: 0; background: transparent; box-shadow: none; }
+.app-shell .discovery-card :is(.search-field input, .service-search-field input, select):focus-visible { outline: none; }
+.app-shell .discovery-card :is(.search-field, .service-search-field):focus-within { box-shadow: 0 0 0 3px #147bd333; }
+.app-shell .discovery-card select:focus-visible { box-shadow: 0 0 0 3px #147bd333; }
+.app-shell .discovery-card select { min-height: 40px; height: 40px; padding: 0 12px; font-size: 12px; }
+
+.admin-shell .admin-sales-discovery .list-toolbar,
+.admin-shell .admin-expenses-discovery .list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 220px) auto;
+  align-items: end;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+}
+.admin-shell .admin-sales-discovery .list-toolbar > :first-child,
+.admin-shell .admin-expenses-discovery .list-toolbar > :first-child { min-width: 0; }
+.admin-shell .admin-sales-discovery .search-field,
+.admin-shell .admin-expenses-discovery .search-field { width: 100%; max-width: none; }
+.admin-shell .admin-sales-discovery .list-toolbar select,
+.admin-shell .admin-expenses-discovery .list-toolbar select { width: 100%; min-width: 0; }
+.admin-shell .list-toolbar .toolbar-reset {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid #cbddeb;
+  border-radius: 9px;
+  background: #f8fbff;
+  color: #1f67a9;
+}
+.admin-shell .list-toolbar .toolbar-reset:hover { border-color: #80b5e3; background: #eaf5ff; }
+.admin-shell .admin-sales-discovery.discovery-card,
+.admin-shell .admin-expenses-discovery.discovery-card { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+.admin-shell .admin-expenses-discovery .admin-expense-more-filters { margin: 0; }
+
+.admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: minmax(190px, 1.5fr) repeat(3, minmax(125px, 1fr)); align-items: end; gap: 10px; }
+.admin-shell .admin-inventory .inventory-search-filter .search-field { max-width: none; }
+.admin-shell .admin-inventory .inventory-category-filter { gap: 5px; }
+.admin-shell .admin-inventory .inventory-discovery-footer { margin: 0; padding-top: 10px; }
+
+.admin-shell[data-page='pos'] .admin-pos-discovery .pos-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+.admin-shell[data-page='pos'] .admin-pos-discovery .search-field { width: 100%; max-width: none; min-height: 40px; }
+.admin-shell[data-page='pos'] .admin-pos-discovery .admin-pos-results { margin: 0; color: #2463a0; }
+.admin-shell[data-page='pos'] .admin-pos-type-filter { min-height: 40px; align-items: center; }
+.admin-shell[data-page='pos'] .admin-pos-type-filter button { min-height: 30px; }
+.admin-shell[data-page='pos'] .admin-pos-type-filter button:not([aria-pressed='true']):hover { background: #fff; color: #0a5ea8; }
+.app-shell .discovery-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px solid #e7eef5;
+  color: #607d97;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.app-shell .discovery-card-footer svg { color: #29926f; flex-shrink: 0; }
+
+.customer-shell .service-catalog-tools.discovery-card { gap: 12px; margin-bottom: 20px; }
+.customer-shell .service-catalog-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 18px; min-width: 0; }
+.customer-shell .service-catalog-tools .service-search { width: 100%; max-width: none; margin: 0; }
+.customer-shell .service-catalog-tools .service-search-field { width: 100%; }
+.customer-shell .service-catalog-tools .service-search-field input { min-width: 0; min-height: 38px; height: 38px; }
+
+@media (max-width: 900px) {
+  .admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .admin-shell[data-page='pos'] .admin-pos-discovery .pos-toolbar,
+  .customer-shell .service-catalog-fields { grid-template-columns: minmax(0, 1fr); }
+  .admin-shell[data-page='pos'] .admin-pos-filter-field { min-width: 0; }
+  .admin-shell[data-page='pos'] .admin-pos-type-filter { width: fit-content; max-width: 100%; flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+  .admin-shell .admin-sales-discovery .list-toolbar,
+  .admin-shell .admin-expenses-discovery .list-toolbar,
+  .admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .admin-shell .list-toolbar .toolbar-reset { justify-self: start; }
+  .app-shell .discovery-card { padding: 14px; }
+  .app-shell .discovery-card-count { white-space: normal; text-align: center; }
+}
+@media (max-width: 390px) {
+  .customer-shell .service-catalog-tools .record-tabs { width: 100%; flex-wrap: wrap; }
+  .customer-shell .service-catalog-tools .record-tabs button { flex: 1 1 auto; min-width: 0; padding-inline: 8px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .discovery-card :is(.search-field, select, .service-search-field) { transition: none; }
+}

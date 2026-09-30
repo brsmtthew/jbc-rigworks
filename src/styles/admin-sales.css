@@ -1,0 +1,253 @@
+.admin-sales-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding-bottom: 28px;
+}
+
+.admin-sales-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+}
+
+.admin-sales-hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -285px;
+  right: 15%;
+  width: 370px;
+  height: 370px;
+  border: 1px solid #ffffff1e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 42px #ffffff08, 0 0 0 84px #ffffff05;
+  pointer-events: none;
+}
+
+.admin-sales-hero-copy { max-width: 530px; min-width: 0; }
+.admin-sales-hero-actions {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  flex: 0 0 300px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #ffffff38;
+  border-radius: 12px;
+  background: #ffffff15;
+  box-shadow: inset 0 1px #ffffff20;
+  backdrop-filter: blur(10px);
+}
+.admin-sales-hero-actions-label {
+  color: #d2e8fb;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.admin-sales-hero-actions > strong {
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-sales-hero-actions > div {
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 7px;
+}
+.admin-shell .admin-sales-hero-actions :is(.primary-button, .secondary-button) {
+  justify-content: center;
+  min-width: 0;
+  min-height: 35px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: background-color 170ms ease, border-color 170ms ease, transform 170ms ease;
+}
+.admin-shell .admin-sales-hero-actions .primary-button {
+  border-color: white;
+  background: white;
+  color: #075cab;
+}
+.admin-shell .admin-sales-hero-actions .secondary-button {
+  border-color: #ffffff52;
+  background: #ffffff14;
+  color: white;
+}
+.admin-shell .admin-sales-hero-actions :is(.primary-button, .secondary-button):hover { transform: translateY(-1px); }
+.admin-shell .admin-sales-hero-actions .primary-button:hover { background: #eaf5ff; }
+.admin-shell .admin-sales-hero-actions .secondary-button:hover { background: #ffffff27; }
+.admin-shell .admin-sales-hero-actions .secondary-button:disabled { color: #d5e3f1; opacity: .55; }
+
+.admin-sales-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  min-width: 0;
+  margin: 0;
+}
+.admin-sales-metrics > div {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  min-height: 120px;
+  padding: 18px 19px;
+  border: 1px solid #dce7f2;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 8px 24px #092d5108;
+  transition: border-color 170ms ease, box-shadow 170ms ease, transform 170ms ease;
+}
+.admin-sales-metrics > div::before {
+  content: '';
+  width: 34px;
+  height: 3px;
+  margin-bottom: 3px;
+  border-radius: 9px;
+  background: #0870db;
+}
+.admin-sales-metrics > div:hover {
+  border-color: #b9d4ee;
+  box-shadow: 0 12px 27px #092d5114;
+  transform: translateY(-2px);
+}
+.admin-sales-metrics dt { color: #637f9a; font-size: 11px; font-weight: 650; }
+.admin-sales-metrics dd {
+  margin: 0;
+  color: #0b3057;
+  font-family: var(--font-heading);
+  font-size: clamp(18px, 1.8vw, 25px);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.admin-sales-metrics small { color: #748aa0; font-size: 10px; line-height: 1.45; }
+
+.admin-sales-discovery {
+  display: grid;
+  gap: 15px;
+  min-width: 0;
+  padding: 19px 22px;
+  border: 1px solid #dce7f2;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 8px 24px #092d5108;
+}
+.admin-sales-discovery-heading .eyebrow { color: #4d83b7; font-size: 10px; letter-spacing: .14em; }
+.admin-sales-discovery-heading h2 {
+  margin: 4px 0 0;
+  color: #0b3057;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  letter-spacing: -.035em;
+}
+.admin-shell .admin-sales-discovery .list-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.admin-shell .admin-sales-discovery .search-field { flex: 1 1 300px; max-width: none; }
+.admin-shell .admin-sales-discovery .list-toolbar select { flex: 0 0 180px; min-width: 0; }
+.admin-sales-discovery .result-count { color: #56738f; font-weight: 700; }
+
+.admin-shell .admin-sales-ledger {
+  min-width: 0;
+  overflow: hidden;
+  border-color: #dce7f2;
+  border-radius: 15px;
+  box-shadow: 0 8px 24px #092d5108;
+}
+.admin-shell .admin-sales-ledger .panel-heading { padding: 19px 22px; border-bottom: 1px solid #e6eef6; }
+.admin-shell .admin-sales-ledger .panel-heading h2 { color: #0b3057; font-family: var(--font-heading); font-size: 18px; }
+.admin-shell .admin-sales-ledger .panel-heading p { color: #68829a; font-size: 11px; }
+.admin-sales-ledger .table-shell { min-width: 0; }
+.admin-sales-ledger .table-container { max-width: 100%; }
+.admin-sales-ledger .data-table { min-width: 760px; }
+.admin-shell .admin-sales-ledger .data-table th {
+  padding: 12px 16px;
+  border-color: #e3edf6;
+  background: #f6faff;
+  color: #607d97;
+  font-size: 10px;
+  font-weight: 750;
+}
+.admin-shell .admin-sales-ledger .data-table td { padding: 15px 16px; border-color: #eaf0f6; }
+.admin-sales-ledger .data-table tbody tr { transition: background-color 170ms ease; }
+.admin-shell .admin-sales-ledger .data-table tbody tr:nth-child(even) { background: #fbfdff; }
+.admin-shell .admin-sales-ledger .data-table tbody tr:hover { background: #f0f7ff; }
+.admin-shell .admin-sales-ledger .data-table td strong { color: #0b3158; font-weight: 750; }
+.admin-shell .admin-sales-ledger .data-table td small { color: #67829b; }
+.admin-sales-ledger .data-table td:first-child { min-width: 210px; }
+.admin-sales-ledger .data-table td:first-child small { overflow-wrap: anywhere; }
+.admin-shell .admin-sales-ledger .admin-sales-invoice-button {
+  min-height: 35px;
+  padding: 7px 10px;
+  border-color: #cce0f3;
+  border-radius: 8px;
+  background: #f4f9ff;
+  color: #075cae;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: background-color 170ms ease, border-color 170ms ease;
+}
+.admin-shell .admin-sales-ledger .admin-sales-invoice-button:hover { border-color: #9bc9ef; background: #e9f4ff; }
+.admin-shell .admin-sales-ledger .empty-state { padding: 42px 20px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-sales-hero { animation: admin-sales-enter 280ms ease-out both; }
+  .admin-sales-metrics { animation: admin-sales-enter 330ms ease-out both; }
+  .admin-sales-discovery { animation: admin-sales-enter 370ms ease-out both; }
+  .admin-sales-ledger { animation: admin-sales-enter 410ms ease-out both; }
+}
+@keyframes admin-sales-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 900px) {
+  .admin-sales-hero { align-items: stretch; flex-direction: column; gap: 18px; }
+  .admin-sales-hero-actions { flex-basis: auto; width: min(100%, 320px); }
+  .admin-sales-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 800px) {
+  .admin-sales-ledger .data-table { min-width: 0; }
+  .admin-sales-ledger .data-table tbody { display: grid; gap: 12px; padding: 14px; background: #f7faff; }
+  .admin-shell .admin-sales-ledger .data-table tr {
+    border: 1px solid #dce7f2;
+    border-radius: 11px;
+    background: white;
+    box-shadow: 0 4px 14px #092d5108;
+  }
+  .admin-shell .admin-sales-ledger .data-table td { padding: 0; border: 0; }
+  .admin-sales-ledger .data-table td:last-child { grid-column: 1 / -1; padding-top: 9px !important; border-top: 1px solid #e9eff6 !important; }
+  .admin-sales-ledger .data-table td:last-child::before { display: none; }
+  .admin-sales-ledger .admin-sales-invoice-button { width: 100%; }
+}
+@media (max-width: 600px) {
+  .admin-sales-discovery { padding: 16px; }
+  .admin-shell .admin-sales-discovery .search-field,
+  .admin-shell .admin-sales-discovery .list-toolbar select { flex: 1 1 100%; width: 100%; }
+  .admin-sales-discovery .result-count { margin-left: 0; }
+}
+@media (max-width: 520px) {
+  .admin-sales-metrics { grid-template-columns: minmax(0, 1fr); }
+  .admin-sales-metrics > div { min-height: 105px; padding: 15px 17px; }
+  .admin-sales-hero-actions { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sales-hero-actions :is(.primary-button, .secondary-button),
+  .admin-sales-metrics > div,
+  .admin-sales-ledger .data-table tbody tr,
+  .admin-sales-ledger .admin-sales-invoice-button { transition: none; }
+  .admin-sales-metrics > div:hover,
+  .admin-sales-hero-actions :is(.primary-button, .secondary-button):hover { transform: none; }
+}
+.admin-shell.reduce-motion .admin-sales-page :is(.admin-sales-hero, .admin-sales-metrics, .admin-sales-discovery, .admin-sales-ledger) { animation: none; }
+.admin-shell.reduce-motion .admin-sales-metrics > div:hover,
+.admin-shell.reduce-motion .admin-sales-hero-actions :is(.primary-button, .secondary-button):hover { transform: none; }

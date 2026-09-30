@@ -1,19 +1,27 @@
 import { where } from 'firebase/firestore'
-import { BarChart3 } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ExcelButton } from '../../components/ui/ExcelButton'
+import { Dialog } from '../../components/ui/Dialog'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { Panel } from '../../components/ui/Panel'
 import { useLiveCollection } from '../../hooks/useLiveData'
 import { useWorkspace } from '../../hooks/useWorkspace'
-import { currentPeriod, today } from '../../lib/dates'
+import { currentPeriod, manilaDay, today } from '../../lib/dates'
 import { prepareExcel } from '../../lib/excel'
 import { formatPHP } from '../../lib/format'
 import { availableStock, serviceState } from '../../lib/workflow'
 import type { StockMovement } from '../../types'
 import { useAllRequests } from '../customer/useCustomerRequests'
+import {
+  ColumnChart,
+  DonutChart,
+  RankedBars,
+  ReportCard,
+  SegmentedChart,
+  TrendChart,
+} from './ReportCharts'
+import { reportColors } from './reportChartColors'
 import { getSummary } from './summary'
 
 export function ReportsPage() {
@@ -24,6 +32,14 @@ export function ReportsPage() {
   const [range, setRange] = useState('month'),
     [from, setFrom] = useState(today()),
     [to, setTo] = useState(today())
+  const [customOpen, setCustomOpen] = useState(false)
+  const [draftFrom, setDraftFrom] = useState(from)
+  const [draftTo, setDraftTo] = useState(to)
+  const openCustomRange = () => {
+    setDraftFrom(from)
+    setDraftTo(to)
+    setCustomOpen(true)
+  }
   const weekStart = new Date(today() + 'T12:00:00Z')
   weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7))
   const start =
@@ -34,17 +50,13 @@ export function ReportsPage() {
         : range === 'week'
           ? weekStart.toISOString().slice(0, 10)
           : period + '-01'
-  const end = range === 'custom' ? to : range === 'month' ? period + '-31' : today()
+  const monthEnd = new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0).getDate()
+  const end = range === 'custom' ? to : range === 'month' ? `${period}-${monthEnd}` : today()
   const requests = useAllRequests(true)
   // ISO UTC timestamps are stored by the ledger. Bounds represent Manila days.
-  const lastDay =
-    range === 'month'
-      ? new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0).getDate()
-      : null
-  const finalDate = lastDay ? `${period}-${lastDay}` : end
-  const validRange = !!start && !!finalDate && start <= finalDate
+  const validRange = !!start && !!end && start <= end
   const since = validRange ? new Date(`${start}T00:00:00+08:00`).toISOString() : ''
-  const until = validRange ? new Date(`${finalDate}T23:59:59.999+08:00`).toISOString() : ''
+  const until = validRange ? new Date(`${end}T23:59:59.999+08:00`).toISOString() : ''
   const movements = useLiveCollection<StockMovement>(
     'stockMovements',
     validRange,
@@ -53,7 +65,7 @@ export function ReportsPage() {
   )
   const serviceJobs = workspace.jobs.filter((job) => job.due >= start && job.due <= end)
   const buildRequests = requests.requests.filter((request) => {
-    const date = (request.createdAt ?? '').slice(0, 10)
+    const date = manilaDay(request.createdAt ?? '')
     return date >= start && date <= end
   })
   const lowStock = workspace.inventory.filter(
@@ -81,6 +93,64 @@ export function ReportsPage() {
       )
     }
   }
+  const serviceStages = ['Checked in', 'In service', 'Ready for checkout', 'Completed']
+  const serviceCounts = serviceStages.map((label, index) => ({
+    label,
+    value: serviceJobs.filter((job) => serviceState(job.status) === label).length,
+    color: reportColors[index],
+  }))
+  const buildCounts = [...new Set(buildRequests.map((request) => request.status))]
+    .map((label, index) => ({
+      label,
+      value: buildRequests.filter((request) => request.status === label).length,
+      color: reportColors[index % reportColors.length],
+    }))
+    .sort((a, b) => b.value - a.value)
+  const movementCounts = [...new Set(movements.rows.map((movement) => movement.type))]
+    .map((type, index) => ({
+      label: type.replaceAll('_', ' '),
+      value: movements.rows.filter((movement) => movement.type === type).length,
+      color: reportColors[index % reportColors.length],
+    }))
+    .sort((a, b) => b.value - a.value)
+  const activeInventoryCount = workspace.inventory.filter((item) => item.active !== false).length
+  const stockAttentionShare = activeInventoryCount ? (lowStock.length / activeInventoryCount) * 100 : 0
+  const paymentMethods = [...new Set(summary.sales.map((sale) => sale.paymentMethod ?? 'Not recorded'))]
+    .map((label, index) => ({
+      label,
+      value: summary.sales
+        .filter((sale) => (sale.paymentMethod ?? 'Not recorded') === label)
+        .reduce((sum, sale) => sum + sale.total, 0),
+      color: reportColors[index % reportColors.length],
+    }))
+    .sort((a, b) => b.value - a.value)
+  const salesChannels = ['Walk-in', 'Online'].map((label, index) => ({
+    label,
+    value: summary.sales
+      .filter((sale) => (sale.channel ?? 'Walk-in') === label)
+      .reduce((sum, sale) => sum + sale.total, 0),
+    color: reportColors[index],
+  }))
+  const itemSales = [...itemCategories]
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value], index) => ({ label, value, color: reportColors[index % reportColors.length] }))
+  const salesTrend = [...dailySales]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, value]) => ({ label, value }))
+  const expenseCategories = [...categoryTotals]
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value], index) => ({ label, value, color: reportColors[index % reportColors.length] }))
+  const profitBridge = [
+    { label: 'Revenue excluding tax', value: summary.revenue, color: '#176fce' },
+    { label: 'Cost of sales', value: summary.cost, color: '#efaa54' },
+    { label: 'Operating expenses', value: summary.spent, color: '#d96979' },
+    { label: 'Net profit', value: summary.profit, color: '#42a479' },
+  ]
+  const profitScale = Math.max(1, ...profitBridge.map((item) => Math.abs(item.value)))
+  const outstanding = Math.max(0, summary.salesTotal - summary.received)
+  const collectionShare = summary.salesTotal
+    ? Math.min(100, Math.max(0, (summary.received / summary.salesTotal) * 100))
+    : 0
   const exportRows = [
     ['Metric', 'PHP'],
     ['Revenue excluding sales tax', summary.revenue],
@@ -112,61 +182,111 @@ export function ReportsPage() {
     ['Current low-stock items', lowStock.length],
   )
   return (
-    <>
-      <PageHeader
-        eyebrow="THE BIG PICTURE"
-        title="Reports"
-        description="Revenue, cost of goods sold, expenses, and profit from completed payments."
-      >
-        <select
-          aria-label="Report date range"
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-        >
-          <option value="today">Today</option>
-          <option value="week">This week</option>
-          <option value="month">This month</option>
-          <option value="custom">Custom range</option>
-        </select>
-        {range === 'month' && (
-          <input
-            aria-label="Report month"
-            type="month"
-            value={period}
-            onChange={(e) => setParams({ period: e.target.value })}
+    <div className="admin-reports-page">
+      <section className="admin-reports-hero jbc-blue-hero" aria-labelledby="admin-reports-title">
+        <div className="admin-reports-hero-copy">
+          <span className="admin-reports-kicker">WORKSHOP PERFORMANCE</span>
+          <h1 id="admin-reports-title">Reports</h1>
+          <p>Understand sales, costs, profit, and workshop activity for any period.</p>
+        </div>
+        <div className="admin-reports-hero-actions admin-hero-tool-panel" role="group" aria-label="Report tools">
+          <span className="admin-reports-hero-actions-label"><CalendarDays size={14} aria-hidden="true" /> REPORT PERIOD</span>
+          <div className={`admin-reports-period-inputs${range === 'month' ? ' with-month' : ''}${range === 'custom' ? ' with-custom' : ''}`}>
+            <select
+              aria-label="Report date range"
+              value={range}
+              onChange={(e) => {
+                if (e.target.value === 'custom') openCustomRange()
+                else setRange(e.target.value)
+              }}
+            >
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="custom">Custom range</option>
+            </select>
+            {range === 'month' && (
+              <input
+                aria-label="Report month"
+                type="month"
+                value={period}
+                onChange={(e) => setParams({ period: e.target.value })}
+              />
+            )}
+            {range === 'custom' && (
+              <button type="button" className="admin-reports-custom-trigger" onClick={openCustomRange}>
+                <CalendarDays size={14} aria-hidden="true" /> {from} to {to} · Edit dates
+              </button>
+            )}
+          </div>
+          <ExcelButton
+            disabled={!validRange}
+            onExport={() => prepareExcel('report-' + start + '-to-' + end, exportRows)}
           />
-        )}{' '}
-        {range === 'custom' && (
-          <>
+        </div>
+      </section>
+      {customOpen && (
+        <Dialog
+          title="Custom report dates"
+          onClose={() => setCustomOpen(false)}
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={() => setCustomOpen(false)}>Cancel</button>
+              <button type="submit" className="primary-button" form="admin-report-dates" disabled={!draftFrom || !draftTo || draftFrom > draftTo}>Apply dates</button>
+            </>
+          }
+        >
+        <form
+          id="admin-report-dates"
+          className="admin-reports-custom-range"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!draftFrom || !draftTo || draftFrom > draftTo) return
+            setFrom(draftFrom)
+            setTo(draftTo)
+            setRange('custom')
+            setCustomOpen(false)
+          }}
+        >
+          <div>
+            <span className="eyebrow">CUSTOM PERIOD</span>
+            <strong>Choose report dates</strong>
+          </div>
+          <label>
+            From date
             <input
               aria-label="From date"
               type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
+              value={draftFrom}
+              max={draftTo || undefined}
+              onChange={(e) => setDraftFrom(e.target.value)}
             />
+          </label>
+          <label>
+            To date
             <input
               aria-label="To date"
               type="date"
-              min={from}
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
+              min={draftFrom}
+              value={draftTo}
+              onChange={(e) => setDraftTo(e.target.value)}
             />
-          </>
-        )}
-        <ExcelButton onExport={() => prepareExcel('report-' + start + '-to-' + end, exportRows)} />
-      </PageHeader>
-      {range === 'custom' && from > to && (
-        <p className="form-error" role="alert">
-          The end date must be on or after the start date.
-        </p>
+          </label>
+          {draftFrom > draftTo && (
+            <p className="form-error" role="alert">
+              The end date must be on or after the start date.
+            </p>
+          )}
+        </form>
+        </Dialog>
       )}
       {(workspace.storageError || requests.error) && (
         <p role="alert" className="form-error">
           {workspace.storageError || requests.error}
         </p>
       )}
-      <div className="report-highlight">
-        <div>
+      <section className="admin-reports-summary" aria-label="Financial snapshot">
+        <div className="admin-reports-profit">
           <span className="eyebrow">NET PROFIT BEFORE TAX</span>
           <strong>{formatPHP(summary.profit)}</strong>
           <small>
@@ -174,7 +294,7 @@ export function ReportsPage() {
             margin · {summary.sales.length} recorded sales
           </small>
         </div>
-        <dl className="admin-report-metrics">
+        <dl className="admin-reports-summary-metrics">
           <div>
             <dt>Revenue</dt>
             <dd>{formatPHP(summary.revenue)}</dd>
@@ -188,221 +308,185 @@ export function ReportsPage() {
             <dd>{formatPHP(summary.spent)}</dd>
           </div>
         </dl>
-        <BarChart3
-          className="admin-report-watermark"
-          size={54}
-          strokeWidth={1.2}
-          aria-hidden="true"
-        />
+      </section>
+      <div className="admin-reports-section-heading">
+        <span className="eyebrow">OPERATIONS</span>
+        <h2>Workshop activity</h2>
       </div>
-      <div className="reports-grid">
-        <Panel
+      <div className="report-viz-grid report-viz-grid-operations">
+        <ReportCard
+          kicker="01 / SERVICE FLOW"
           title="Service activity"
-          subtitle="Current status of jobs with target dates in this period"
+          description="Jobs with target dates in this period, grouped by current status."
+          tone="blue"
         >
-          <div className="report-rows">
-            {['Checked in', 'In service', 'Ready for checkout', 'Completed'].map((status) => (
-              <div key={status}>
-                <span>{status}</span>
-                <strong>
-                  {serviceJobs.filter((job) => serviceState(job.status) === status).length}
-                </strong>
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel
+          <DonutChart items={serviceCounts} centerLabel="jobs" centerValue={serviceJobs.length} />
+        </ReportCard>
+        <ReportCard
+          kicker="02 / BUILD PIPELINE"
           title="PC build activity"
-          subtitle="Current status of requests created in this period"
+          description="Requests created in this period, grouped by current status."
+          tone="violet"
         >
-          <div className="report-rows">
-            {[...new Set(buildRequests.map((request) => request.status))].map((status) => (
-              <div key={status}>
-                <span>{status}</span>
-                <strong>
-                  {buildRequests.filter((request) => request.status === status).length}
-                </strong>
-              </div>
-            ))}
-            {!buildRequests.length && <p>No build requests created in this period.</p>}
+          <div className="report-viz-lead">
+            <strong>{buildRequests.length}</strong>
+            <span>build {buildRequests.length === 1 ? 'request' : 'requests'}</span>
           </div>
-        </Panel>
-        <Panel title="Inventory movements" subtitle="Ledger movements in the selected period">
+          <RankedBars items={buildCounts} emptyMessage="No build requests created in this period." />
+        </ReportCard>
+        <ReportCard
+          kicker="03 / STOCK LEDGER"
+          title="Inventory movements"
+          description="Recorded stock changes during the selected period."
+          tone="teal"
+        >
           {movements.error ? (
-            <p role="alert" className="form-error">
-              {movements.error}
-            </p>
+            <p role="alert" className="form-error">{movements.error}</p>
           ) : movements.loading ? (
             <LoadingState variant="compact" label="Loading movements…" />
           ) : (
-            <div className="report-rows">
-              {[...new Set(movements.rows.map((movement) => movement.type))].map((type) => (
-                <div key={type}>
-                  <span>{type.replaceAll('_', ' ')}</span>
-                  <strong>
-                    {movements.rows.filter((movement) => movement.type === type).length} movements
-                  </strong>
-                </div>
-              ))}
-              {!movements.rows.length && <p>No stock movements in this period.</p>}
-            </div>
+            <ColumnChart items={movementCounts} emptyMessage="No stock movements in this period." />
           )}
-        </Panel>
-        <Panel
+        </ReportCard>
+        <ReportCard
+          kicker="04 / LIVE INVENTORY"
           title="Current stock attention"
-          subtitle="Live availability, independent of the report dates"
+          description="Live availability across active items, independent of report dates."
+          tone="amber"
         >
-          <p>{lowStock.length} items at or below minimum stock.</p>
-          <Link className="secondary-button" to="/inventory?filter=low">
-            Review low stock
-          </Link>
-        </Panel>
-      </div>
-      <div className="reports-grid">
-        <Panel title="Profit summary" subtitle="Revenue less recorded costs">
-          <div className="report-rows">
-            <div>
-              <span>Revenue excluding sales tax</span>
-              <b>{formatPHP(summary.revenue)}</b>
-            </div>
-            <div>
-              <span>Cost of sales</span>
-              <b>− {formatPHP(summary.cost)}</b>
-            </div>
-            <div>
-              <span>Operating expenses</span>
-              <b>− {formatPHP(summary.spent)}</b>
-            </div>
-            <div className="report-total">
-              <span>Net profit</span>
-              <strong>{formatPHP(summary.profit)}</strong>
-            </div>
+          <div className="report-stock-readout">
+            <strong>{lowStock.length}</strong>
+            <span>of {activeInventoryCount} active items at or below minimum</span>
           </div>
-        </Panel>
-        <Panel title="Payment collection" subtitle="Payments against sales in this period">
-          <div className="report-rows">
-            <div>
-              <span>Sales total</span>
-              <b>{formatPHP(summary.salesTotal)}</b>
-            </div>
-            <div>
-              <span>Payments received</span>
-              <b>{formatPHP(summary.received)}</b>
-            </div>
-            <div>
-              <span>Paid transactions</span>
-              <b>{summary.sales.length}</b>
-            </div>
-            <div>
-              <span>Sales tax on invoices</span>
-              <b>{formatPHP(summary.taxCollected)}</b>
-            </div>
-            <div className="report-total">
-              <span>Gross profit</span>
-              <strong>{formatPHP(summary.revenue - summary.cost)}</strong>
-            </div>
+          <div className="report-stock-meter" aria-hidden="true">
+            <span style={{ width: `${stockAttentionShare}%` }} />
           </div>
-        </Panel>
+          <div className="report-stock-footer">
+            <span>{stockAttentionShare.toFixed(0)}% need attention</span>
+            <Link to="/inventory?filter=low">Review low stock</Link>
+          </div>
+        </ReportCard>
       </div>
-      <div className="reports-grid">
-        {[
-          [
-            'Payment methods',
-            [...new Set(summary.sales.map((sale) => sale.paymentMethod ?? 'Not recorded'))],
-          ],
-          ['Sales by channel', ['Walk-in', 'Online']],
-        ].map(([title, values]) => (
-          <Panel key={String(title)} title={String(title)}>
-            <div className="report-rows">
-              {(values as string[]).map((value) => (
-                <div key={value}>
-                  <span>{value}</span>
-                  <strong>
-                    {formatPHP(
-                      summary.sales
-                        .filter((sale) =>
-                          title === 'Payment methods'
-                            ? (sale.paymentMethod ?? 'Not recorded') === value
-                            : (sale.channel ?? 'Walk-in') === value,
-                        )
-                        .reduce((sum, sale) => sum + sale.total, 0),
-                    )}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        ))}
+      <div className="admin-reports-section-heading">
+        <span className="eyebrow">FINANCES</span>
+        <h2>Revenue and costs</h2>
       </div>
-      <div className="reports-grid">
-        <Panel
-          title="Item sales by category"
-          subtitle="Line subtotals before invoice discounts, fees, and tax"
+      <div className="report-viz-grid report-viz-grid-finances">
+        <ReportCard
+          kicker="01 / PROFIT BRIDGE"
+          title="How revenue becomes profit"
+          description="Revenue excluding tax, less direct costs and operating expenses."
+          tone="green"
         >
-          <div className="report-rows">
-            {[...itemCategories]
-              .sort((a, b) => b[1] - a[1])
-              .map(([category, amount]) => (
-                <div key={category}>
-                  <span>{category}</span>
-                  <strong>{formatPHP(amount)}</strong>
+          <div className="report-profit-bridge">
+            {profitBridge.map((item) => (
+              <div className="report-profit-step" key={item.label}>
+                <div>
+                  <span>{item.label}</span>
+                  <strong>{formatPHP(item.value)}</strong>
                 </div>
-              ))}
-            {!itemCategories.size && <p>No item sales in this period.</p>}
-          </div>
-        </Panel>
-        <Panel title="Daily paid sales" subtitle="Invoice totals on payment dates">
-          <div className="analytics-rows">
-            {[...dailySales]
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([date, amount]) => (
-                <div key={date}>
-                  <span>{date}</span>
-                  <strong>{formatPHP(amount)}</strong>
-                  <meter
-                    aria-label={'Paid sales on ' + date}
-                    min={0}
-                    max={Math.max(1, ...dailySales.values())}
-                    value={amount}
+                <div className="report-profit-track" aria-hidden="true">
+                  <span
+                    style={{
+                      width: `${(Math.abs(item.value) / profitScale) * 100}%`,
+                      background: item.value < 0 ? '#d96979' : item.color,
+                    }}
                   />
                 </div>
-              ))}
-            {!dailySales.size && <p>No paid sales in this period.</p>}
-          </div>
-        </Panel>
-      </div>
-      <Panel title="Expense breakdown" subtitle="Where operating spend is going">
-        <div className="expense-summary">
-          <span>Operating expenses</span>
-          <strong>{formatPHP(summary.spent)}</strong>
-          <small>
-            {summary.expenses.length} entries / {categoryTotals.size} categories
-          </small>
-        </div>
-        <div className="expense-breakdown">
-          {[...categoryTotals]
-            .sort((a, b) => b[1] - a[1])
-            .map(([category, amount]) => (
-              <div key={category}>
-                <div>
-                  <span>{category}</span>
-                  <strong>
-                    {formatPHP(amount)}{' '}
-                    <small>
-                      {summary.spent ? ((amount / summary.spent) * 100).toFixed(1) : '0'}%
-                    </small>
-                  </strong>
-                </div>
-                <progress
-                  aria-label={category + ' share of expenses'}
-                  value={amount}
-                  max={summary.spent || 1}
-                />
               </div>
             ))}
-          {!summary.expenses.length && <p>No expenses recorded in this period.</p>}
-        </div>
-      </Panel>
-    </>
+          </div>
+        </ReportCard>
+        <ReportCard
+          kicker="02 / COLLECTION"
+          title="Payment collection"
+          description="Payments received against recognized invoice totals."
+          tone="blue"
+        >
+          <div className="report-collection-head">
+            <strong>{collectionShare.toFixed(0)}%</strong>
+            <span>of {formatPHP(summary.salesTotal)} collected</span>
+          </div>
+          <SegmentedChart
+            items={[
+              { label: 'Received', value: summary.received, color: '#176fce' },
+              { label: 'Balance', value: outstanding, color: '#efaa54' },
+            ]}
+            formatValue={formatPHP}
+            emptyMessage="No recognized sales in this period."
+          />
+          <div className="report-collection-footnotes">
+            <span>{summary.sales.length} recorded sales</span>
+            <span>{formatPHP(summary.taxCollected)} sales tax</span>
+            <span>{formatPHP(summary.revenue - summary.cost)} gross profit</span>
+          </div>
+        </ReportCard>
+        <ReportCard
+          kicker="03 / PAYMENT MIX"
+          title="Payment methods"
+          description="Recognized invoice value by recorded payment method."
+          tone="violet"
+        >
+          <SegmentedChart
+            items={paymentMethods}
+            formatValue={formatPHP}
+            emptyMessage="No payment methods recorded in this period."
+          />
+        </ReportCard>
+        <ReportCard
+          kicker="04 / SALES CHANNELS"
+          title="Where sales originate"
+          description="Recognized invoice totals by sales channel."
+          tone="teal"
+        >
+          <ColumnChart
+            items={salesChannels}
+            formatValue={formatPHP}
+            emptyMessage="No sales in this period."
+          />
+        </ReportCard>
+        <ReportCard
+          kicker="05 / CATEGORY SALES"
+          title="Item sales by category"
+          description="Line subtotals before invoice adjustments and tax."
+          tone="amber"
+        >
+          <RankedBars
+            items={itemSales}
+            formatValue={formatPHP}
+            emptyMessage="No item sales in this period."
+          />
+        </ReportCard>
+        <ReportCard
+          kicker="06 / DAILY TREND"
+          title="Daily sales"
+          description="Recognized invoice totals grouped by invoice date."
+          tone="blue"
+        >
+          <TrendChart
+            items={salesTrend}
+            formatValue={formatPHP}
+            emptyMessage="No sales in this period."
+          />
+        </ReportCard>
+        <ReportCard
+          kicker="07 / EXPENSE MIX"
+          title="Where operating spend goes"
+          description="Recorded expenses grouped by category."
+          tone="green"
+          className="report-viz-wide"
+        >
+          <div className="report-expense-head">
+            <strong>{formatPHP(summary.spent)}</strong>
+            <span>{summary.expenses.length} entries across {categoryTotals.size} categories</span>
+          </div>
+          <SegmentedChart
+            items={expenseCategories}
+            formatValue={formatPHP}
+            emptyMessage="No expenses recorded in this period."
+          />
+        </ReportCard>
+      </div>
+    </div>
   )
 }

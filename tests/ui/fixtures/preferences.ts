@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { shop } from './data'
 export {
   defaultShop,
@@ -16,9 +16,28 @@ export const defaultAccount = {
   photo: '',
 }
 export const accountKey = (id: string) => `jbc-rigworks:account:v1:${id}`
+const values = new Map<string, unknown>()
+const listeners = new Map<string, Set<() => void>>()
 export function useStoredValue<T>(key: string, fallback: T) {
-  const [value, setValue] = useState(fallback)
-  return [value, async (next: T) => setValue(next), { loading: false, error: '' }] as const
+  const subscribe = useCallback((listener: () => void) => {
+    const group = listeners.get(key) ?? new Set<() => void>()
+    group.add(listener)
+    listeners.set(key, group)
+    return () => {
+      group.delete(listener)
+      if (!group.size) listeners.delete(key)
+    }
+  }, [key])
+  const getSnapshot = useCallback(
+    () => (values.has(key) ? values.get(key) as T : fallback),
+    [key, fallback],
+  )
+  const value = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const save = async (next: T) => {
+    values.set(key, next)
+    listeners.get(key)?.forEach((listener) => listener())
+  }
+  return [value, save, { loading: false, error: '' }] as const
 }
 export function useShopSettings() {
   return useStoredValue('shop', shop)

@@ -129,8 +129,8 @@ test('admin services uses responsive record rows and keeps its workflows availab
       }),
     )
     assert.ok(Math.abs(visitLayout[0].top - visitLayout[1].top) < 2)
-    assert.ok(Math.abs(visitLayout[2].top - visitLayout[3].top) < 2)
-    assert.ok(visitLayout[4].left <= visitLayout[0].left + 1 && visitLayout[4].right >= visitLayout[1].right - 1)
+    assert.ok(visitLayout[2].top < visitLayout[3].top && visitLayout[3].top < visitLayout[4].top)
+    assert.ok(visitLayout[3].left <= visitLayout[0].left + 1 && visitLayout[3].right >= visitLayout[1].right - 1)
     await page.evaluate(async () => {
       const { collections } = await import('/tests/ui/fixtures/data.ts')
       collections.appointments.find((item) => item.id === 'APT-visit-fixture').status = 'Confirmed'
@@ -145,8 +145,13 @@ test('admin services uses responsive record rows and keeps its workflows availab
       }),
     )
     assert.ok(confirmedLayout[2].left <= confirmedLayout[0].left + 1 && confirmedLayout[2].right >= confirmedLayout[1].right - 1)
-    assert.ok(Math.abs(confirmedLayout[3].top - confirmedLayout[4].top) < 2)
-    assert.ok(confirmedLayout[5].left <= confirmedLayout[0].left + 1 && confirmedLayout[5].right >= confirmedLayout[1].right - 1)
+    assert.ok(confirmedLayout[3].left <= confirmedLayout[0].left + 1 && confirmedLayout[3].right >= confirmedLayout[1].right - 1)
+    assert.ok(Math.abs(confirmedLayout[4].top - confirmedLayout[5].top) < 2)
+    assert.ok(confirmedLayout[4].right <= confirmedLayout[5].left + 1)
+    await visit.getByRole('button', { name: 'No show' }).click()
+    const noShow = page.getByRole('dialog', { name: 'Mark customer as no-show?' })
+    await expect(noShow).toContainText('reserved time is released')
+    await noShow.getByRole('button', { name: 'Cancel', exact: true }).click()
 
     await page.getByRole('button', { name: 'Active jobs' }).click()
     await expect(page.locator('.admin-services-list .service-record-row')).toHaveCount(1)

@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/auth-context'
 import { useDirectories } from '../../lib/directories'
 import { navigation } from '../../lib/navigation'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
+import { useAdminNotifications } from '../../features/notifications/useAdminNotifications'
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -23,7 +24,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   })
   const location = useLocation()
   const { user, accountError, refreshAccount, resendVerificationEmail } = useAuth()
-  const { storageError, loading: recordsLoading } = useWorkspace()
+  const workspace = useWorkspace()
+  const { storageError, loading: recordsLoading } = workspace
+  const activity = useAdminNotifications(user, workspace.orders)
   const [verificationMessage, setVerificationMessage] = useState('')
   const [verificationError, setVerificationError] = useState('')
   const [preferences, , preferenceStatus] = useStoredValue(
@@ -105,7 +108,18 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         </Dialog>
       )}
       <div className="app-main">
-        <Topbar title={title} onMenu={() => setSidebarOpen(true)} menuOpen={sidebarOpen} />
+        <Topbar
+          title={title}
+          onMenu={() => setSidebarOpen(true)}
+          menuOpen={sidebarOpen}
+          notifications={activity.notifications}
+          unreadCount={activity.unreadCount}
+          onMarkNotificationRead={activity.markRead}
+          onMarkAllNotificationsRead={activity.markAllRead}
+          onDismissNotification={activity.dismiss}
+          notificationsLoading={activity.loading || workspace.ordersLoading}
+          notificationsError={activity.error || workspace.ordersError}
+        />
         <HeaderHost.Provider value={null}>
           <main
             id="main-content"

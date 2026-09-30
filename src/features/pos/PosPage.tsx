@@ -6,7 +6,6 @@ import {
   CircleCheck,
   Eye,
   Package,
-  PackageOpen,
   Plus,
   ScanLine,
   ShoppingCart,
@@ -74,6 +73,10 @@ export function PosPage() {
   const hasBundles = workspace.bundles.some(
     (bundle) => bundle.active !== false && bundle.published !== false,
   )
+  const bundleResults = workspace.bundles.filter((bundle) =>
+    bundle.active !== false && bundle.published !== false &&
+    `${bundle.name} ${bundle.description ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()),
+  )
   const hasActiveFilters =
     !!query ||
     category !== 'All' ||
@@ -127,7 +130,7 @@ export function PosPage() {
               <p>Build the next order, then review payment at checkout.</p>
             </div>
           </div>
-          <div className="admin-pos-overview-side" aria-label="Counter tools">
+          <div className="admin-pos-overview-side admin-hero-tool-panel" aria-label="Counter tools">
             <span className="admin-pos-overview-side-label">COUNTER TOOLS</span>
             <div className="admin-pos-overview-stats">
               <div>
@@ -149,11 +152,7 @@ export function PosPage() {
                 Scan order QR
               </button>
               <button type="button" className="secondary-button" onClick={() => setShowOrders(true)}>
-                Online orders
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setBundlesOpen(true)}>
-                <Boxes size={17} />
-                Bundles &amp; PC sets
+                <ShoppingCart size={16} /> Online orders
               </button>
             </div>
           </div>
@@ -164,7 +163,7 @@ export function PosPage() {
           {toast}
         </div>
       )}
-      <div className={customerMode ? 'shop-discovery' : 'admin-pos-discovery'}>
+      <div className={customerMode ? 'shop-discovery' : 'admin-pos-discovery discovery-card'}>
         {customerMode && <span className="shop-kicker shop-search-kicker">EXPLORE PARTS</span>}
         {!customerMode && (
           <div className="admin-pos-discovery-heading">
@@ -172,17 +171,26 @@ export function PosPage() {
               <span className="eyebrow">CATALOG</span>
               <h2>Find items and services</h2>
             </div>
-            <span>
-              <CircleCheck size={15} /> Availability checked against inventory
+            <span className="admin-pos-results discovery-card-count" aria-live="polite">
+              {workspace.loading
+                ? 'Loading catalog…'
+                : workspace.storageError
+                  ? 'Catalog unavailable'
+                  : filter === 'Bundles'
+                    ? `${bundleResults.length} ${bundleResults.length === 1 ? 'bundle' : 'bundles'}`
+                    : `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`}
             </span>
           </div>
         )}
         <div className="list-toolbar pos-toolbar">
-          <SearchField
-            label={customerMode ? 'Search PC parts' : 'Search products and services'}
-            value={query}
-            onChange={setQuery}
-          />
+          {customerMode ? (
+            <SearchField label="Search PC parts" value={query} onChange={setQuery} />
+          ) : (
+            <div className="toolbar-field">
+              <span className="toolbar-field-label">Search</span>
+              <SearchField label="Search products and services" value={query} onChange={setQuery} />
+            </div>
+          )}
           {customerMode && (
             <button type="button" className="shop-toolbar-cart" onClick={() => setCartOpen(true)}>
               <ShoppingCart size={16} /> Cart ({cartCount})
@@ -194,28 +202,25 @@ export function PosPage() {
             </button>
           )}
           {!customerMode && (
-            <div className="admin-pos-type-filter" role="group" aria-label="Product type">
-              {['All', 'Products', 'Services'].map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={filter === value}
-                  onClick={() => setFilter(value)}
-                >
-                  {value === 'All' ? 'All items' : value}
-                </button>
-              ))}
+            <div className="toolbar-field admin-pos-filter-field">
+              <span className="toolbar-field-label">Item type</span>
+              <div className="admin-pos-type-filter" role="group" aria-label="Product type">
+                {['All', 'Products', 'Services', 'Bundles'].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    aria-pressed={filter === value}
+                    onClick={() => setFilter(value)}
+                  >
+                    {value === 'All' ? 'All items' : value === 'Bundles' ? 'Bundles & PC sets' : value}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
         {!customerMode && (
-          <div className="admin-pos-results" aria-live="polite">
-            {workspace.loading
-              ? 'Loading catalog…'
-              : workspace.storageError
-                ? 'Catalog unavailable'
-                : `${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`}
-          </div>
+          <p className="discovery-card-footer"><CircleCheck size={15} aria-hidden="true" /> Availability checked against inventory</p>
         )}
         {customerMode && (
           <div className="shop-category-tabs" role="group" aria-label="Product category">
@@ -296,6 +301,12 @@ export function PosPage() {
       </div>
       <div className={customerMode ? 'pos-layout shop-layout' : 'pos-layout admin-pos-layout'}>
         <div>
+          {!customerMode && filter === 'Bundles' ? (
+            <div className="admin-pos-inline-bundles">
+              <BundleCatalog onSelect={selectBundle} showHeading={false} query={query} />
+            </div>
+          ) : (
+          <>
           <div className="pos-products">
             {!workspace.loading &&
               !workspace.storageError &&
@@ -431,6 +442,8 @@ export function PosPage() {
               </p>
             </div>
           )}
+          </>
+          )}
         </div>
         {!customerMode && cartPanel}
       </div>
@@ -455,23 +468,9 @@ export function PosPage() {
           </div>
         </Dialog>
       )}
-      {bundlesOpen && (
+      {customerMode && bundlesOpen && (
         <Dialog title="Bundles & PC sets" wide onClose={() => setBundlesOpen(false)}>
-          {customerMode ? (
-            <BundleCatalog onSelect={selectBundle} />
-          ) : (
-            <div className="admin-pos-bundle-dialog">
-              <div className="admin-pos-dialog-intro">
-                <span className="admin-pos-dialog-icon" aria-hidden="true"><PackageOpen size={20} /></span>
-                <div>
-                  <span className="eyebrow">READY-MADE COMBINATIONS</span>
-                  <h3>Choose a bundle for this order</h3>
-                  <p>Available sets can be added to the cart with their included parts and price.</p>
-                </div>
-              </div>
-              <BundleCatalog onSelect={selectBundle} showHeading={false} />
-            </div>
-          )}
+          <BundleCatalog onSelect={selectBundle} />
         </Dialog>
       )}
       {productDetail && (

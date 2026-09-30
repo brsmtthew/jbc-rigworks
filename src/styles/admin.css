@@ -399,31 +399,6 @@
 .admin-shell .detail-list > div {
   padding-block: 13px;
 }
-.admin-shell .mini-stats {
-  margin: 0 0 24px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: white;
-  box-shadow: var(--shadow);
-}
-.admin-shell .mini-stats > div {
-  padding: 20px 24px;
-  border-color: var(--line);
-  min-width: 0;
-}
-.admin-shell .mini-stats dt {
-  font-size: 11px;
-  color: var(--muted);
-}
-.admin-shell .mini-stats dd {
-  font-size: 27px;
-  font-weight: 650;
-  letter-spacing: -0.04em;
-  margin-top: 7px;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
-}
 .admin-shell :is(.list-toolbar, .admin-filter-bar) {
   display: flex;
   align-items: center;
@@ -1276,12 +1251,6 @@
   }
 }
 @media (max-width: 760px) {
-  .admin-shell .mini-stats {
-    gap: 0;
-  }
-  .admin-shell .mini-stats > div:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--line);
-  }
   .admin-shell {
     --admin-gutter: 20px;
   }
@@ -1427,12 +1396,6 @@
   }
   .admin-queue-item small {
     font-size: 10px;
-  }
-  .admin-shell .mini-stats > div {
-    padding: 16px;
-  }
-  .admin-shell .mini-stats dd {
-    font-size: 24px;
   }
   .admin-shell :is(.list-toolbar, .admin-filter-bar) .search-field {
     flex-basis: 100%;

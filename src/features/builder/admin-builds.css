@@ -328,6 +328,29 @@
   color: #1663a5;
 }
 
+.admin-build-request-next {
+  margin: 10px 0 0;
+  color: #365d80;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.admin-build-request-next strong {
+  margin-right: 5px;
+  color: #0b5fa9;
+  font-weight: 750;
+}
+
+.admin-build-review-approval {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #cce9d8;
+  border-radius: 8px;
+  background: #f1fbf5;
+  color: #286a47;
+  font-size: 12px;
+}
+
 .admin-build-request-reference {
   display: block;
   margin-top: 10px;

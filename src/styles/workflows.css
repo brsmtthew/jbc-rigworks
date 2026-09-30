@@ -67,8 +67,7 @@ select {
   font-size: 13px;
   line-height: 1.6;
 }
-.metric-label,
-.mini-stats dt {
+.metric-label {
   font-size: 14px;
 }
 .metric-card {

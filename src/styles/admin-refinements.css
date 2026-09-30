@@ -1,0 +1,296 @@
+/* Compact discovery controls, website editors, and live admin activity. */
+.admin-shell :focus-visible {
+  outline: 3px solid #83b8f5;
+  outline-offset: 3px;
+}
+.admin-shell .page-transition .jbc-blue-hero > .admin-hero-tool-panel {
+  box-sizing: border-box;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 116px;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #ffffff38;
+  border-radius: 12px;
+  background: #ffffff15;
+  box-shadow: inset 0 1px #ffffff20;
+}
+.admin-shell .admin-hero-tool-panel.admin-pos-overview-side .admin-pos-overview-actions,
+.admin-shell .admin-hero-tool-panel.admin-sales-hero-actions > div,
+.admin-shell .admin-hero-tool-panel.admin-expenses-hero-actions > div,
+.admin-shell .admin-hero-tool-panel.admin-settings-hero-actions > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.admin-shell .admin-hero-tool-panel :is(.primary-button, .secondary-button) {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  gap: 6px;
+  justify-content: center;
+  padding: 7px 8px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+.admin-shell .admin-hero-tool-panel :is(.primary-button, .secondary-button) svg { flex: 0 0 16px; width: 16px; height: 16px; }
+.admin-shell .admin-hero-tool-panel.admin-reports-hero-actions .admin-reports-period-inputs.with-month {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.admin-shell .page-transition .jbc-blue-hero > .admin-hero-tool-panel.admin-reports-hero-actions {
+  gap: 5px;
+  padding: 9px;
+}
+.admin-shell .admin-hero-tool-panel.admin-reports-hero-actions > .secondary-button {
+  min-height: 32px;
+  padding-block: 5px;
+}
+.admin-shell .page-transition .jbc-blue-hero > .admin-hero-tool-panel.admin-pos-overview-side {
+  gap: 5px;
+  padding: 9px;
+}
+.admin-shell .admin-hero-tool-panel.admin-pos-overview-side .admin-pos-overview-actions :is(.primary-button, .secondary-button) {
+  min-height: 34px;
+  padding-block: 6px;
+}
+.admin-shell .admin-reports-hero-actions-label,
+.admin-shell .admin-reports-custom-trigger { display: flex; align-items: center; gap: 6px; }
+.admin-shell .admin-reports-custom-trigger { width: 100%; line-height: 1.3; }
+@media (max-width: 900px) {
+  .admin-shell .page-transition .jbc-blue-hero > .admin-hero-tool-panel { flex-basis: auto; }
+}
+@media (max-width: 520px) {
+  .admin-shell .page-transition .jbc-blue-hero > .admin-hero-tool-panel { width: 100%; }
+}
+.admin-shell[data-page='pos'] .admin-pos-overview-actions { grid-template-columns: 1fr 1fr; }
+.admin-shell[data-page='pos'] .admin-pos-discovery {
+  padding: 14px 18px 12px;
+  margin-bottom: 15px;
+}
+.admin-shell[data-page='pos'] .admin-pos-discovery-heading { margin-bottom: 9px; align-items: center; }
+.admin-shell[data-page='pos'] .admin-pos-discovery-heading h2 { margin-top: 2px; font-size: 17px; }
+.admin-shell[data-page='pos'] .admin-pos-discovery .pos-toolbar { gap: 10px; }
+.admin-shell[data-page='pos'] .admin-pos-discovery .search-field {
+  flex: 1 1 260px;
+  max-width: 420px;
+  min-height: 40px;
+}
+.admin-shell[data-page='pos'] .admin-pos-discovery .search-field input { min-height: 38px; height: 38px; }
+.admin-pos-type-filter button { min-height: 31px; padding: 5px 10px; font-size: 11px; }
+.admin-pos-results { margin-top: 7px; }
+.admin-pos-inline-bundles .bundle-catalog-count { margin: 0 0 10px; }
+.admin-shell[data-page='pos'] .admin-pos-inline-bundles .pos-products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.app-dialog .admin-online-order-controls .search-field {
+  display: flex;
+  align-items: center;
+  flex: 0 0 min(280px, 38%);
+  min-width: 0;
+  min-height: 40px;
+  overflow: hidden;
+  border: 1px solid #cddfed;
+  border-radius: 9px;
+  background: #f8fbff;
+}
+.app-dialog .admin-online-order-controls .search-field:focus-within { border-color: #5c9ce1; box-shadow: 0 0 0 3px #0b72d913; }
+.app-dialog .admin-online-order-controls .search-field input,
+.app-dialog .admin-online-order-controls .search-field input:focus {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 10px 0 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.admin-shell .admin-inventory .inventory-discovery {
+  gap: 10px;
+  padding: 14px 18px 12px;
+}
+.admin-shell .admin-inventory .inventory-discovery-heading h2 { margin-top: 2px; font-size: 17px; }
+.admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: minmax(180px, 1.25fr) repeat(3, minmax(125px, .8fr)); gap: 9px; }
+.admin-shell .admin-inventory .inventory-filter-toolbar :is(.search-field, select) { min-height: 39px; }
+.admin-shell .admin-inventory .inventory-filter-toolbar .search-field input { min-height: 37px; height: 37px; }
+.admin-shell .admin-inventory .inventory-discovery-footer { padding-top: 8px; }
+.admin-shell .inventory-hero-actions > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-shell .inventory-hero-actions > div > button { width: 100%; min-width: 0; }
+.admin-shell .admin-sales-discovery,
+.admin-shell .admin-expenses-discovery { gap: 9px; padding: 14px 18px; }
+.admin-shell .admin-sales-discovery-heading h2,
+.admin-shell .admin-expenses-discovery-heading h2 { margin-top: 2px; font-size: 17px; }
+.admin-shell .admin-sales-discovery .search-field,
+.admin-shell .admin-expenses-discovery .search-field { flex: 1 1 250px; max-width: 390px; min-height: 40px; }
+.admin-shell .admin-sales-discovery .search-field input,
+.admin-shell .admin-expenses-discovery .search-field input { min-height: 38px; height: 38px; }
+.admin-shell .admin-sales-discovery .list-toolbar select,
+.admin-shell .admin-expenses-discovery .list-toolbar select { flex-basis: 175px; min-height: 40px; }
+.admin-expense-more-filters { border-top: 1px solid #e6eef6; padding-top: 9px; }
+.admin-expense-more-filters summary { width: fit-content; color: #1767af; font-size: 11px; font-weight: 750; cursor: pointer; }
+.admin-shell .admin-expenses-discovery .admin-expense-more-filters .admin-expense-filters { margin-top: 10px; }
+.admin-shell .admin-expenses-clear { margin-top: 0; font-size: 11px; }
+@media (min-width: 1050px) {
+  .admin-shell .admin-sales-discovery,
+  .admin-shell .admin-expenses-discovery { grid-template-columns: 190px minmax(0, 1fr); align-items: center; }
+  .admin-shell .admin-sales-discovery .list-toolbar,
+  .admin-shell .admin-expenses-discovery .list-toolbar { flex-wrap: nowrap; }
+  .admin-expense-more-filters,
+  .admin-expenses-clear { grid-column: 1 / -1; }
+}
+.app-dialog .admin-reports-custom-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.app-dialog .admin-reports-custom-range > div { grid-column: 1 / -1; }
+.admin-reports-period-inputs.with-custom { grid-template-columns: minmax(0, 1fr); }
+.admin-reports-custom-trigger { min-height: 29px; padding: 4px 8px; border: 1px solid #ffffff52; border-radius: 7px; background: #ffffff14; color: white; font-size: 10px; text-align: left; }
+.admin-reports-custom-trigger:hover { background: #ffffff27; }
+.admin-settings-modal-content { display: grid; gap: 16px; min-width: 0; }
+.admin-site-settings-form { display: grid; gap: 16px; }
+.admin-settings-modal-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 17px 19px;
+  border: 1px solid #d8e8f7;
+  border-radius: 13px;
+  background: linear-gradient(110deg, #edf6ff, #f8fbff);
+}
+.admin-settings-modal-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 10px; background: #dceeff; color: #0b68c6; }
+.admin-settings-modal-intro .eyebrow { margin: 0 0 3px; color: #4f83b3; font-size: 9px; }
+.admin-settings-modal-intro h3 { margin: 0; color: #0b315b; font-family: var(--font-heading); font-size: 17px; }
+.admin-settings-modal-intro p { margin: 3px 0 0; color: #688099; font-size: 11px; line-height: 1.45; }
+.admin-shell .admin-settings-form-panel { gap: 15px; margin: 0; padding: 18px; border: 1px solid #e0eaf4; border-radius: 12px; background: #fff; }
+.admin-shell .business-settings-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-settings-panel-heading { display: grid; gap: 3px; padding-bottom: 9px; border-bottom: 1px solid #e7eef6; }
+.admin-settings-panel-heading:not(:first-child) { margin-top: 5px; }
+.admin-settings-panel-heading strong { color: #103c66; font-size: 13px; }
+.admin-settings-panel-heading small { color: #6a8299; font-size: 11px; }
+.admin-settings-help { margin: 0; padding: 11px 13px; border-radius: 9px; background: #f3f8ff; color: #56758f; font-size: 11px; line-height: 1.55; }
+.admin-shell .service-catalog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.service-catalog-toolbar p { max-width: 510px; margin: 0; color: #637e98; font-size: 12px; line-height: 1.5; }
+.service-catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.service-catalog-card { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 16px; border: 1px solid #dce8f4; border-radius: 12px; background: #fff; box-shadow: 0 5px 17px #0a315509; transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
+.service-catalog-card:hover { border-color: #a9d0f0; box-shadow: 0 9px 24px #0a315514; transform: translateY(-2px); }
+.service-catalog-card-top, .service-catalog-card-meta, .service-catalog-card-locations, .service-catalog-card-actions { display: flex; align-items: center; gap: 8px; }
+.service-catalog-card-top { justify-content: space-between; }
+.service-catalog-card-top > span { color: #2b6ca8; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.service-catalog-card-top small { padding: 4px 7px; border-radius: 6px; background: #f1f4f8; color: #71869b; font-size: 10px; font-weight: 700; }
+.service-catalog-card-top small.is-active { background: #e8f8f0; color: #26805a; }
+.service-catalog-card h3 { margin: 0; color: #0c335b; font-family: var(--font-heading); font-size: 15px; line-height: 1.35; }
+.service-catalog-card p { min-height: 33px; margin: 0; color: #658098; font-size: 11px; line-height: 1.5; }
+.service-catalog-card-meta { justify-content: space-between; flex-wrap: wrap; padding-top: 9px; border-top: 1px solid #e6eef6; }
+.service-catalog-card-meta strong { color: #0b315a; font-size: 15px; }
+.service-catalog-card-meta span, .service-catalog-card-locations span { display: inline-flex; align-items: center; gap: 4px; color: #607d97; font-size: 10px; }
+.service-catalog-card-locations { flex-wrap: wrap; }
+.service-catalog-card-actions { margin-top: auto; padding-top: 9px; border-top: 1px solid #e6eef6; }
+.admin-shell .service-catalog-card-actions button { flex: 1 1 0; min-height: 34px; padding: 6px; font-size: 11px; }
+.admin-shell .service-catalog-card-actions .is-danger { color: #b33f4c; border-color: #f2ced3; background: #fff7f8; }
+.service-catalog-empty { padding: 28px; border: 1px dashed #bfd4e8; border-radius: 12px; text-align: center; color: #647e98; }
+.service-catalog-editor { display: grid; gap: 14px; }
+.service-catalog-editor-options { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 12px; border: 1px solid #e3edf7; border-radius: 9px; background: #f8fbff; }
+.admin-payment-settings { display: grid; gap: 16px; }
+.admin-payment-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.admin-payment-toolbar p { margin: 0; color: #647f98; font-size: 11px; line-height: 1.5; }
+.admin-payment-toolbar button { flex: 0 0 auto; }
+.admin-shell .admin-payment-settings .payment-account-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 15px; margin-top: 0; }
+.admin-shell .admin-payment-settings .payment-account-card { display: grid; gap: 14px; padding: 18px; border: 1px solid #dce8f4; border-radius: 13px; background: white; }
+.payment-account-card-heading { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; border-bottom: 1px solid #e8eff6; }
+.payment-account-card-heading > span { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 9px; background: #e9f4ff; color: #0a65bc; }
+.payment-account-card-heading > div { min-width: 0; flex: 1; }
+.payment-account-card-heading h3 { margin: 0; color: #10375e; font-size: 14px; }
+.payment-account-card-heading small { color: #7088a0; font-size: 10px; }
+.payment-account-card-heading em { padding: 5px 8px; border-radius: 7px; background: #f0f4f8; color: #72869b; font-size: 10px; font-style: normal; font-weight: 750; }
+.payment-account-card-heading em.is-active { background: #e9f8f0; color: #27845c; }
+.payment-account-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.payment-account-fields label, .payment-account-qr-panel label { display: grid; gap: 5px; }
+.payment-account-qr-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1px dashed #c9dceb; border-radius: 10px; background: #f8fbff; }
+.payment-account-qr-panel label { flex: 1 1 220px; }
+.payment-account-qr-panel .payment-qr-image, .payment-account-qr-panel .payment-qr-empty { flex: 0 0 86px; max-width: 86px; max-height: 86px; min-height: 86px; margin: 0; }
+.payment-account-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.payment-account-options > label:nth-child(2) { grid-column: 1 / -1; }
+.admin-shell .admin-payment-settings .payment-account-card > .primary-button { justify-self: end; }
+.admin-reference-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.admin-reference-grid .settings-tile { min-width: 0; min-height: 75px; padding: 14px; border: 1px solid #dce8f4; border-radius: 11px; background: white; transition: border-color 170ms ease, transform 170ms ease; }
+.admin-reference-grid .settings-tile:hover { border-color: #a8cfee; transform: translateY(-2px); }
+.admin-reference-grid .settings-tile > svg { width: 21px; height: 21px; color: #0b68c0; }
+.admin-reference-grid .settings-tile strong { font-size: 12px; }
+.admin-reference-grid .settings-tile small { font-size: 10px; }
+.admin-shell .admin-notification-button { position: relative; width: 40px; padding: 5px; }
+.admin-notification-count { position: absolute; top: -6px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border: 2px solid white; border-radius: 99px; background: #e1485b; color: white; font-size: 9px; font-weight: 800; }
+.admin-shell.sidebar-collapsed .drawer-dialog .nav-item > .nav-item-label { display: block; }
+.admin-notification-center { display: grid; gap: 15px; }
+.admin-notification-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-notification-summary p { margin: 0; color: #526d86; font-size: 12px; line-height: 1.5; }
+.admin-notification-summary .secondary-button { min-height: 32px; padding: 6px 10px; white-space: nowrap; font-size: 11px; }
+.admin-notification-list { display: grid; gap: 8px; max-height: min(55vh, 450px); overflow-y: auto; }
+.admin-notification-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; padding: 8px; border: 1px solid #dce8f3; border-radius: 10px; background: #fbfdff; transition: border-color 170ms ease, background-color 170ms ease; }
+.admin-notification-item:hover, .admin-notification-item:focus-within { border-color: #8bbfeb; background: #f1f8ff; }
+.admin-notification-item.is-read { background: #f8fafc; }
+.admin-notification-content { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 42px; padding: 3px 5px; border-radius: 7px; text-decoration: none; }
+.admin-notification-content:hover strong { color: #075db2; }
+.admin-notification-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #0c72d7; }
+.admin-notification-item.is-read .admin-notification-dot { background: #b4c9dc; }
+.admin-notification-content > span:last-child { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.admin-notification-item strong { color: #123c63; font-size: 12px; }
+.admin-notification-item small { color: #69839c; font-size: 11px; overflow-wrap: anywhere; }
+.admin-notification-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.admin-notification-actions :is(button, a) { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 7px; border: 1px solid #d5e5f4; border-radius: 7px; background: white; color: #1263a9; font: inherit; font-size: 10px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+.admin-notification-actions :is(button, a):hover { border-color: #81b9e7; background: #e9f4ff; color: #064d91; }
+.admin-notification-actions .is-danger { color: #a93546; }
+.admin-notification-actions .is-danger:hover { border-color: #efb8c0; background: #fff1f2; color: #8e2334; }
+.admin-notification-empty { padding: 22px; border: 1px dashed #bfd8ee; border-radius: 10px; color: #69839c; font-size: 12px; text-align: center; }
+.admin-shell .nav-item:focus-visible, .customer-shell .nav-item:focus-visible,
+.admin-notification-content:focus-visible, .admin-notification-actions :is(button, a):focus-visible { outline: 2px solid #62aef1; outline-offset: 2px; }
+.admin-shell .nav-item.is-active, .customer-shell .nav-item.is-active { font-weight: 750; }
+.admin-shell .nav-item:not(.is-active):hover, .customer-shell .nav-item:not(.is-active):hover { border-color: #ffffff32; }
+.app-shell .record-tabs button { font-size: 13px; font-weight: 650; transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.app-shell .record-tabs button[aria-pressed='true'],
+.app-shell .record-tabs button[aria-pressed='true']:hover,
+.app-shell .record-tabs .primary-button:hover { border-color: #c7dbef; background: #fff; color: #083e77; font-weight: 750; box-shadow: 0 2px 8px #06335d18; }
+.app-shell .record-tabs button:not([aria-pressed='true']):hover { background: #f7fbff; color: #0b61b0; }
+.app-shell .page-transition :is(input, select, textarea):not(:disabled):hover:not(:focus) { border-color: #80afd9; }
+.app-shell .page-transition :is(input, select, textarea):focus { border-color: #3687cf; }
+.app-shell .page-transition :is(.customer-record-action, .primary-button, .secondary-button) svg { flex-shrink: 0; }
+.app-shell :is(button, a):disabled { cursor: not-allowed; }
+@media (max-width: 1024px) {
+  .admin-shell .admin-topbar-links > .admin-notification-button > .admin-notification-count { display: grid; }
+}
+@media (max-width: 900px) {
+  .admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-shell[data-page='pos'] .admin-pos-inline-bundles .pos-products { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .app-dialog .admin-online-order-controls .search-field { flex: 0 0 auto; width: 100%; }
+  .service-catalog-grid, .admin-reference-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin-payment-toolbar { align-items: stretch; flex-direction: column; }
+  .admin-payment-toolbar button { align-self: start; }
+}
+@media (max-width: 600px) {
+  .admin-notification-summary { align-items: flex-start; flex-direction: column; }
+  .admin-notification-item { grid-template-columns: minmax(0, 1fr); }
+  .admin-notification-actions { justify-content: flex-start; padding-left: 22px; }
+  .admin-shell[data-page='pos'] .admin-pos-discovery .search-field { max-width: none; }
+  .admin-shell .admin-inventory .inventory-filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .admin-shell .admin-sales-discovery .search-field,
+  .admin-shell .admin-expenses-discovery .search-field { max-width: none; }
+  .service-catalog-toolbar { flex-direction: column; align-items: stretch !important; }
+  .service-catalog-toolbar button { align-self: start; }
+  .payment-account-fields, .payment-account-options, .app-dialog .admin-reports-custom-range { grid-template-columns: minmax(0, 1fr); }
+  .payment-account-options > label:nth-child(2) { grid-column: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .service-catalog-card, .admin-reference-grid .settings-tile, .admin-notification-item, .admin-notification-actions :is(button, a), .app-shell .record-tabs button { transition: none; }
+  .service-catalog-card:hover, .admin-reference-grid .settings-tile:hover { transform: none; }
+}

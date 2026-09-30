@@ -1,13 +1,15 @@
-import { CalendarDays, Check, Cpu, Eye, FileText, PackageCheck, Pencil, Printer, ShoppingBag, X } from 'lucide-react'
+import { CalendarDays, CalendarX2, Check, Cpu, Eye, FileText, PackageCheck, Pencil, Printer, ShoppingBag, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useAuth } from '../../lib/auth-context'
+import { manilaDay, today } from '../../lib/dates'
 import { formatDate, formatPHP } from '../../lib/format'
+import { shortReference } from '../../lib/reference'
 import { buildTransitions, humanError, orderTransitions } from '../../lib/workflow'
 import type { CustomerAppointment, CustomPcRequest } from '../../types'
 import { advanceBuild, recordBuildApproval } from '../builder/buildOperations'
@@ -21,7 +23,15 @@ import { AppointmentReview } from './AppointmentReview'
 import { AppointmentDetails } from './AppointmentDetails'
 import { receiveAppointmentAsJob, recordSignedServiceIntake, updateAppointmentStatus } from './serviceOperations'
 
-export function RequestQueue({
+export function RequestQueue(props: {
+  scope?: 'appointments' | 'builds' | 'orders'
+  query?: string
+}) {
+  const [params] = useSearchParams()
+  return <RequestQueueContent key={params.get('reference') ?? ''} {...props} />
+}
+
+function RequestQueueContent({
   scope = 'appointments',
   query = '',
 }: {
@@ -31,6 +41,7 @@ export function RequestQueue({
   const { user } = useAuth(),
     { confirm } = useConfirmation(),
     navigate = useNavigate()
+  const [params] = useSearchParams()
   const { appointments, requests, error: loadError, loading } = useAllRequests(user?.role === 'admin')
   const workspace = useWorkspace()
   const [error, setError] = useState(''),
@@ -46,21 +57,23 @@ export function RequestQueue({
   const [approval, setApproval] = useState<CustomPcRequest | null>(null),
     [approvalNote, setApprovalNote] = useState('')
   const [feedback, setFeedback] = useState('')
-  const [buildQuery, setBuildQuery] = useState('')
+  const [buildQuery, setBuildQuery] = useState(params.get('reference') ?? '')
   const [buildFilter, setBuildFilter] = useState('all')
-  const [orderQuery, setOrderQuery] = useState('')
+  const [orderQuery, setOrderQuery] = useState(params.get('reference') ?? '')
   const [orderFilter, setOrderFilter] = useState('all')
   const lock = useRef(false)
-  async function act(action: () => Promise<unknown>, destructive = false) {
+  async function act(action: () => Promise<unknown>, destructive: boolean | 'no-show' = false) {
     if (lock.current) return
     lock.current = true
     try {
       if (
         destructive &&
         !(await confirm({
-          title: 'Cancel this record?',
-          message: 'The record will remain in history. Any reserved parts will be released.',
-          confirmLabel: 'Cancel record',
+          title: destructive === 'no-show' ? 'Mark customer as no-show?' : 'Cancel this record?',
+          message: destructive === 'no-show'
+            ? 'Use this when the customer did not attend the confirmed appointment. The reserved time is released and the appointment stays in history.'
+            : 'The record will remain in history. Any reserved parts will be released.',
+          confirmLabel: destructive === 'no-show' ? 'Mark no-show' : 'Cancel record',
           tone: 'danger',
         }))
       )
@@ -91,6 +104,18 @@ export function RequestQueue({
     { id: 'work', label: 'In progress', statuses: ['Parts reserved', 'Assembly', 'Ready'] },
     { id: 'closed', label: 'Closed', statuses: ['Completed', 'Cancelled', 'Declined'] },
   ]
+  const buildNextStep: Record<CustomPcRequest['status'], string> = {
+    'Quote requested': 'Begin review and check the submitted parts.',
+    'Under review': 'Resolve fit and stock issues, then prepare a final quote.',
+    Quoted: 'Waiting for the customer to approve this quote.',
+    Approved: 'Customer approved the quote. Reserve the available parts.',
+    'Parts reserved': 'Parts are held for this build. Start assembly.',
+    Assembly: 'Finish assembly and mark the build ready.',
+    Ready: 'Collect payment in POS, then complete the build.',
+    Completed: 'Build completed.',
+    Cancelled: 'Request cancelled.',
+    Declined: 'Customer declined the quote.',
+  }
   const selectedBuildFilter = buildFilters.find((filter) => filter.id === buildFilter) ?? buildFilters[0]
   const filteredBuilds = requests.filter((item) =>
     (selectedBuildFilter.id === 'all' || selectedBuildFilter.statuses.includes(item.status)) &&
@@ -377,9 +402,19 @@ export function RequestQueue({
                   </div>
                   <div>
                     <dt>Reference</dt>
-                    <dd className="service-record-reference">{item.id}</dd>
+                    <dd className="service-record-reference" title={item.id}>{shortReference(item.id)}</dd>
                   </div>
                 </dl>
+                {item.status === 'Requested' && (
+                  <p className="service-record-step">Next: confirm the available time, or review the schedule and estimate with the customer.</p>
+                )}
+                {item.status === 'Confirmed' && (
+                  <p className="service-record-step">
+                    {item.visit && !item.intakeSignedAt
+                      ? 'Next: review the intake and record the signed paper form before check-in.'
+                      : 'Ready for device check-in and service.'}
+                  </p>
+                )}
               </div>
               <div
                 className="service-record-actions"
@@ -423,34 +458,12 @@ export function RequestQueue({
                       className="customer-record-action is-primary service-record-action-full"
                       type="button"
                       disabled={busy || (!!item.visit && !item.intakeSignedAt)}
+                      title={item.visit && !item.intakeSignedAt ? 'Record the signed intake form first.' : undefined}
                       onClick={() => act(() => receiveAppointmentAsJob(user!, item.id))}
                     >
                       {item.visit?.mode === 'Home service' ? 'Start service' : 'Check in device'}
                     </button>
-                    <button
-                      className="customer-record-action"
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        act(() => updateAppointmentStatus(user!, item.id, 'No show'), true)
-                      }
-                    >
-                      No show
-                    </button>
                   </>
-                )}
-                {['Requested', 'Confirmed'].includes(item.status) && (
-                  <button
-                    className="customer-record-action is-danger"
-                    type="button"
-                    aria-label="Cancel appointment"
-                    disabled={busy}
-                    onClick={() =>
-                      act(() => updateAppointmentStatus(user!, item.id, 'Cancelled'), true)
-                    }
-                  >
-                    <X size={16} /> Cancel
-                  </button>
                 )}
                 {item.visit && ['Requested', 'Confirmed'].includes(item.status) && (
                   <button
@@ -463,6 +476,32 @@ export function RequestQueue({
                     }}
                   >
                     <FileText size={16} /> Intake form
+                  </button>
+                )}
+                {item.status === 'Confirmed' && (
+                  <button
+                    className="customer-record-action"
+                    type="button"
+                    title={item.preferredDate > today() ? 'Available on or after the appointment date.' : 'Customer missed the confirmed visit; releases the reserved time.'}
+                    disabled={busy || item.preferredDate > today()}
+                    onClick={() =>
+                      act(() => updateAppointmentStatus(user!, item.id, 'No show'), 'no-show')
+                    }
+                  >
+                    <CalendarX2 size={16} /> No show
+                  </button>
+                )}
+                {['Requested', 'Confirmed'].includes(item.status) && (
+                  <button
+                    className="customer-record-action is-danger"
+                    type="button"
+                    aria-label="Cancel appointment"
+                    disabled={busy}
+                    onClick={() =>
+                      act(() => updateAppointmentStatus(user!, item.id, 'Cancelled'), true)
+                    }
+                  >
+                    <X size={16} /> Cancel
                   </button>
                 )}
               </div>
@@ -485,7 +524,7 @@ export function RequestQueue({
                   <div><dt>Budget</dt><dd>{item.budget || 'Not specified'}</dd></div>
                   <div><dt>Quote</dt><dd>{item.quote ? formatPHP(item.quote.amount) : 'Pending review'}</dd></div>
                   <div><dt>Parts listed</dt><dd>{item.parts?.length ?? 0} of 8 components</dd></div>
-                  <div><dt>Submitted</dt><dd>{formatDate(item.createdAt.slice(0, 10))}</dd></div>
+                  <div><dt>Submitted</dt><dd>{formatDate(manilaDay(item.createdAt))}</dd></div>
                 </dl>
                 <div className="admin-build-request-summary">
                   <p>{item.parts?.length
@@ -496,7 +535,8 @@ export function RequestQueue({
                   {item.notes && <small>{item.notes}</small>}
                   {item.quote?.message && <small className="admin-build-quote-preview">Quote: {item.quote.message}</small>}
                 </div>
-                <small className="admin-build-request-reference">{item.id}</small>
+                <p className="admin-build-request-next"><strong>Next step</strong> {buildNextStep[item.status]}</p>
+                <small className="admin-build-request-reference" title={item.id}>{shortReference(item.id)}</small>
               </div>
               <div className="admin-build-request-actions" role="group" aria-label={`Actions for ${item.id}`}>
                 <span>ACTIONS</span>
@@ -581,7 +621,7 @@ export function RequestQueue({
                       <small>{formatPHP(item.paid)} received</small>
                     </div>
                     <div><dt>TOTAL</dt><dd>{formatPHP(item.total)}</dd></div>
-                    <div><dt>REFERENCE</dt><dd className="admin-online-order-reference">{item.id}</dd></div>
+                    <div><dt>REFERENCE</dt><dd className="admin-online-order-reference" title={item.id}>{shortReference(item.id)}</dd></div>
                   </dl>
                 </div>
                 <div className="admin-online-order-actions">
@@ -680,7 +720,7 @@ export function RequestQueue({
             <div className="admin-build-dialog-summary">
               <span className="eyebrow">FINAL QUOTATION</span>
               <h3>{quote.useCase} PC build</h3>
-              <p>{quote.customerName || 'Customer'} · {quote.id}</p>
+              <p title={quote.id}>{quote.customerName || 'Customer'} · {shortReference(quote.id)}</p>
               <small>{quote.parts?.length ?? 0} components listed · Budget {quote.budget || 'not specified'}</small>
             </div>
             <label>

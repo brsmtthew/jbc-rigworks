@@ -1,5 +1,6 @@
 import { setDoc } from 'firebase/firestore'
-import { useState } from 'react'
+import { CreditCard, Plus, Wallet } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { firestoreData, recordRef } from '../../lib/database'
 import type { PaymentAccount } from '../../types'
@@ -7,11 +8,20 @@ import { accountAvailable, blankPaymentAccounts, readPaymentImage } from '../fin
 import { usePaymentAccounts } from '../finance/usePayments'
 
 function AccountEditor({ account }: { account: PaymentAccount }) {
+  const revision = useRef(0)
+  const saving = useRef(false)
   const [draft, setDraft] = useState(account),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false)
+  function updateDraft(patch: Partial<PaymentAccount>) {
+    revision.current += 1
+    setDraft((current) => ({ ...current, ...patch }))
+    setSaved(false)
+    setError('')
+  }
   async function save() {
+    if (saving.current) return
     setError('')
     setSaved(false)
     if (draft.enabled && !accountAvailable(draft)) {
@@ -20,6 +30,8 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
       )
       return
     }
+    saving.current = true
+    const savedRevision = revision.current
     setBusy(true)
     try {
       await setDoc(
@@ -31,21 +43,27 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
           accountNumber: draft.accountNumber.trim(),
         }),
       )
-      setSaved(true)
+      if (revision.current === savedRevision) setSaved(true)
     } catch (err) {
-      setError((err as Error).message)
+      if (revision.current === savedRevision) setError((err as Error).message)
     } finally {
+      saving.current = false
       setBusy(false)
     }
   }
   return (
     <section className="payment-account-card portal-form">
-      <h3>{account.kind === 'Bank transfer' ? 'Company bank QR' : 'Company e-wallet QR'}</h3>
+      <div className="payment-account-card-heading">
+        <span aria-hidden="true">{draft.kind === 'Bank transfer' ? <CreditCard size={20} /> : <Wallet size={20} />}</span>
+        <div><h3>{draft.kind === 'Bank transfer' ? 'Company bank QR' : 'Company e-wallet QR'}</h3><small>{draft.name || 'Add provider details'}</small></div>
+        <em className={draft.enabled ? 'is-active' : ''}>{draft.enabled ? 'Enabled' : 'Disabled'}</em>
+      </div>
+      <div className="payment-account-fields">
       <label>
         Type
         <select
           value={draft.kind}
-          onChange={(e) => setDraft({ ...draft, kind: e.target.value as PaymentAccount['kind'] })}
+          onChange={(e) => updateDraft({ kind: e.target.value as PaymentAccount['kind'] })}
         >
           <option>Bank transfer</option>
           <option>E-wallet</option>
@@ -56,10 +74,7 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
         <input
           maxLength={80}
           value={draft.name}
-          onChange={(event) => {
-            setSaved(false)
-            setDraft({ ...draft, name: event.target.value })
-          }}
+          onChange={(event) => updateDraft({ name: event.target.value })}
         />
       </label>
       <label>
@@ -67,10 +82,7 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
         <input
           maxLength={100}
           value={draft.accountName}
-          onChange={(event) => {
-            setSaved(false)
-            setDraft({ ...draft, accountName: event.target.value })
-          }}
+          onChange={(event) => updateDraft({ accountName: event.target.value })}
         />
       </label>
       <label>
@@ -78,12 +90,11 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
         <input
           maxLength={60}
           value={draft.accountNumber}
-          onChange={(event) => {
-            setSaved(false)
-            setDraft({ ...draft, accountNumber: event.target.value })
-          }}
+          onChange={(event) => updateDraft({ accountNumber: event.target.value })}
         />
       </label>
+      </div>
+      <div className="payment-account-qr-panel">
       <label>
         Company QR image
         <input
@@ -94,9 +105,7 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
             if (!file) return
             try {
               const qrImage = await readPaymentImage(file)
-              setDraft((current) => ({ ...current, qrImage }))
-              setError('')
-              setSaved(false)
+              updateDraft({ qrImage })
             } catch (err) {
               setError((err as Error).message)
             }
@@ -108,14 +117,11 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
           <img
             className="payment-qr-image"
             src={draft.qrImage}
-            alt={`${account.kind} company QR`}
+            alt={`${draft.kind} company QR`}
           />
           <button
             className="text-button"
-            onClick={() => {
-              setDraft({ ...draft, qrImage: '', enabled: false })
-              setSaved(false)
-            }}
+            onClick={() => updateDraft({ qrImage: '', enabled: false })}
           >
             Remove QR
           </button>
@@ -123,14 +129,13 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
       ) : (
         <div className="payment-qr-empty">No QR added</div>
       )}
+      </div>
+      <div className="payment-account-options">
       <label className="check-row">
         <input
           type="checkbox"
           checked={draft.enabled}
-          onChange={(event) => {
-            setSaved(false)
-            setDraft({ ...draft, enabled: event.target.checked })
-          }}
+          onChange={(event) => updateDraft({ enabled: event.target.checked })}
         />
         <span>Offer this manual payment option</span>
       </label>
@@ -139,14 +144,14 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
         <textarea
           value={draft.instructions ?? ''}
           maxLength={1000}
-          onChange={(e) => setDraft({ ...draft, instructions: e.target.value })}
+          onChange={(e) => updateDraft({ instructions: e.target.value })}
         />
       </label>
       <label className="check-row">
         <input
           type="checkbox"
           checked={draft.customers !== false}
-          onChange={(e) => setDraft({ ...draft, customers: e.target.checked })}
+          onChange={(e) => updateDraft({ customers: e.target.checked })}
         />
         Available to customers
       </label>
@@ -154,12 +159,13 @@ function AccountEditor({ account }: { account: PaymentAccount }) {
         <input
           type="checkbox"
           checked={draft.pos !== false}
-          onChange={(e) => setDraft({ ...draft, pos: e.target.checked })}
+          onChange={(e) => updateDraft({ pos: e.target.checked })}
         />
         Available in POS
       </label>
+      </div>
       <button className="primary-button" disabled={busy} onClick={save}>
-        {busy ? 'Saving…' : `Save ${account.kind === 'Bank transfer' ? 'bank' : 'e-wallet'} QR`}
+        {busy ? 'Saving…' : `Save ${draft.kind === 'Bank transfer' ? 'bank' : 'e-wallet'} QR`}
       </button>
       {error && (
         <p role="alert" className="form-error">
@@ -181,12 +187,15 @@ export function PaymentAccountsEditor() {
   if (error) return <p role="alert" className="form-error">{error}</p>
   if (loading) return <LoadingState variant="compact" label="Loading payment accounts…" />
   return (
-    <div className="settings-fields">
-      <p>
-        Cash is accepted at the store. These slots stay empty and unavailable to customers until you
-        add and enable your company QRs. Staff must verify every transfer before recording payment.
-      </p>
-      <button
+    <div className="settings-fields admin-payment-settings">
+      <div className="admin-settings-modal-intro">
+        <span className="admin-settings-modal-icon" aria-hidden="true"><CreditCard size={22} /></span>
+        <div><span className="eyebrow">PAYMENT CHANNELS</span><h3>Company payment accounts</h3><p>Set up verified bank and e-wallet QR payments for customers and POS.</p></div>
+      </div>
+      <div className="admin-payment-toolbar">
+        <p>Cash is accepted at the store. A QR option appears only when its account details and image are complete and enabled.</p>
+        <button
+        type="button"
         className="secondary-button"
         onClick={() =>
           setNewAccounts([
@@ -203,8 +212,9 @@ export function PaymentAccountsEditor() {
           ])
         }
       >
-        Add payment account
-      </button>
+        <Plus size={16} /> Add account
+        </button>
+      </div>
       <div className="payment-account-grid">
         {[
           ...blankPaymentAccounts,

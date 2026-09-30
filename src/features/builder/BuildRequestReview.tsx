@@ -2,6 +2,7 @@ import { CircleCheck, CircleHelp, CircleX, TriangleAlert } from 'lucide-react'
 import { Dialog } from '../../components/ui/Dialog'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { formatPHP } from '../../lib/format'
+import { shortReference } from '../../lib/reference'
 import { availableStock } from '../../lib/workflow'
 import type { CustomPcRequest } from '../../types'
 import { RecordStatus } from '../customer/RecordStatus'
@@ -37,7 +38,7 @@ export function BuildRequestReview({
             Close
           </button>
           {['Under review', 'Quoted'].includes(request.status) && (
-            <button className="primary-button" disabled={!!review.errors.length} onClick={onQuote}>
+            <button className="primary-button" disabled={!!review.errors.length || !!review.unavailable.length || !review.rows.length} onClick={onQuote}>
               Prepare final quote
             </button>
           )}
@@ -49,7 +50,7 @@ export function BuildRequestReview({
           <div>
             <span className="eyebrow">COMPATIBILITY REVIEW</span>
             <h3>{request.useCase} PC build</h3>
-            <p>{request.customerName || 'Customer'} · {request.id}</p>
+            <p title={request.id}>{request.customerName || 'Customer'} · {shortReference(request.id)}</p>
           </div>
           <RecordStatus status={request.status} />
         </div>
@@ -138,6 +139,7 @@ export function BuildRequestReview({
           <div><span>Final quote</span><strong>{request.quote ? formatPHP(request.quote.amount) : 'Pending review'}</strong></div>
           {request.quote?.message && <p>{request.quote.message}</p>}
         </div>
+        {request.approvedAt && <p className="admin-build-review-approval">Quote approved by {request.approvedBy === request.customerId ? 'the customer online' : 'the workshop'} on {new Date(request.approvedAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' })}.</p>}
       </div>
     </Dialog>
   )

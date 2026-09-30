@@ -1,450 +1,244 @@
-import { sendPasswordResetEmail } from 'firebase/auth'
-import {
-  ArrowRight,
-  BrushCleaning,
-  Building2,
-  Pencil,
-  Save,
-  Settings2,
-  Truck,
-  UserRound,
-} from 'lucide-react'
+import { ArrowRight, Building2, CalendarDays, ClipboardList, CreditCard, Save, Settings2, Truck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { useAuth } from '../../lib/auth-context'
-import { firebaseAuth } from '../../lib/firebase'
-import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
+import { useShopSettings } from '../../lib/preferences'
 import { humanError } from '../../lib/workflow'
 import { PaymentAccountsEditor } from './PaymentAccountsEditor'
 import { ReferenceDataSettings } from './ReferenceDataSettings'
 import { ServiceSettings } from './ServiceSettings'
 
+type WebsiteSection = 'business' | 'delivery' | 'catalog' | 'payments' | 'booking' | 'reference'
+
+const areas = [
+  {
+    id: 'business',
+    title: 'Business & invoices',
+    description: 'Shop identity, contact details, and the information shown on invoices.',
+    icon: Building2,
+  },
+  {
+    id: 'payments',
+    title: 'Company payment QRs',
+    description: 'Bank and e-wallet accounts used for verified manual payments.',
+    icon: CreditCard,
+  },
+  {
+    id: 'delivery',
+    title: 'Home service, delivery & warranty',
+    description: 'Visit charges, delivery fees, and default coverage terms.',
+    icon: Truck,
+  },
+  {
+    id: 'reference',
+    title: 'Reference data & taxes',
+    description: 'Product, finance, compatibility, and tax defaults.',
+    icon: Settings2,
+  },
+] as const
+
 export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
-  const { user, updateProfile } = useAuth()
   const { confirm } = useConfirmation()
   const [shop, saveShop, shopStatus] = useShopSettings()
-  const [account, saveAccount, accountStatus] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [business, setBusiness] = useState(shop)
-  const [profile, setProfile] = useState({
-    ...account,
-    name: account.name || user!.name,
-    contactEmail: account.contactEmail || user!.email,
-  })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [params] = useSearchParams()
-  const [section, setSection] = useState<number | null>(
-    params.get('section') === 'reference' && user?.role === 'admin' ? 7 : null,
+  const [section, setSection] = useState<WebsiteSection | null>(
+    params.get('section') === 'reference' ? 'reference' : null,
   )
-  const admin = user?.role === 'admin'
-  async function save(event: FormEvent) {
-    event.preventDefault()
+
+  function open(next: WebsiteSection) {
+    setBusiness(shop)
     setError('')
     setMessage('')
-    if (!profile.name.trim()) {
-      setError('Enter your display name.')
+    setSection(next)
+  }
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (section !== 'business' && section !== 'delivery') return
+    setError('')
+    setMessage('')
+    const title = areas.find((area) => area.id === section)?.title ?? 'website settings'
+    if (
+      !(await confirm({
+        title: 'Save changes?',
+        message: `Save your changes to ${title.toLowerCase()}?`,
+        confirmLabel: 'Save changes',
+      }))
+    )
       return
-    }
-    const confirmed = await confirm({
-      title: 'Save changes?',
-      message: `Save your changes to ${areas[section ?? 0].title.toLowerCase()}?`,
-      confirmLabel: 'Save changes',
-    })
-    if (!confirmed) return
     try {
-      if (admin && section !== 0 && section !== 1) {
-        if (!business.name.trim() || !/^[A-Za-z0-9-]{1,12}$/.test(business.prefix))
-          throw new Error(
-            'Enter a business name and an invoice prefix of up to 12 letters, numbers, or hyphens.',
-          )
-        const prices = Object.values(business.cleaning)
-          .flatMap((value) => Object.values(value))
-          .filter((value) => value !== '')
-        if (
-          [
-            business.taxRate,
-            business.labor,
-            business.delivery,
-            ...prices.map(Number),
-            ...[
-              business.homeSurcharge,
-              business.transportBase,
-              business.transportPerKm,
-              business.warrantyMonths,
-            ]
-              .filter((value) => value !== '')
-              .map(Number),
-          ].some((value) => !Number.isFinite(value) || value < 0) ||
-          business.taxRate > 100
+      if (!business.name.trim() || !/^[A-Za-z0-9-]{1,12}$/.test(business.prefix))
+        throw new Error(
+          'Enter a business name and an invoice prefix of up to 12 letters, numbers, or hyphens.',
         )
-          throw new Error('Enter valid prices, charges, and a tax rate between 0 and 100.')
-        if (
-          business.warrantyMonths !== '' &&
-          (!Number.isSafeInteger(Number(business.warrantyMonths)) ||
-            Number(business.warrantyMonths) > 120)
-        )
-          throw new Error('Warranty must be a whole number from 0 to 120 months.')
-        await saveShop(business)
-      }
-      if (section === 0 || section === 1) {
-        await updateProfile(profile.name.trim())
-        await saveAccount({ ...profile, name: profile.name.trim() })
-      }
+      const prices = Object.values(business.cleaning)
+        .flatMap((value) => Object.values(value))
+        .filter((value) => value !== '')
+      if (
+        [
+          business.taxRate,
+          business.labor,
+          business.delivery,
+          ...prices.map(Number),
+          ...[
+            business.homeSurcharge,
+            business.transportBase,
+            business.transportPerKm,
+            business.warrantyMonths,
+          ]
+            .filter((value) => value !== '')
+            .map(Number),
+        ].some((value) => !Number.isFinite(value) || value < 0) ||
+        business.taxRate > 100
+      )
+        throw new Error('Enter valid prices, charges, and a tax rate between 0 and 100.')
+      if (
+        business.warrantyMonths !== '' &&
+        (!Number.isSafeInteger(Number(business.warrantyMonths)) ||
+          Number(business.warrantyMonths) > 120)
+      )
+        throw new Error('Warranty must be a whole number from 0 to 120 months.')
+      await saveShop(business)
       setSection(null)
-      setMessage('Settings saved.')
+      setMessage('Website settings saved.')
     } catch (err) {
       setError(humanError(err))
     }
   }
-  const areas = [
-    {
-      title: 'Profile & contact',
-      description: 'Photo, name, email, phone, and address',
-      icon: UserRound,
-    },
-    {
-      title: 'Display & account access',
-      description: 'Comfortable density and motion preferences',
-      icon: Settings2,
-    },
-    {
-      title: 'Business & invoices',
-      description: 'Business identity and historical invoice details',
-      icon: Building2,
-    },
-    {
-      title: 'Home service, delivery & warranty',
-      description: 'Distance fees and purchase coverage',
-      icon: Truck,
-    },
-    {
-      title: 'Service catalog',
-      description: 'Packages, pricing, and visit availability',
-      icon: BrushCleaning,
-    },
-    {
-      title: 'Company payment QRs',
-      description: 'Bank and e-wallet accounts for verified manual payments',
-      icon: Building2,
-    },
-    {
-      title: 'Booking & scheduling',
-      description: 'Operating hours, capacity, and blocked dates',
-      icon: Settings2,
-    },
-    {
-      title: 'Reference data & taxes',
-      description: 'Product, finance, compatibility, and fee settings',
-      icon: Settings2,
-    },
-  ]
-  function open(index: number) {
-    setBusiness(shop)
-    setProfile({
-      ...account,
-      name: account.name || user!.name,
-      contactEmail: account.contactEmail || user!.email,
-    })
-    setError('')
-    setMessage('')
-    setSection(index)
-  }
-  function choosePhoto(file?: File) {
-    if (!file) return
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Choose a JPG, PNG, or WebP image.')
-      return
-    }
-    if (file.size > 500000) {
-      setError('Profile images must be 500 KB or smaller.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string')
-        setProfile((current) => ({ ...current, photo: reader.result as string }))
-    }
-    reader.onerror = () => setError('Unable to read this image. Choose another file.')
-    reader.readAsDataURL(file)
-  }
-  const loadError = shopStatus.error || accountStatus.error
-  if (loadError) return <p className="form-error" role="alert">{loadError}</p>
-  if (shopStatus.loading || accountStatus.loading)
-    return <LoadingState label="Loading settings…" />
+
+  if (shopStatus.error) return <p className="form-error" role="alert">{shopStatus.error}</p>
+  if (shopStatus.loading) return <LoadingState label="Loading website settings…" />
+
   return (
-    <>
+    <div className="admin-site-settings">
       {!embedded && (
-        <PageHeader
-          eyebrow={admin ? 'WORKSPACE' : 'MY ACCOUNT'}
-          title={admin ? 'Workspace settings' : 'My settings'}
-          description="Your profile and preferences, with controls grouped by purpose."
-        />
+        <section className="admin-settings-hero jbc-blue-hero" aria-labelledby="admin-settings-title">
+          <div className="admin-settings-hero-copy">
+            <span className="admin-settings-kicker">WEBSITE CONFIGURATION</span>
+            <h1 id="admin-settings-title">Settings</h1>
+            <p>Set up the services, bookings, payments, and business details used across your website.</p>
+          </div>
+          <div className="admin-settings-hero-actions admin-hero-tool-panel" role="group" aria-label="Website settings actions">
+            <span className="admin-settings-hero-actions-label">CUSTOMER EXPERIENCE</span>
+            <strong>Manage the services customers can book</strong>
+            <div>
+              <button type="button" className="primary-button" onClick={() => open('catalog')}>
+                <ClipboardList size={16} /> Service catalog
+              </button>
+              <button type="button" className="secondary-button" onClick={() => open('booking')}>
+                <CalendarDays size={16} /> Booking & scheduling
+              </button>
+            </div>
+          </div>
+        </section>
       )}
-      <section className="profile-card">
-        <div className="profile-symbol">
-          {account.photo ? <img src={account.photo} alt="" /> : <UserRound size={34} />}
-        </div>
-        <div>
-          <span className="eyebrow">{admin ? 'MY ACCOUNT' : 'PROFILE'}</span>
-          <h2>{account.name || user?.name}</h2>
-          <p>{account.contactEmail || user?.email}</p>
-          <p>
-            {account.phone || 'Add a contact number'}
-            {account.address ? ' / ' + account.address : ''}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => open(0)}
-          title="Edit profile"
-          aria-label="Edit profile"
-        >
-          <Pencil size={20} />
-          <span>Edit profile</span>
-        </button>
-      </section>
       {message && (
         <p role="status" className="save-message settings-feedback">
           {message}
         </p>
       )}
-      <div className="admin-settings-groups">
-        {(admin
-          ? [
-              {
-                title: 'Personal workspace',
-                description: 'Your profile, preferences, and account access.',
-                indices: [0, 1],
-              },
-              {
-                title: 'Business essentials',
-                description: 'How your shop appears and accepts payments.',
-                indices: [2, 5, 3],
-              },
-              {
-                title: 'Workshop operations',
-                description: 'Services, availability, and catalog defaults.',
-                indices: [4, 6, 7],
-              },
-            ]
-          : [{ title: 'My account', description: 'Your profile and preferences.', indices: [0, 1] }]
-        ).map((group) => (
-          <section className="admin-settings-group" key={group.title}>
-            <div className="admin-settings-heading">
-              <h2>{group.title}</h2>
-              <p>{group.description}</p>
-            </div>
-            <div className="settings-menu">
-              {group.indices.map((index) => {
-                const area = areas[index]
-                return (
-                  <button
-                    type="button"
-                    className="settings-tile"
-                    key={area.title}
-                    onClick={() => open(index)}
-                  >
-                    <span className="service-icon">
-                      <area.icon size={24} />
-                    </span>
-                    <span>
-                      <strong>{area.title}</strong>
-                      <small>{area.description}</small>
-                    </span>
-                    <ArrowRight size={20} />
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-      {section === 4 && (
+      <section className="admin-site-settings-section" aria-labelledby="admin-site-settings-section-title">
+        <div className="admin-site-settings-intro">
+          <span className="eyebrow">BUSINESS &amp; SYSTEM</span>
+          <h2 id="admin-site-settings-section-title">Website configuration</h2>
+          <p>Manage the details that appear in checkout, service requests, and business records.</p>
+        </div>
+        <div className="admin-site-settings-grid">
+          {areas.map((area, index) => (
+            <button
+              type="button"
+              className="admin-site-settings-tile"
+              key={area.id}
+              onClick={() => open(area.id)}
+            >
+              <span className="admin-site-settings-tile-number" aria-hidden="true">0{index + 1}</span>
+              <span className="admin-site-settings-tile-icon"><area.icon size={21} /></span>
+              <span className="admin-site-settings-tile-copy">
+                <strong>{area.title}</strong>
+                <small>{area.description}</small>
+              </span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {section === 'catalog' && (
         <Dialog title="Service catalog" wide onClose={() => setSection(null)}>
           <ServiceSettings />
         </Dialog>
       )}
-      {section === 6 && (
+      {section === 'booking' && (
         <Dialog title="Booking & scheduling" wide onClose={() => setSection(null)}>
           <ServiceSettings scheduling />
         </Dialog>
       )}
-      {section === 7 && (
+      {section === 'reference' && (
         <Dialog title="Reference data & taxes" wide onClose={() => setSection(null)}>
-          <ReferenceDataSettings embedded />
+          <div className="admin-settings-modal-content"><ReferenceDataSettings embedded /></div>
         </Dialog>
       )}
-      {section === 5 && (
+      {section === 'payments' && (
         <Dialog title="Company payment QRs" wide onClose={() => setSection(null)}>
-          <PaymentAccountsEditor />
+          <div className="admin-settings-modal-content"><PaymentAccountsEditor /></div>
         </Dialog>
       )}
-      {section !== null && ![4, 5, 6, 7].includes(section) && (
+      {(section === 'business' || section === 'delivery') && (
         <Dialog
-          title={areas[section].title}
-          wide={section === 2 || section === 4}
+          title={areas.find((area) => area.id === section)?.title ?? 'Website settings'}
+          wide={section === 'business'}
           onClose={() => setSection(null)}
           footer={
             <>
               <button type="button" className="secondary-button" onClick={() => setSection(null)}>
                 Cancel
               </button>
-              <button className="primary-button" type="submit" form="workspace-settings">
-                <Save size={18} />
-                Save changes
+              <button className="primary-button" type="submit" form="website-settings-form">
+                <Save size={18} /> Save changes
               </button>
             </>
           }
         >
-          <form id="workspace-settings" onSubmit={save}>
-            {section === 0 && (
-              <div className="portal-form settings-fields">
-                <div className="profile-photo-field">
-                  <span>Profile photo</span>
-                  <div className="profile-photo-actions">
-                    {profile.photo ? (
-                      <img
-                        className="profile-photo-preview"
-                        src={profile.photo}
-                        alt="Profile preview"
-                      />
-                    ) : (
-                      <span className="profile-photo-preview profile-photo-placeholder">
-                        <UserRound size={27} />
-                      </span>
-                    )}
+          <form id="website-settings-form" className="admin-site-settings-form" onSubmit={save}>
+            <div className="admin-settings-modal-intro">
+              <span className="admin-settings-modal-icon" aria-hidden="true">{section === 'business' ? <Building2 size={22} /> : <Truck size={22} />}</span>
+              <div>
+                <span className="eyebrow">WEBSITE DETAILS</span>
+                <h3>{section === 'business' ? 'Business identity & invoice details' : 'Service charges & coverage'}</h3>
+                <p>{section === 'business' ? 'These details appear on business records and customer invoices.' : 'Set the charges used for visits and delivery, then define default warranty terms.'}</p>
+              </div>
+            </div>
+            {section === 'business' && (
+              <div className="portal-form settings-fields business-settings-fields admin-settings-form-panel">
+                {(['name', 'address', 'phone', 'email', 'prefix', 'footer'] as const).map((field) => (
+                  <label key={field}>
+                    {{
+                      name: 'Business name',
+                      address: 'Business address',
+                      phone: 'Business phone',
+                      email: 'Business email',
+                      prefix: 'Invoice prefix',
+                      footer: 'Invoice footer',
+                    }[field]}
                     <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      aria-label="Upload a JPG, PNG, or WebP profile photo"
-                      onChange={(e) => choosePhoto(e.target.files?.[0])}
+                      required={field === 'name' || field === 'prefix'}
+                      type={field === 'email' ? 'email' : 'text'}
+                      maxLength={field === 'prefix' ? 12 : 250}
+                      value={business[field]}
+                      onChange={(e) => setBusiness({ ...business, [field]: e.target.value })}
                     />
-                    {profile.photo && (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => setProfile({ ...profile, photo: '' })}
-                      >
-                        Remove photo
-                      </button>
-                    )}
-                  </div>
-                  <small className="storage-caption">JPG, PNG, or WebP, up to 500 KB.</small>
-                </div>
-                <label>
-                  Display name
-                  <input
-                    required
-                    maxLength={80}
-                    value={profile.name}
-                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Sign-in email
-                  <input value={user?.email} readOnly />
-                  <small className="storage-caption">
-                    Account identifier. Contact email below can be changed.
-                  </small>
-                </label>
-                <label>
-                  Contact email
-                  <input
-                    type="email"
-                    value={profile.contactEmail}
-                    onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Phone number
-                  <input
-                    type="tel"
-                    maxLength={30}
-                    value={profile.phone}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Address
-                  <textarea
-                    rows={3}
-                    maxLength={400}
-                    value={profile.address}
-                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                  />
-                </label>
+                  </label>
+                ))}
               </div>
             )}
-            {section === 1 && (
-              <div className="portal-form settings-fields">
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={profile.compact}
-                    onChange={(e) => setProfile({ ...profile, compact: e.target.checked })}
-                  />
-                  <span>Compact tables and cards</span>
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={profile.reduceMotion}
-                    onChange={(e) => setProfile({ ...profile, reduceMotion: e.target.checked })}
-                  />
-                  <span>Reduce animations</span>
-                </label>
-                <p>Sign-in email: {user?.email}</p>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={async () => {
-                    try {
-                      await sendPasswordResetEmail(firebaseAuth, user!.email)
-                      setMessage('Password reset email sent.')
-                      setSection(null)
-                    } catch {
-                      setError('Could not send the reset email. Please try again.')
-                    }
-                  }}
-                >
-                  Reset password
-                </button>
-              </div>
-            )}
-            {section === 2 && (
-              <div className="portal-form settings-fields business-settings-fields">
-                {(['name', 'address', 'phone', 'email', 'prefix', 'footer'] as const).map(
-                  (field) => (
-                    <label key={field}>
-                      {
-                        {
-                          name: 'Business name',
-                          address: 'Business address',
-                          phone: 'Business phone',
-                          email: 'Business email',
-                          prefix: 'Invoice prefix',
-                          footer: 'Invoice footer',
-                        }[field]
-                      }
-                      <input
-                        required={field === 'name' || field === 'prefix'}
-                        type={field === 'email' ? 'email' : 'text'}
-                        maxLength={field === 'prefix' ? 12 : 250}
-                        value={business[field]}
-                        onChange={(e) => setBusiness({ ...business, [field]: e.target.value })}
-                      />
-                    </label>
-                  ),
-                )}
-              </div>
-            )}
-            {section === 3 && (
-              <div className="portal-form settings-fields">
+            {section === 'delivery' && (
+              <div className="portal-form settings-fields admin-settings-form-panel">
+                <div className="admin-settings-panel-heading"><strong>Visit & delivery charges</strong><small>Blank home service rates require a quote.</small></div>
                 <label>
                   Standard product delivery fee (PHP)
                   <input
@@ -456,29 +250,28 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                     onChange={(e) => setBusiness({ ...business, delivery: Number(e.target.value) })}
                   />
                 </label>
-                {(
-                  ['homeSurcharge', 'transportBase', 'transportPerKm', 'warrantyMonths'] as const
-                ).map((field) => (
+                {(['homeSurcharge', 'transportBase', 'transportPerKm'] as const).map((field) => (
                   <label key={field}>
-                    {
-                      {
-                        homeSurcharge: 'Home-service surcharge (PHP)',
-                        transportBase: 'Transport base fee (PHP)',
-                        transportPerKm: 'Transport per kilometre (PHP)',
-                        warrantyMonths: 'Default item warranty (months)',
-                      }[field]
-                    }
+                    {{
+                      homeSurcharge: 'Home-service surcharge (PHP)',
+                      transportBase: 'Transport base fee (PHP)',
+                      transportPerKm: 'Transport per kilometre (PHP)',
+                    }[field]}
                     <input
                       type="number"
                       min="0"
-                      max={field === 'warrantyMonths' ? 120 : undefined}
-                      step={field === 'warrantyMonths' ? 1 : '0.01'}
+                      step="0.01"
                       placeholder="Not configured"
                       value={business[field]}
                       onChange={(e) => setBusiness({ ...business, [field]: e.target.value })}
                     />
                   </label>
                 ))}
+                <div className="admin-settings-panel-heading"><strong>Warranty coverage</strong><small>Applied to new purchased items.</small></div>
+                <label>
+                  Default item warranty (months)
+                  <input type="number" min="0" max="120" step="1" placeholder="Not configured" value={business.warrantyMonths} onChange={(event) => setBusiness({ ...business, warrantyMonths: event.target.value })} />
+                </label>
                 <label>
                   Default warranty terms
                   <textarea
@@ -489,7 +282,7 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                     placeholder="Coverage, exclusions, and claim instructions"
                   />
                 </label>
-                <p className="storage-caption">
+                <p className="admin-settings-help">
                   Product orders use the standard delivery fee; bundles receive free delivery only
                   when enabled in Inventory. Home visits add the home-service surcharge and
                   transportation (base fee plus distance times rate). Blank home-service rates
@@ -497,14 +290,10 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                 </p>
               </div>
             )}
-            {error && (
-              <p role="alert" className="form-error">
-                {error}
-              </p>
-            )}
+            {error && <p role="alert" className="form-error">{error}</p>}
           </form>
         </Dialog>
       )}
-    </>
+    </div>
   )
 }

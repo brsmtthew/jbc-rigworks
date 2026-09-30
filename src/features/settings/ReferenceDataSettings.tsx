@@ -196,7 +196,13 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
           description="Manage product, finance, and compatibility values."
         />
       )}
-      <div className="settings-menu">
+      {embedded && (
+        <div className="admin-settings-modal-intro">
+          <span className="admin-settings-modal-icon" aria-hidden="true"><FolderCog size={22} /></span>
+          <div><span className="eyebrow">SYSTEM LISTS</span><h3>Reference values & tax defaults</h3><p>Manage the choices used by inventory, finance, and checkout forms.</p></div>
+        </div>
+      )}
+      <div className="settings-menu admin-reference-grid">
         {(Object.keys(directoryLabels) as DirectoryGroup[])
           .filter((key) => !['services', 'times'].includes(key))
           .map((key) => (

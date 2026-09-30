@@ -311,6 +311,17 @@
   font-weight: 500;
 }
 
+.service-record-step {
+  margin: 0 18px 14px;
+  padding: 8px 11px;
+  border: 1px solid #d8e9f9;
+  border-radius: 8px;
+  background: #f3f9ff;
+  color: #315d84;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .service-record-note,
 .service-record-intake-note {
   margin: 0 18px 14px;

@@ -22,7 +22,7 @@ test('admin POS catalog, cart, and dialogs fit across viewport sizes', { timeout
     await expect(page.getByRole('heading', { name: 'Point of sale', level: 1 })).toBeVisible()
     await expect(page.locator('.admin-pos-overview-icon')).toHaveCount(0)
     await expect(page.locator('.page-heading')).toHaveCount(0)
-    await expect(page.locator('.admin-pos-overview-actions').getByRole('button')).toHaveCount(3)
+    await expect(page.locator('.admin-pos-overview-actions').getByRole('button')).toHaveCount(2)
     await expect(page.locator('.admin-pos-overview-side')).toContainText('COUNTER TOOLS')
     await expect(page.locator('.admin-pos-product').first()).toBeVisible()
     await expect(page.locator('.admin-pos-cart')).toBeVisible()
@@ -90,18 +90,18 @@ test('admin POS catalog, cart, and dialogs fit across viewport sizes', { timeout
     await expect(scanner).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Bundles & PC sets' }).click()
-    const bundles = page.getByRole('dialog', { name: 'Bundles & PC sets' })
+    const bundles = page.locator('.admin-pos-inline-bundles')
     await expect(bundles.locator('.bundle-catalog .pos-product').first()).toBeVisible()
     for (const width of [900, 390, 320]) {
       await page.setViewportSize({ width, height: 700 })
-      const modal = await bundles.evaluate((dialog) => ({
-        width: dialog.clientWidth,
-        scrollWidth: dialog.scrollWidth,
-        right: dialog.getBoundingClientRect().right,
+      const modal = await bundles.evaluate((section) => ({
+        width: section.clientWidth,
+        scrollWidth: section.scrollWidth,
+        right: section.getBoundingClientRect().right,
       }))
       assert.ok(modal.scrollWidth <= modal.width + 1 && modal.right <= width + 1)
     }
-    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'All items' }).click()
     await expect(bundles).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Online orders' }).click()

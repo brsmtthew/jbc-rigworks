@@ -1,20 +1,20 @@
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) {
+body .app-dialog:has(.customer-settings-modal) {
   width: min(940px, calc(100vw - 32px));
   max-height: min(90dvh, 820px);
 }
 
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-inner {
+body .app-dialog:has(.customer-settings-modal) .dialog-inner {
   height: min(88dvh, 820px);
 }
 
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-body {
+body .app-dialog:has(.customer-settings-modal) .dialog-body {
   display: flex;
   min-height: 0;
   overflow: hidden;
   padding: 0;
 }
 
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-footer {
+body .app-dialog:has(.customer-settings-modal) .dialog-footer {
   padding: 0 24px;
   background: white;
 }
@@ -177,7 +177,7 @@ body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-foot
   line-height: 1.5;
 }
 
-.customer-shell .customer-settings-form {
+.customer-settings-modal .customer-settings-form {
   display: grid;
   gap: 15px;
   min-width: 0;
@@ -259,7 +259,7 @@ body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-foot
   font-size: 12px;
 }
 
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-save-bar {
+body .app-dialog:has(.customer-settings-modal) .settings-save-bar {
   display: flex;
   flex: 1;
   align-items: center;
@@ -270,7 +270,7 @@ body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-sa
   border: 0;
 }
 
-body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-save-bar > span {
+body .app-dialog:has(.customer-settings-modal) .settings-save-bar > span {
   margin-right: auto;
   color: #607a92;
   font-size: 12px;
@@ -324,7 +324,7 @@ body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-sa
   .customer-settings-main {
     padding: 20px 16px 24px;
   }
-  body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .dialog-footer {
+  body .app-dialog:has(.customer-settings-modal) .dialog-footer {
     padding-inline: 16px;
   }
 }
@@ -336,10 +336,10 @@ body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-sa
 }
 
 @media (max-width: 430px) {
-  body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-save-bar {
+  body .app-dialog:has(.customer-settings-modal) .settings-save-bar {
     flex-wrap: wrap;
   }
-  body:has(.customer-shell) .app-dialog:has(.customer-settings-modal) .settings-save-bar > span {
+  body .app-dialog:has(.customer-settings-modal) .settings-save-bar > span {
     width: 100%;
   }
   .customer-settings-nav button {

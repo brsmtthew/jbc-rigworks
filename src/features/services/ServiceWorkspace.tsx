@@ -15,12 +15,17 @@ import { WalkInIntakeReview } from './WalkInIntakeReview'
 import { advanceService } from './serviceOperations'
 
 export function ServiceWorkspace({ onCreate }: { onCreate: () => void }) {
+  const [params] = useSearchParams()
+  return <ServiceWorkspaceContent key={params.get('reference') ?? ''} onCreate={onCreate} />
+}
+
+function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
   const { jobs, loading, storageError } = useWorkspace(),
     { user } = useAuth(),
     navigate = useNavigate()
   const [params] = useSearchParams()
   const [tab, setTab] = useState(params.get('tab') ?? 'requests'),
-    [query, setQuery] = useState('')
+    [query, setQuery] = useState(params.get('reference') ?? '')
   const [editing, setEditing] = useState<Job | null>(null),
     [reviewingWalkIn, setReviewingWalkIn] = useState<Job | null>(null),
     [error, setError] = useState(''),

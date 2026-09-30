@@ -1,6 +1,4 @@
 import { RotateCcw } from 'lucide-react'
-import type { ExcelData } from '../../lib/excel'
-import { ExcelButton } from './ExcelButton'
 import { SearchField } from './Filters'
 
 export function ListToolbar({
@@ -10,9 +8,8 @@ export function ListToolbar({
   setFilter,
   options,
   label,
-  count,
+  filterLabel,
   onReset,
-  onExport,
 }: {
   query: string
   setQuery: (value: string) => void
@@ -20,33 +17,34 @@ export function ListToolbar({
   setFilter: (value: string) => void
   options: { value: string; label: string }[]
   label: string
-  count: number
+  filterLabel: string
   onReset: () => void
-  onExport?: () => ExcelData
 }) {
   return (
     <div className="list-toolbar">
-      <SearchField label={label} value={query} onChange={setQuery} />
-      <select
-        aria-label="Filter records"
-        value={filter}
-        onChange={(event) => setFilter(event.target.value)}
-      >
-        {options.map((option) => (
-          <option value={option.value} key={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="toolbar-field">
+        <span className="toolbar-field-label">Search</span>
+        <SearchField label={label} value={query} onChange={setQuery} />
+      </div>
+      <label className="toolbar-field">
+        <span className="toolbar-field-label">{filterLabel}</span>
+        <select
+          aria-label="Filter records"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+        >
+          {options.map((option) => (
+            <option value={option.value} key={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       {(query || filter !== 'all') && (
-        <button className="text-button" onClick={onReset} title="Reset" aria-label="Reset">
+        <button className="text-button toolbar-reset" type="button" onClick={onReset} title="Reset filters" aria-label="Reset filters">
           <RotateCcw size={19} />
         </button>
       )}
-      <span className="result-count" role="status" aria-label="Result count">
-        {count} {count === 1 ? 'result' : 'results'}
-      </span>
-      {onExport && <ExcelButton disabled={!count} onExport={onExport} />}
     </div>
   )
 }

@@ -323,7 +323,9 @@ export async function findPayableOrder(id: string): Promise<Sale> {
       ? (order.data() as Sale)
       : null
   if (!found) throw new Error('No order matches this reference.')
-  if (found.orderStatus === 'Declined')
-    throw new Error('This order was declined. Ask the customer to place a new order.')
+  if (found.orderStatus === 'Declined' || found.orderStatus === 'Cancelled')
+    throw new Error('This order is closed. Ask the customer to place a new order.')
+  if (found.status === 'Paid' || found.paid >= found.total)
+    throw new Error('This order is already paid. Open its invoice or receipt instead.')
   return found
 }

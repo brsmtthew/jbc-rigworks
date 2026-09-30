@@ -29,7 +29,7 @@ export async function savePcQuote(
   quote: { amount: number; message: string },
 ) {
   if (user.role !== 'admin') throw new Error('Only the workshop can prepare a quote.')
-  if (!Number.isFinite(quote.amount) || quote.amount < 0 || !quote.message.trim())
+  if (!Number.isFinite(quote.amount) || quote.amount <= 0 || !quote.message.trim())
     throw new Error('Enter a valid quote amount and message.')
   const ref = recordRef('pcRequests', requestId)
   return runTransaction(firebaseFirestore, async (transaction) => {
@@ -48,16 +48,19 @@ export async function savePcQuote(
           .map((part) => part.inventoryId!),
       ),
     ]
+    if (!request.parts?.length)
+      throw new Error('Add and review the customer’s component selections before sending a quote.')
     const items = await Promise.all(
       inventoryIds.map((id) => transaction.get(recordRef('inventory', id))),
     )
-    if (
-      reviewBuild(
-        request,
-        items.filter((item) => item.exists()).map((item) => item.data() as InventoryItem),
-      ).errors.length
+    const review = reviewBuild(
+      request,
+      items.filter((item) => item.exists()).map((item) => item.data() as InventoryItem),
     )
+    if (review.errors.length)
       throw new Error('Resolve the known compatibility conflicts before quoting this build.')
+    if (review.unavailable.length)
+      throw new Error('Replace unavailable or incorrectly categorized parts before quoting this build.')
     const updated: CustomPcRequest = {
       ...request,
       quote: { ...quote, message: quote.message.trim(), createdAt: new Date().toISOString() },
@@ -80,7 +83,13 @@ export async function respondToPcQuote(
     const request = snapshot.exists() ? (snapshot.data() as CustomPcRequest) : null
     if (!request || request.customerId !== user.id || request.status !== 'Quoted' || !request.quote)
       throw new Error('This quote is no longer available. Refresh your records and try again.')
-    const updated = { ...request, status: response }
+    const updated = {
+      ...request,
+      status: response,
+      ...(response === 'Approved'
+        ? { approvedAt: new Date().toISOString(), approvedBy: user.id, approvalNote: 'Approved in customer portal.' }
+        : {}),
+    }
     transaction.set(ref, firestoreData(updated))
     return updated
   })

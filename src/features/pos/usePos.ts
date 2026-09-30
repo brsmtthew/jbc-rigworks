@@ -31,11 +31,14 @@ export function usePos() {
   const [productDetail, setProductDetail] = useState<InventoryItem | null>(null)
   const { user } = useAuth()
   const { confirm } = useConfirmation()
+  const location = useLocation()
   const customerMode = user?.role === 'user'
   const [cartOpen, setCartOpen] = useState(false),
-    [showOrders, setShowOrders] = useState(
-      new URLSearchParams(window.location.search).get('orders') === 'true',
-    )
+    [ordersOverride, setOrdersOverride] = useState<{ key: string; value: boolean } | null>(null)
+  const showOrders = ordersOverride?.key === location.key
+    ? ordersOverride.value
+    : new URLSearchParams(location.search).get('orders') === 'true'
+  const setShowOrders = (value: boolean) => setOrdersOverride({ key: location.key, value })
   const [toast, setToast] = useState(''),
     [category, setCategory] = useState('All'),
     [brand, setBrand] = useState('All'),
@@ -54,7 +57,6 @@ export function usePos() {
     return () => clearTimeout(timer)
   }, [toast])
   const workspace = useWorkspace()
-  const location = useLocation()
   const [shop] = useShopSettings()
   const [profile] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [params] = useSearchParams()

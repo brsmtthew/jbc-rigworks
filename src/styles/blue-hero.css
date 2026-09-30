@@ -23,6 +23,10 @@
 .app-shell .page-transition .jbc-blue-hero :is(
   .admin-dashboard-hero-kicker,
   .admin-pos-kicker,
+  .admin-sales-kicker,
+  .admin-expenses-kicker,
+  .admin-reports-kicker,
+  .admin-settings-kicker,
   .customer-home-kicker,
   .customer-records-kicker,
   .shop-kicker,

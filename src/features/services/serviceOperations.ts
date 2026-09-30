@@ -1,6 +1,7 @@
 import { runTransaction } from 'firebase/firestore'
 import { firestoreData, recordRef, shopRef } from '../../lib/database'
 import { firebaseFirestore } from '../../lib/firebase'
+import { today } from '../../lib/dates'
 import { normalizeShop } from '../../lib/shopSettings'
 import { assertTransition, serviceState, serviceTransitions } from '../../lib/workflow'
 import type { AppUser, CustomerAppointment, Job, ServiceStatus } from '../../types'
@@ -25,6 +26,8 @@ export async function updateAppointmentStatus(user: AppUser, id: string, status:
     assertTransition(serviceTransitions, appointment.status, status)
     if (!['Confirmed', 'Cancelled', 'No show'].includes(status))
       throw new Error('Use the linked service job for this action.')
+    if (status === 'No show' && appointment.preferredDate > today())
+      throw new Error('A future appointment cannot be marked as a no-show.')
     const updated = { ...appointment, status }
     if (status === 'Confirmed') {
       const settings = normalizeShop(settingsDoc.data() ?? {})

@@ -110,6 +110,8 @@ export function useWorkspace() {
   return {
     ...data,
     orders: orders.rows.map(withPaymentState),
+    ordersLoading: orders.loading,
+    ordersError: orders.error,
     storageError,
     loading,
     save,

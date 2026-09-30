@@ -237,8 +237,15 @@ export function BookingPage() {
           </p>
         </div>
       </section>
-      <div className="service-catalog-tools">
-        <div className="service-device-filter">
+      <div className="service-catalog-tools discovery-card">
+        <div className="service-catalog-heading">
+          <div><span className="eyebrow">FIND A SERVICE</span><h2>Explore services</h2></div>
+          <span className="discovery-card-count" role="status">
+            {settingsStatus.loading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'service' : 'services'}`}
+          </span>
+        </div>
+        <div className="service-catalog-fields">
+          <div className="service-device-filter">
           <span className="service-filter-label">Device type</span>
           <div className="record-tabs" role="group" aria-label="Device type">
             {['All', ...new Set(offerings.map((item) => item.deviceType))].map((value) => (
@@ -253,9 +260,9 @@ export function BookingPage() {
               </button>
             ))}
           </div>
-        </div>
-        <label className="service-search">
-          <span className="service-filter-label">Find a service</span>
+          </div>
+          <label className="service-search">
+          <span className="service-filter-label">Search</span>
           <span className="service-search-field">
             <Search size={17} aria-hidden="true" />
             <input
@@ -265,7 +272,8 @@ export function BookingPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </span>
-        </label>
+          </label>
+        </div>
       </div>
       {settingsStatus.error ? (
         <p className="form-error" role="alert">
@@ -277,9 +285,6 @@ export function BookingPage() {
         <>
           <div className="booking-results-heading">
             <h2>Available services</h2>
-            <span>
-              {filtered.length} {filtered.length === 1 ? 'service' : 'services'}
-            </span>
           </div>
           <div className="service-grid">
             {filtered.map((item) => (

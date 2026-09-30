@@ -15,10 +15,12 @@ export function BundleCatalog({
   onSelect,
   manage = false,
   showHeading = true,
+  query = '',
 }: {
   onSelect: (bundle: ProductBundle) => void
   manage?: boolean
   showHeading?: boolean
+  query?: string
 }) {
   const workspace = useWorkspace(),
     { user } = useAuth()
@@ -28,7 +30,9 @@ export function BundleCatalog({
   const [kind, setKind] = useState('PC set'),
     [busy, setBusy] = useState(false)
   const visibleBundles = workspace.bundles.filter(
-    (bundle) => manage || (bundle.active !== false && bundle.published !== false),
+    (bundle) =>
+      (manage || (bundle.active !== false && bundle.published !== false)) &&
+      `${bundle.name} ${bundle.description ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()),
   )
   async function save(event: FormEvent) {
     event.preventDefault()

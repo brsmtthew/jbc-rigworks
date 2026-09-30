@@ -28,6 +28,7 @@ import { useAuth } from '../../lib/auth-context'
 import { today } from '../../lib/dates'
 import { formatDate, formatPHP } from '../../lib/format'
 import { useShopSettings } from '../../lib/preferences'
+import { shortReference } from '../../lib/reference'
 import { humanError } from '../../lib/workflow'
 import type { CustomerAppointment, CustomPcRequest, ServiceIntake } from '../../types'
 import { availableWindows, slotLabel, type AppointmentSlot } from '../services/serviceCatalog'
@@ -352,7 +353,7 @@ export function CustomerRecordsPage({
                   </div>
                   <div className="customer-record-value-reference">
                     <dt>Reference</dt>
-                    <dd className="record-reference">{item.id}</dd>
+                    <dd className="record-reference" title={item.id}>{shortReference(item.id)}</dd>
                   </div>
                 </dl>
                 <div

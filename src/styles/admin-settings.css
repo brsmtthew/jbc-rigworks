@@ -1,0 +1,191 @@
+.admin-site-settings {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding-bottom: 28px;
+}
+.admin-settings-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+}
+.admin-settings-hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -285px;
+  right: 15%;
+  width: 370px;
+  height: 370px;
+  border: 1px solid #ffffff1e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 42px #ffffff08, 0 0 0 84px #ffffff05;
+  pointer-events: none;
+}
+.admin-settings-hero-copy { max-width: 530px; min-width: 0; }
+.admin-settings-hero-actions {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  flex: 0 0 300px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #ffffff38;
+  border-radius: 12px;
+  background: #ffffff15;
+  box-shadow: inset 0 1px #ffffff20;
+  backdrop-filter: blur(10px);
+}
+.admin-settings-hero-actions-label {
+  color: #d2e8fb;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.admin-settings-hero-actions > strong {
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-settings-hero-actions > div {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 7px;
+}
+.admin-shell .admin-settings-hero-actions :is(.primary-button, .secondary-button) {
+  justify-content: center;
+  min-width: 0;
+  min-height: 35px;
+  padding: 7px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: background-color 170ms ease, border-color 170ms ease, transform 170ms ease;
+}
+.admin-shell .admin-settings-hero-actions .primary-button {
+  border-color: white;
+  background: white;
+  color: #075cab;
+}
+.admin-shell .admin-settings-hero-actions .secondary-button {
+  border-color: #ffffff52;
+  background: #ffffff14;
+  color: white;
+}
+.admin-shell .admin-settings-hero-actions :is(.primary-button, .secondary-button):hover { transform: translateY(-1px); }
+.admin-shell .admin-settings-hero-actions .primary-button:hover { background: #eaf5ff; }
+.admin-shell .admin-settings-hero-actions .secondary-button:hover { background: #ffffff27; }
+
+.admin-site-settings-section { display: grid; gap: 18px; min-width: 0; }
+.admin-site-settings-intro { display: grid; gap: 5px; }
+.admin-site-settings-intro .eyebrow { color: #4d83b7; font-size: 10px; letter-spacing: .14em; }
+.admin-site-settings-intro h2 {
+  margin: 0;
+  color: #0b3057;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  letter-spacing: -.035em;
+}
+.admin-site-settings-intro p { margin: 0; color: #66819a; font-size: 12px; line-height: 1.55; }
+.admin-site-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
+.admin-shell .admin-site-settings-tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+  min-height: 130px;
+  padding: 22px 21px;
+  border: 1px solid #dce7f2;
+  border-radius: 15px;
+  background: white;
+  color: #0b3057;
+  box-shadow: 0 8px 24px #092d5108;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 170ms ease, box-shadow 170ms ease, transform 170ms ease;
+}
+.admin-site-settings-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  border-radius: 15px 15px 0 0;
+  background: #0a6bd1;
+}
+.admin-site-settings-tile:nth-child(2)::before { background: #22a7a8; }
+.admin-site-settings-tile:nth-child(3)::before { background: #8b75d6; }
+.admin-site-settings-tile:nth-child(4)::before { background: #e3a14f; }
+.admin-shell .admin-site-settings-tile:hover {
+  border-color: #acd0ee;
+  box-shadow: 0 12px 28px #092d5114;
+  transform: translateY(-2px);
+}
+.admin-site-settings-tile-number {
+  position: absolute;
+  top: 14px;
+  right: 17px;
+  color: #a0b4c7;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.admin-site-settings-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 11px;
+  background: #eaf4ff;
+  color: #0867c9;
+}
+.admin-site-settings-tile:nth-child(2) .admin-site-settings-tile-icon { background: #e6f7f6; color: #148888; }
+.admin-site-settings-tile:nth-child(3) .admin-site-settings-tile-icon { background: #f1edff; color: #7966be; }
+.admin-site-settings-tile:nth-child(4) .admin-site-settings-tile-icon { background: #fff5e7; color: #b97725; }
+.admin-site-settings-tile-copy { display: grid; gap: 5px; min-width: 0; }
+.admin-site-settings-tile-copy strong {
+  color: #0b3057;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.admin-site-settings-tile-copy small { color: #6c839a; font-size: 11px; line-height: 1.5; }
+.admin-site-settings-tile > svg { align-self: end; color: #6b9aca; }
+.admin-site-settings-form { min-width: 0; }
+.admin-site-settings-form .portal-form { margin: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin-settings-hero { animation: admin-settings-enter 280ms ease-out both; }
+  .admin-site-settings-section { animation: admin-settings-enter 350ms ease-out both; }
+}
+@keyframes admin-settings-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 900px) {
+  .admin-settings-hero { align-items: stretch; flex-direction: column; gap: 18px; }
+  .admin-settings-hero-actions { flex-basis: auto; width: min(100%, 320px); }
+}
+@media (max-width: 760px) {
+  .admin-site-settings-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .admin-settings-hero-actions { width: 100%; }
+  .admin-shell .admin-site-settings-tile { min-height: 112px; padding: 20px 16px; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-settings-hero-actions :is(.primary-button, .secondary-button),
+  .admin-site-settings-tile { transition: none; }
+  .admin-settings-hero-actions :is(.primary-button, .secondary-button):hover,
+  .admin-site-settings-tile:hover { transform: none; }
+}
+.admin-shell.reduce-motion .admin-site-settings :is(.admin-settings-hero, .admin-site-settings-section) { animation: none; }
+.admin-shell.reduce-motion .admin-site-settings :is(.admin-settings-hero-actions .primary-button, .admin-settings-hero-actions .secondary-button, .admin-site-settings-tile) { transition: none; }
+.admin-shell.reduce-motion .admin-site-settings :is(.admin-settings-hero-actions .primary-button, .admin-settings-hero-actions .secondary-button, .admin-site-settings-tile):hover { transform: none; }

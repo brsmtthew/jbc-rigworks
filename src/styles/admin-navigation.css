@@ -238,7 +238,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.admin-shell .admin-topbar-links > button:hover {
+.admin-shell .admin-topbar-links > .admin-signout-button:hover {
   border-color: #e4b5bb;
   background: #fff3f4;
   color: #a1273b;

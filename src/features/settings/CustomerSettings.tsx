@@ -17,9 +17,28 @@ import {
 } from '../../lib/preferences'
 
 export function CustomerSettings() {
+  const navigate = useNavigate()
+  return (
+    <>
+      <PageHeader
+        eyebrow="MY ACCOUNT"
+        title="Profile & settings"
+        description="Your contact details, preferences, and account access."
+      />
+      <AccountSettingsModal onClose={() => navigate('/customer')} />
+    </>
+  )
+}
+
+export function AccountSettingsModal({
+  onClose,
+  accountType = 'customer',
+}: {
+  onClose: () => void
+  accountType?: 'customer' | 'admin'
+}) {
   const { user, updateProfile } = useAuth()
   const { confirm } = useConfirmation()
-  const navigate = useNavigate()
   const [account, saveAccount, status] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [changes, setChanges] = useState<Partial<AccountSettings>>({})
   const base = {
@@ -32,7 +51,8 @@ export function CustomerSettings() {
     ([key, value]) => base[key as keyof AccountSettings] !== value,
   )
   const [params, setParams] = useSearchParams()
-  const display = params.get('section') === 'display'
+  const [adminDisplay, setAdminDisplay] = useState(false)
+  const display = accountType === 'admin' ? adminDisplay : params.get('section') === 'display'
   const [message, setMessage] = useState('')
   const { busy, error, setError, run } = useAsyncAction()
   const [photoLoading, setPhotoLoading] = useState(false)
@@ -50,6 +70,26 @@ export function CustomerSettings() {
   function change(values: Partial<AccountSettings>) {
     setChanges((current) => ({ ...current, ...values }))
     setMessage('')
+  }
+  function chooseSection(nextDisplay: boolean) {
+    if (accountType === 'admin') setAdminDisplay(nextDisplay)
+    else setParams(nextDisplay ? { section: 'display' } : {})
+  }
+  async function closeModal() {
+    if (accountType === 'admin') {
+      if (busy || photoLoading) return
+      if (
+        dirty &&
+        !(await confirm({
+          title: 'Discard account changes?',
+          message: 'Your unsaved profile and display changes will be lost.',
+          confirmLabel: 'Discard changes',
+          tone: 'danger',
+        }))
+      )
+        return
+    }
+    onClose()
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -100,15 +140,10 @@ export function CustomerSettings() {
   }
   return (
     <>
-      <PageHeader
-        eyebrow="MY ACCOUNT"
-        title="Profile & settings"
-        description="Your contact details, preferences, and account access."
-      />
       <Dialog
         title={display ? 'Display & account access' : 'Your profile'}
         wide
-        onClose={() => navigate('/customer')}
+        onClose={() => void closeModal()}
         footer={
           <div className="settings-save-bar">
             <span role="status">
@@ -170,27 +205,31 @@ export function CustomerSettings() {
                   )}
                 </div>
                 <div>
-                  <span className="customer-profile-kicker">CUSTOMER ACCOUNT</span>
+                  <span className="customer-profile-kicker">
+                    {accountType === 'admin' ? 'ADMIN ACCOUNT' : 'CUSTOMER ACCOUNT'}
+                  </span>
                   <h2>{profile.name}</h2>
                   <p>{user?.email}</p>
                 </div>
               </section>
               <nav className="customer-settings-nav" aria-label="Account section">
-                <button type="button" aria-pressed={!display} onClick={() => setParams({})}>
+                <button type="button" aria-pressed={!display} onClick={() => chooseSection(false)}>
                   <UserRound size={18} />
                   <span>Profile & contact</span>
                 </button>
                 <button
                   type="button"
                   aria-pressed={display}
-                  onClick={() => setParams({ section: 'display' })}
+                  onClick={() => chooseSection(true)}
                 >
                   <Settings2 size={18} />
                   <span>Display & access</span>
                 </button>
               </nav>
               <p className="customer-settings-side-note">
-                Your contact details help JBC reach you about appointments and orders.
+                {accountType === 'admin'
+                  ? 'Your account details identify you across the workshop workspace.'
+                  : 'Your contact details help JBC reach you about appointments and orders.'}
               </p>
             </aside>
             <div className="customer-settings-main" key={display ? 'display' : 'profile'}>
@@ -200,7 +239,9 @@ export function CustomerSettings() {
                 <p>
                   {display
                     ? 'Choose how your workspace feels and manage account access.'
-                    : 'This information helps us contact you about services and orders.'}
+                    : accountType === 'admin'
+                      ? 'Keep your workshop account details current.'
+                      : 'This information helps us contact you about services and orders.'}
                 </p>
               </div>
               <form

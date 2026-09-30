@@ -106,8 +106,6 @@ test('isolated responsive pages and modal interactions', { timeout: 180000 }, as
       await page.screenshot({ path: `test-results/ui/booking-settings-${width}.png` })
       await page.keyboard.press('Escape')
       for (const name of [
-        'Profile & contact',
-        'Display & account access',
         'Home service, delivery & warranty',
         'Service catalog',
         'Company payment QRs',

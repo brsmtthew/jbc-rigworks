@@ -56,7 +56,6 @@
 }
 .panel,
 .metric-card,
-.mini-stats,
 .job-card,
 .customer-action-card {
   border-width: 1.5px;
@@ -85,10 +84,6 @@
 .job-counts a,
 .stock-row {
   border-color: #ccd9e6;
-}
-.mini-stats {
-  padding-block: 22px;
-  border-top: 3px solid var(--navy);
 }
 .data-table th {
   background: #eaf0f7;

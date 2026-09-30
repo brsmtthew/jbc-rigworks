@@ -799,36 +799,6 @@ select {
   background: #7990a7;
   border-radius: 50%;
 }
-.mini-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0 0 26px;
-  padding: 24px 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: white;
-  box-shadow: var(--shadow);
-}
-.mini-stats > div {
-  padding: 0 24px;
-  border-right: 1px solid var(--line);
-}
-.mini-stats > div:last-child {
-  border: 0;
-}
-.mini-stats dt {
-  color: #526b85;
-  font-size: 11px;
-}
-.mini-stats dd {
-  margin: 8px 0 0;
-  color: #214361;
-  font-size: 25px;
-  font-weight: 650;
-  letter-spacing: -0.045em;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
 .list-toolbar {
   display: flex;
   align-items: center;
@@ -1579,13 +1549,6 @@ dialog::backdrop {
   .jobs-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .mini-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px 0;
-  }
-  .mini-stats > div:nth-child(2) {
-    border-right: 0;
-  }
   .expense-breakdown {
     grid-template-columns: 1fr;
     gap: 24px;
@@ -1754,12 +1717,6 @@ dialog::backdrop {
   .chart-legend {
     gap: 10px;
     font-size: 10px;
-  }
-  .mini-stats > div {
-    padding-inline: 18px;
-  }
-  .mini-stats dd {
-    font-size: 23px;
   }
   .list-toolbar {
     gap: 10px;

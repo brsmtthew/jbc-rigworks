@@ -326,8 +326,14 @@ service cloud.firestore {
         ((resource.data.status == 'Quote requested' &&
           ((request.resource.data.status == 'Quote requested' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'parts', 'tier', 'useCase', 'budget', 'processor', 'graphics', 'memory', 'storage'])) || (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt'])))) ||
          (resource.data.status == 'Quoted' &&
-          request.resource.data.status in ['Approved', 'Declined'] &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))));
+          ((request.resource.data.status == 'Declined' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])) ||
+           (request.resource.data.status == 'Approved' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'approvedAt', 'approvedBy', 'approvalNote']) &&
+            request.resource.data.approvedAt is string &&
+            request.resource.data.approvedAt.size() <= 40 &&
+            request.resource.data.approvedBy == request.auth.uid &&
+            request.resource.data.approvalNote == 'Approved in customer portal.')))));
       allow delete: if false;
     }
   }

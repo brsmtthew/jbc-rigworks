@@ -1,6 +1,7 @@
 import { runTransaction } from 'firebase/firestore'
 import { money } from '../../lib/commerce'
 import { firestoreData, recordRef, shopRef } from '../../lib/database'
+import { today } from '../../lib/dates'
 import { firebaseFirestore } from '../../lib/firebase'
 import { customerSale } from '../../lib/saleSnapshots'
 import { normalizeShop } from '../../lib/shopSettings'
@@ -117,7 +118,7 @@ export async function advanceBuild(user: AppUser, id: string, next: CustomPcRequ
         contact: build.customerEmail,
         receiptEmail: build.customerEmail,
         channel: 'Online',
-        date: new Date().toISOString().slice(0, 10),
+        date: today(),
         detail: `PC build / ${build.useCase}`,
         total,
         cost: money(items.reduce((sum, item) => sum + item.cost, 0)),

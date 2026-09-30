@@ -72,10 +72,14 @@ test('QR lookup prefers the issued invoice and rejects missing or declined order
     'orders/scan': { id: 'scan', paid: 0, orderStatus: 'Confirmed' },
     'sales/scan': { id: 'scan', paid: 100, orderStatus: 'Ready' },
     'orders/declined': { id: 'declined', orderStatus: 'Declined' },
+    'orders/cancelled': { id: 'cancelled', orderStatus: 'Cancelled' },
+    'sales/paid': { id: 'paid', total: 100, paid: 100, status: 'Paid' },
   })
   assert.equal((await findPayableOrder('scan')).paid, 100)
   await assert.rejects(findPayableOrder('missing'), /No order matches/)
-  await assert.rejects(findPayableOrder('declined'), /declined/)
+  await assert.rejects(findPayableOrder('declined'), /closed/)
+  await assert.rejects(findPayableOrder('cancelled'), /closed/)
+  await assert.rejects(findPayableOrder('paid'), /already paid/)
 })
 
 test('saved build plans preserve selections and ownership while invalid budgets never write', async () => {

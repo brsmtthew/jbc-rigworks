@@ -453,7 +453,15 @@ test('customers respond to workshop quotes without altering their prices', async
     }),
   )
   await assertFails(updateDoc(ref, { status: 'Approved', quote: { amount: 1 } }))
-  await assertSucceeds(updateDoc(ref, { status: 'Approved' }))
+  await assertFails(updateDoc(ref, { status: 'Approved' }))
+  await assertFails(updateDoc(ref, {
+    status: 'Approved', approvedAt: new Date().toISOString(),
+    approvedBy: 'bob', approvalNote: 'Approved in customer portal.',
+  }))
+  await assertSucceeds(updateDoc(ref, {
+    status: 'Approved', approvedAt: new Date().toISOString(),
+    approvedBy: 'alice', approvalNote: 'Approved in customer portal.',
+  }))
   await assertFails(updateDoc(ref, { status: 'Under review' }))
   await assertFails(getDoc(doc(customer('bob'), 'pcRequests/build')))
 })

@@ -136,10 +136,11 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
         </div>
         <div className="inventory-hero-actions" aria-label="Inventory actions">
           <span className="inventory-hero-actions-label">QUICK ACTIONS</span>
-          <button type="button" className="primary-button" onClick={onCreate}>
-            <Plus size={17} /> Add item
-          </button>
           <div>
+            <button type="button" className="primary-button" onClick={onCreate}>
+              <Plus size={17} /> Add item
+            </button>
+            <ExcelButton disabled={!filtered.length} onExport={exportInventory} />
             <button type="button" className="secondary-button" onClick={() => setBundlesOpen(true)}>
               <Boxes size={16} /> Bundles
             </button>
@@ -196,18 +197,21 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
         ))}
       </dl>
 
-      <section className="inventory-discovery" aria-labelledby="inventory-discovery-title">
+      <section className="inventory-discovery discovery-card" aria-labelledby="inventory-discovery-title">
         <div className="inventory-discovery-heading">
           <div>
             <span className="eyebrow">FIND A RECORD</span>
             <h2 id="inventory-discovery-title">Explore the catalog</h2>
           </div>
-          <span className="inventory-discovery-count" role="status">
+          <span className="inventory-discovery-count discovery-card-count" role="status">
             {filtered.length} {filtered.length === 1 ? 'item' : 'items'} shown
           </span>
         </div>
         <div className="inventory-filter-toolbar">
-          <SearchField label="Search inventory" value={filters.query} onChange={filters.setQuery} />
+          <div className="inventory-search-filter toolbar-field">
+            <span className="toolbar-field-label">Search</span>
+            <SearchField label="Search inventory" value={filters.query} onChange={filters.setQuery} />
+          </div>
           <label className="inventory-category-filter">
             <span>Stock status</span>
             <select
@@ -258,7 +262,6 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
                 <RotateCcw size={15} /> Clear filters
               </button>
             )}
-            <ExcelButton disabled={!filtered.length} onExport={exportInventory} />
           </div>
         </div>
       </section>
