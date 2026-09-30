@@ -260,7 +260,7 @@ test('unverified customers submit proofs; payment verification remains staff-onl
   await assertFails(put(alice, path, proof))
 })
 
-test('receipts are immutable and private; only staff can prepare receipt emails', async () => {
+test('receipts cannot be edited and remain private; admins can clear them', async () => {
   const owner = customer('owner'),
     alice = customer('alice'),
     bob = customer('bob')
@@ -270,12 +270,37 @@ test('receipts are immutable and private; only staff can prepare receipt emails'
   await assertSucceeds(getDoc(doc(alice, 'receipts/receipt1')))
   await assertFails(getDoc(doc(bob, 'receipts/receipt1')))
   await assertFails(updateDoc(doc(owner, 'receipts/receipt1'), { orderId: 'changed' }))
-  await assertFails(deleteDoc(doc(owner, 'receipts/receipt1')))
+  await assertFails(deleteDoc(doc(alice, 'receipts/receipt1')))
   const email = { receiptId: 'receipt1', to: 'alice@example.test', status: 'Queued' }
   await assertFails(put(alice, 'receiptEmails/receipt1', email))
   await assertSucceeds(put(owner, 'receiptEmails/receipt1', email))
   await assertFails(getDoc(doc(alice, 'receiptEmails/receipt1')))
   await assertFails(updateDoc(doc(owner, 'receiptEmails/receipt1'), { status: 'Sent' }))
+  await assertSucceeds(deleteDoc(doc(owner, 'receipts/receipt1')))
+  await assertSucceeds(deleteDoc(doc(owner, 'receiptEmails/receipt1')))
+})
+
+test('only verified admins can clear business records and saved plans; accounts remain protected', async () => {
+  const owner = customer('owner'),
+    alice = customer('alice')
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    await put(db, 'users/alice', { ...profile('user'), email: 'alice@example.test' })
+    await put(db, 'users/alice/settings/account', { name: 'Alice' })
+    await put(db, 'users/alice/plans/plan1', { id: 'plan1' })
+    await put(db, 'expenses/expense1', { id: 'expense1', amount: 20 })
+    await put(db, 'settings/shop', { name: 'Test shop' })
+  })
+  await assertFails(deleteDoc(doc(alice, 'expenses/expense1')))
+  await assertFails(deleteDoc(doc(alice, 'settings/shop')))
+  await assertFails(getDocs(collection(alice, 'users/owner/plans')))
+  await assertSucceeds(getDocs(collection(owner, 'users/alice/plans')))
+  await assertSucceeds(deleteDoc(doc(owner, 'users/alice/plans/plan1')))
+  await assertSucceeds(deleteDoc(doc(owner, 'expenses/expense1')))
+  await assertSucceeds(deleteDoc(doc(owner, 'settings/shop')))
+  await assertFails(deleteDoc(doc(owner, 'users/alice')))
+  await assertFails(deleteDoc(doc(owner, 'users/alice/settings/account')))
+  await assertSucceeds(getDoc(doc(alice, 'users/alice/settings/account')))
 })
 
 test('customers can edit pending booking details but cannot confirm or reassign a booking', async () => {
@@ -454,14 +479,22 @@ test('customers respond to workshop quotes without altering their prices', async
   )
   await assertFails(updateDoc(ref, { status: 'Approved', quote: { amount: 1 } }))
   await assertFails(updateDoc(ref, { status: 'Approved' }))
-  await assertFails(updateDoc(ref, {
-    status: 'Approved', approvedAt: new Date().toISOString(),
-    approvedBy: 'bob', approvalNote: 'Approved in customer portal.',
-  }))
-  await assertSucceeds(updateDoc(ref, {
-    status: 'Approved', approvedAt: new Date().toISOString(),
-    approvedBy: 'alice', approvalNote: 'Approved in customer portal.',
-  }))
+  await assertFails(
+    updateDoc(ref, {
+      status: 'Approved',
+      approvedAt: new Date().toISOString(),
+      approvedBy: 'bob',
+      approvalNote: 'Approved in customer portal.',
+    }),
+  )
+  await assertSucceeds(
+    updateDoc(ref, {
+      status: 'Approved',
+      approvedAt: new Date().toISOString(),
+      approvedBy: 'alice',
+      approvalNote: 'Approved in customer portal.',
+    }),
+  )
   await assertFails(updateDoc(ref, { status: 'Under review' }))
   await assertFails(getDoc(doc(customer('bob'), 'pcRequests/build')))
 })

@@ -30,6 +30,13 @@ test('admin website settings and account modal fit responsive layouts', { timeou
     await expect(page.locator('.admin-site-settings-tile')).toHaveCount(4)
     await expect(page.locator('.admin-settings-hero-actions').getByRole('button')).toHaveCount(2)
     await expect(page.getByRole('button', { name: 'Profile settings' })).toBeVisible()
+    await page.getByRole('button', { name: 'Clear all data', exact: true }).click()
+    const clearDialog = page.getByRole('dialog', { name: 'Clear all website data' })
+    await expect(clearDialog.getByRole('button', { name: 'Permanently clear data' })).toBeDisabled()
+    await clearDialog.getByLabel('Type DELETE ALL DATA to confirm').fill('DELETE ALL DATA')
+    await expect(clearDialog.getByRole('button', { name: 'Permanently clear data' })).toBeEnabled()
+    await page.keyboard.press('Escape')
+    await expect(clearDialog).toHaveCount(0)
 
     for (const width of [1440, 1170, 1024, 900, 800, 600, 390, 320]) {
       await page.setViewportSize({ width, height: width <= 390 ? 700 : 900 })

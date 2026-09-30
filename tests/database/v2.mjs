@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { readFile, mkdir } from 'node:fs/promises'
 import { chromium, expect as baseExpect } from '@playwright/test'
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing'
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 
 if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)
   throw new Error('Both local Firebase emulators are required.')
@@ -159,7 +159,7 @@ async function operation(page, module, method, user, ...args) {
   )
 }
 
-test('V2 customer, service, build, stock and POS workflows', { timeout: 240000 }, async () => {
+test('V2 customer, service, build, stock and POS workflows', { timeout: 300000 }, async () => {
   const admin = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
   const buyer = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
   const errors = []
@@ -453,6 +453,54 @@ test('V2 customer, service, build, stock and POS workflows', { timeout: 240000 }
       await page.screenshot({ path: `test-results/v2/${name}-mobile.png` })
       await page.setViewportSize({ width: 1440, height: 1000 })
     }
+
+    await seed(`users/${buyerId}/plans/test-plan`, { id: 'test-plan', name: 'Saved build' })
+    await seed(`users/${buyerId}/settings/account`, { name: 'Buyer', compact: true })
+    await env.withSecurityRulesDisabled(async (context) => {
+      const batch = writeBatch(context.firestore())
+      for (let index = 0; index < 105; index++)
+        batch.set(doc(context.firestore(), 'expenses', `reset-${index}`), {
+          id: `reset-${index}`,
+          amount: 1,
+        })
+      await batch.commit()
+    })
+    await admin.goto(`${origin}/settings`)
+    await admin.getByRole('button', { name: 'Clear all data', exact: true }).click()
+    const resetDialog = admin.getByRole('dialog', { name: 'Clear all website data' })
+    await expect(resetDialog.getByRole('button', { name: 'Permanently clear data' })).toBeDisabled()
+    await resetDialog.getByLabel('Type DELETE ALL DATA to confirm').fill('DELETE ALL DATA')
+    await resetDialog.getByRole('button', { name: 'Permanently clear data' }).click()
+    await expect(admin.getByText(/Website data cleared/)).toBeVisible({ timeout: 120000 })
+    for (const path of [
+      'appointmentSlots',
+      'appointments',
+      'bundles',
+      'catalog',
+      'expenses',
+      'inventory',
+      'inventorySkus',
+      'jobs',
+      'orderSnapshots',
+      'orders',
+      'paymentAccounts',
+      'paymentProofs',
+      'pcRequests',
+      'receiptEmails',
+      'receipts',
+      'sales',
+      'stockMovements',
+      `users/${buyerId}/plans`,
+    ])
+      assert.deepEqual(await list(path), [], `${path} should be empty after reset`)
+    assert.ok(await read(`users/${adminId}`))
+    assert.ok(await read(`users/${buyerId}`))
+    assert.deepEqual(await read(`users/${buyerId}/settings/account`), {
+      name: 'Buyer',
+      compact: true,
+    })
+    assert.equal(await read('settings/shop'), undefined)
+    assert.equal(await read('settings/directories'), undefined)
     assert.deepEqual(errors, [])
   } catch (error) {
     await mkdir('test-results/v2', { recursive: true })

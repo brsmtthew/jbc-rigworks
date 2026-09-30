@@ -47,7 +47,8 @@ service cloud.firestore {
       }
 
       match /plans/{planId} {
-        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow get: if signedIn() && request.auth.uid == uid;
+        allow list, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
         allow create, update: if signedIn() && request.auth.uid == uid &&
           request.resource.data.id == planId;
       }
@@ -56,12 +57,13 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read: if signedIn() && settingId in ['shop', 'directories'];
       allow create, update: if isAdmin() && settingId in ['shop', 'directories'];
-      allow delete: if false;
+      allow delete: if isAdmin() && settingId in ['shop', 'directories'];
     }
 
     match /stockMovements/{id} {
       allow read, create: if isAdmin();
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
     match /orderSnapshots/{id} { allow read, write: if isAdmin(); }
     match /appointmentSlots/{id} {
@@ -101,7 +103,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isAdmin() || validClaim();
       allow update: if isAdmin() || validChange();
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /inventory/{id} {
@@ -121,7 +123,7 @@ service cloud.firestore {
         request.resource.data.cost is number && request.resource.data.cost >= 0 &&
         request.resource.data.price is number && request.resource.data.price >= 0;
       }
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /inventorySkus/{key} {
@@ -129,7 +131,7 @@ service cloud.firestore {
       allow create: if isAdmin() && request.resource.data.itemId is string &&
         getAfter(/databases/$(database)/documents/inventory/$(request.resource.data.itemId)).data.skuKey == key;
       allow update: if isAdmin() && request.resource.data.itemId == resource.data.itemId;
-      allow delete: if isAdmin() && getAfter(/databases/$(database)/documents/inventory/$(resource.data.itemId)).data.skuKey != key;
+      allow delete: if isAdmin();
     }
 
     match /catalog/{id} {
@@ -144,20 +146,20 @@ service cloud.firestore {
 
     match /jobs/{id} {
       allow read, create, update: if isAdmin();
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /expenses/{id} {
       allow read: if isAdmin();
       allow create, update: if isAdmin() && request.resource.data.amount is number && request.resource.data.amount >= 0;
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /sales/{id} {
       allow read: if isAdmin();
       allow create: if isAdmin() && request.resource.data.id == id && request.resource.data.status == 'Paid' && request.resource.data.paid == request.resource.data.total && request.resource.data.total >= 0;
       allow update: if isAdmin();
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /orders/{id} {
@@ -210,7 +212,7 @@ service cloud.firestore {
           request.resource.data.cancelledBy == request.auth.uid &&
           request.resource.data.cancelledAt is string &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'cancelledBy', 'cancelledAt']))));
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /paymentAccounts/{id} {
@@ -240,19 +242,21 @@ service cloud.firestore {
       allow list: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
       allow create: if signedIn() && validProof();
       allow update: if isAdmin() || (signedIn() && resource.data.status == 'Rejected' && validProof());
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /receipts/{id} {
       allow get, list: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
       allow create: if isAdmin() && request.resource.data.id == id;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /receiptEmails/{id} {
       allow read: if isAdmin();
       allow create: if isAdmin() && request.resource.data.receiptId == id && request.resource.data.status == 'Queued';
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /appointments/{id} {
@@ -310,7 +314,7 @@ service cloud.firestore {
          (request.resource.data.status == 'Cancelled' && request.resource.data.cancelledBy == request.auth.uid && request.resource.data.cancelledAt is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'cancellationReason']) &&
           (!resource.data.keys().hasAny(['slotId']) ||
             !getAfter(/databases/$(database)/documents/appointmentSlots/$(resource.data.slotId)).data.get('holds', {}).keys().hasAny([id])))));
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /pcRequests/{id} {
@@ -334,7 +338,7 @@ service cloud.firestore {
             request.resource.data.approvedAt.size() <= 40 &&
             request.resource.data.approvedBy == request.auth.uid &&
             request.resource.data.approvalNote == 'Approved in customer portal.')))));
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
   }
 }

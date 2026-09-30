@@ -1,14 +1,27 @@
-import { ArrowRight, Building2, CalendarDays, ClipboardList, CreditCard, Save, Settings2, Truck } from 'lucide-react'
+import {
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  CreditCard,
+  Save,
+  Settings2,
+  Trash2,
+  Truck,
+} from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { useAuth } from '../../lib/auth-context'
+import { firebaseFirestore } from '../../lib/firebase'
 import { useShopSettings } from '../../lib/preferences'
 import { humanError } from '../../lib/workflow'
 import { PaymentAccountsEditor } from './PaymentAccountsEditor'
 import { ReferenceDataSettings } from './ReferenceDataSettings'
 import { ServiceSettings } from './ServiceSettings'
+import { clearSiteData } from './clearSiteData'
 
 type WebsiteSection = 'business' | 'delivery' | 'catalog' | 'payments' | 'booking' | 'reference'
 
@@ -41,10 +54,16 @@ const areas = [
 
 export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
   const { confirm } = useConfirmation()
+  const { user } = useAuth()
   const [shop, saveShop, shopStatus] = useShopSettings()
   const [business, setBusiness] = useState(shop)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetPhrase, setResetPhrase] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetProgress, setResetProgress] = useState('')
+  const [resetError, setResetError] = useState('')
   const [params] = useSearchParams()
   const [section, setSection] = useState<WebsiteSection | null>(
     params.get('section') === 'reference' ? 'reference' : null,
@@ -111,19 +130,63 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
-  if (shopStatus.error) return <p className="form-error" role="alert">{shopStatus.error}</p>
+  async function resetData(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (resetBusy || resetPhrase !== 'DELETE ALL DATA') return
+    if (user?.role !== 'admin' || !user.emailVerified) {
+      setResetError('A verified administrator must perform this action.')
+      return
+    }
+    setResetBusy(true)
+    setResetError('')
+    let cleared = 0
+    try {
+      const total = await clearSiteData(firebaseFirestore, (description, count) => {
+        cleared = count
+        setResetProgress(`${description} ${count} records cleared.`)
+      })
+      setResetOpen(false)
+      setResetPhrase('')
+      setMessage(
+        `Website data cleared. ${total} records removed; accounts and account settings remain.`,
+      )
+    } catch (err) {
+      setResetError(
+        `Clear stopped after ${cleared} records. Some data may remain. ${humanError(err)} You can retry.`,
+      )
+    } finally {
+      setResetBusy(false)
+    }
+  }
+
+  if (shopStatus.error)
+    return (
+      <p className="form-error" role="alert">
+        {shopStatus.error}
+      </p>
+    )
   if (shopStatus.loading) return <LoadingState label="Loading website settings…" />
 
   return (
     <div className="admin-site-settings">
       {!embedded && (
-        <section className="admin-settings-hero jbc-blue-hero" aria-labelledby="admin-settings-title">
+        <section
+          className="admin-settings-hero jbc-blue-hero"
+          aria-labelledby="admin-settings-title"
+        >
           <div className="admin-settings-hero-copy">
             <span className="admin-settings-kicker">WEBSITE CONFIGURATION</span>
             <h1 id="admin-settings-title">Settings</h1>
-            <p>Set up the services, bookings, payments, and business details used across your website.</p>
+            <p>
+              Set up the services, bookings, payments, and business details used across your
+              website.
+            </p>
           </div>
-          <div className="admin-settings-hero-actions admin-hero-tool-panel" role="group" aria-label="Website settings actions">
+          <div
+            className="admin-settings-hero-actions admin-hero-tool-panel"
+            role="group"
+            aria-label="Website settings actions"
+          >
             <span className="admin-settings-hero-actions-label">CUSTOMER EXPERIENCE</span>
             <strong>Manage the services customers can book</strong>
             <div>
@@ -142,7 +205,10 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
           {message}
         </p>
       )}
-      <section className="admin-site-settings-section" aria-labelledby="admin-site-settings-section-title">
+      <section
+        className="admin-site-settings-section"
+        aria-labelledby="admin-site-settings-section-title"
+      >
         <div className="admin-site-settings-intro">
           <span className="eyebrow">BUSINESS &amp; SYSTEM</span>
           <h2 id="admin-site-settings-section-title">Website configuration</h2>
@@ -156,8 +222,12 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
               key={area.id}
               onClick={() => open(area.id)}
             >
-              <span className="admin-site-settings-tile-number" aria-hidden="true">0{index + 1}</span>
-              <span className="admin-site-settings-tile-icon"><area.icon size={21} /></span>
+              <span className="admin-site-settings-tile-number" aria-hidden="true">
+                0{index + 1}
+              </span>
+              <span className="admin-site-settings-tile-icon">
+                <area.icon size={21} />
+              </span>
               <span className="admin-site-settings-tile-copy">
                 <strong>{area.title}</strong>
                 <small>{area.description}</small>
@@ -167,6 +237,83 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
           ))}
         </div>
       </section>
+
+      <section className="admin-data-reset" aria-labelledby="admin-data-reset-title">
+        <div>
+          <span className="eyebrow">TEST DATA CLEANUP</span>
+          <h2 id="admin-data-reset-title">Clear all website data</h2>
+          <p>
+            Remove transactions, bookings, requests, inventory, expenses, payment records, saved PC
+            plans, and website settings. Accounts and account settings stay in place.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="admin-data-reset-button"
+          onClick={() => {
+            setResetPhrase('')
+            setResetError('')
+            setResetProgress('')
+            setResetOpen(true)
+          }}
+        >
+          <Trash2 size={16} /> Clear all data
+        </button>
+      </section>
+
+      {resetOpen && (
+        <Dialog
+          title="Clear all website data"
+          onClose={() => {
+            if (!resetBusy) setResetOpen(false)
+          }}
+        >
+          <form className="admin-data-reset-dialog" onSubmit={resetData}>
+            <p>
+              This permanently deletes customer and admin records from this website. All users can
+              still sign in with their existing accounts. Ask others to stop using the website until
+              the clear finishes.
+            </p>
+            <label>
+              Type <strong>DELETE ALL DATA</strong> to continue
+              <input
+                autoComplete="off"
+                value={resetPhrase}
+                onChange={(event) => setResetPhrase(event.target.value)}
+                disabled={resetBusy}
+                aria-label="Type DELETE ALL DATA to confirm"
+              />
+            </label>
+            {resetProgress && (
+              <p role="status" className="admin-data-reset-progress">
+                {resetProgress}
+              </p>
+            )}
+            {resetError && (
+              <p role="alert" className="form-error">
+                {resetError}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setResetOpen(false)}
+                disabled={resetBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="primary-button danger-confirm-button"
+                disabled={resetBusy || resetPhrase !== 'DELETE ALL DATA'}
+              >
+                {resetBusy ? 'Clearing data…' : 'Permanently clear data'}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
 
       {section === 'catalog' && (
         <Dialog title="Service catalog" wide onClose={() => setSection(null)}>
@@ -180,12 +327,16 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
       )}
       {section === 'reference' && (
         <Dialog title="Reference data & taxes" wide onClose={() => setSection(null)}>
-          <div className="admin-settings-modal-content"><ReferenceDataSettings embedded /></div>
+          <div className="admin-settings-modal-content">
+            <ReferenceDataSettings embedded />
+          </div>
         </Dialog>
       )}
       {section === 'payments' && (
         <Dialog title="Company payment QRs" wide onClose={() => setSection(null)}>
-          <div className="admin-settings-modal-content"><PaymentAccountsEditor /></div>
+          <div className="admin-settings-modal-content">
+            <PaymentAccountsEditor />
+          </div>
         </Dialog>
       )}
       {(section === 'business' || section === 'delivery') && (
@@ -206,39 +357,56 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
         >
           <form id="website-settings-form" className="admin-site-settings-form" onSubmit={save}>
             <div className="admin-settings-modal-intro">
-              <span className="admin-settings-modal-icon" aria-hidden="true">{section === 'business' ? <Building2 size={22} /> : <Truck size={22} />}</span>
+              <span className="admin-settings-modal-icon" aria-hidden="true">
+                {section === 'business' ? <Building2 size={22} /> : <Truck size={22} />}
+              </span>
               <div>
                 <span className="eyebrow">WEBSITE DETAILS</span>
-                <h3>{section === 'business' ? 'Business identity & invoice details' : 'Service charges & coverage'}</h3>
-                <p>{section === 'business' ? 'These details appear on business records and customer invoices.' : 'Set the charges used for visits and delivery, then define default warranty terms.'}</p>
+                <h3>
+                  {section === 'business'
+                    ? 'Business identity & invoice details'
+                    : 'Service charges & coverage'}
+                </h3>
+                <p>
+                  {section === 'business'
+                    ? 'These details appear on business records and customer invoices.'
+                    : 'Set the charges used for visits and delivery, then define default warranty terms.'}
+                </p>
               </div>
             </div>
             {section === 'business' && (
               <div className="portal-form settings-fields business-settings-fields admin-settings-form-panel">
-                {(['name', 'address', 'phone', 'email', 'prefix', 'footer'] as const).map((field) => (
-                  <label key={field}>
-                    {{
-                      name: 'Business name',
-                      address: 'Business address',
-                      phone: 'Business phone',
-                      email: 'Business email',
-                      prefix: 'Invoice prefix',
-                      footer: 'Invoice footer',
-                    }[field]}
-                    <input
-                      required={field === 'name' || field === 'prefix'}
-                      type={field === 'email' ? 'email' : 'text'}
-                      maxLength={field === 'prefix' ? 12 : 250}
-                      value={business[field]}
-                      onChange={(e) => setBusiness({ ...business, [field]: e.target.value })}
-                    />
-                  </label>
-                ))}
+                {(['name', 'address', 'phone', 'email', 'prefix', 'footer'] as const).map(
+                  (field) => (
+                    <label key={field}>
+                      {
+                        {
+                          name: 'Business name',
+                          address: 'Business address',
+                          phone: 'Business phone',
+                          email: 'Business email',
+                          prefix: 'Invoice prefix',
+                          footer: 'Invoice footer',
+                        }[field]
+                      }
+                      <input
+                        required={field === 'name' || field === 'prefix'}
+                        type={field === 'email' ? 'email' : 'text'}
+                        maxLength={field === 'prefix' ? 12 : 250}
+                        value={business[field]}
+                        onChange={(e) => setBusiness({ ...business, [field]: e.target.value })}
+                      />
+                    </label>
+                  ),
+                )}
               </div>
             )}
             {section === 'delivery' && (
               <div className="portal-form settings-fields admin-settings-form-panel">
-                <div className="admin-settings-panel-heading"><strong>Visit & delivery charges</strong><small>Blank home service rates require a quote.</small></div>
+                <div className="admin-settings-panel-heading">
+                  <strong>Visit & delivery charges</strong>
+                  <small>Blank home service rates require a quote.</small>
+                </div>
                 <label>
                   Standard product delivery fee (PHP)
                   <input
@@ -252,11 +420,13 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                 </label>
                 {(['homeSurcharge', 'transportBase', 'transportPerKm'] as const).map((field) => (
                   <label key={field}>
-                    {{
-                      homeSurcharge: 'Home-service surcharge (PHP)',
-                      transportBase: 'Transport base fee (PHP)',
-                      transportPerKm: 'Transport per kilometre (PHP)',
-                    }[field]}
+                    {
+                      {
+                        homeSurcharge: 'Home-service surcharge (PHP)',
+                        transportBase: 'Transport base fee (PHP)',
+                        transportPerKm: 'Transport per kilometre (PHP)',
+                      }[field]
+                    }
                     <input
                       type="number"
                       min="0"
@@ -267,10 +437,23 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                     />
                   </label>
                 ))}
-                <div className="admin-settings-panel-heading"><strong>Warranty coverage</strong><small>Applied to new purchased items.</small></div>
+                <div className="admin-settings-panel-heading">
+                  <strong>Warranty coverage</strong>
+                  <small>Applied to new purchased items.</small>
+                </div>
                 <label>
                   Default item warranty (months)
-                  <input type="number" min="0" max="120" step="1" placeholder="Not configured" value={business.warrantyMonths} onChange={(event) => setBusiness({ ...business, warrantyMonths: event.target.value })} />
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    step="1"
+                    placeholder="Not configured"
+                    value={business.warrantyMonths}
+                    onChange={(event) =>
+                      setBusiness({ ...business, warrantyMonths: event.target.value })
+                    }
+                  />
                 </label>
                 <label>
                   Default warranty terms
@@ -290,7 +473,11 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                 </p>
               </div>
             )}
-            {error && <p role="alert" className="form-error">{error}</p>}
+            {error && (
+              <p role="alert" className="form-error">
+                {error}
+              </p>
+            )}
           </form>
         </Dialog>
       )}

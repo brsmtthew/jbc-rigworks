@@ -35,6 +35,12 @@ Review service packages, durations, opening days/windows/capacity, blocked perio
 
 Online requests reserve stock when confirmed and consume that reservation only when full payment is recorded. POS does not support normal partial/credit sales. Transfer proofs remain pending until a staff member verifies the real account transaction. Device/build completion is a separate workflow action.
 
+## Temporary test-data reset
+
+The admin Settings page includes **Clear all data** for removing dummy data. A verified admin must type `DELETE ALL DATA` before it runs. It deletes the app's transaction, service, build, inventory, finance, payment, catalog, and stock collections, customer saved PC plans, and the two website settings documents. It preserves Firebase Authentication users, `users/{uid}` profiles and roles, and `users/{uid}/settings/account` preferences. It does not affect other collections outside this app's declared data list.
+
+Deploy the updated Firestore rules with the frontend; older rules deny several of these deletes. The reset reads and deletes in small batches. If it is interrupted or a request fails, previously deleted records stay deleted and the admin can retry. Keep other users off the website while the reset runs so they do not create new records during cleanup. This feature is intended only for temporary test-data cleanup and should be removed before retaining real customer records.
+
 ## Optional receipt email delivery
 
 Payment transactions can create a `receiptEmails/{receiptId}` record containing destination, receipt reference, message subject/text/HTML, timestamp and Queued status. This is an integration abstraction, not a claim that email was sent.
