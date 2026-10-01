@@ -79,6 +79,9 @@ test('workflow graphs block premature completion and duplicate actions', () => {
   assert.doesNotThrow(() => assertTransition(buildTransitions, 'Approved', 'Parts reserved'))
   assert.equal(serviceState('Ready'), 'Ready for checkout')
   assert.equal(serviceState('In progress'), 'In service')
+  assert.deepEqual(serviceTransitions['In service'], ['Completed'])
+  assert.deepEqual(normalizeShop({ services: [] }).services, [])
+  assert.deepEqual(normalizeShop({}).services, [])
 })
 test('schedule applies capacity, duration, holidays, blocked hours and local time', () => {
   const date = '2030-01-07',

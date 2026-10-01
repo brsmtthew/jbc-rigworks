@@ -2,9 +2,10 @@ import { money } from '../../lib/commerce'
 import { optionalPrice, transportation } from '../../lib/fulfillment'
 import type { ShopSettings } from '../../lib/shopSettings'
 import type { CustomerAppointment } from '../../types'
+import { serviceChargesTotal } from './serviceCharges'
 
 export function priceVisit(
-  appointment: Pick<CustomerAppointment, 'service' | 'serviceId' | 'visit'>,
+  appointment: Pick<CustomerAppointment, 'service' | 'serviceId' | 'visit' | 'selectedCharges'>,
   settings: ShopSettings,
 ) {
   if (!appointment.visit) return undefined
@@ -37,6 +38,6 @@ export function priceVisit(
   visit.estimate =
     visit.basePrice === null || visit.surcharge === null || visit.transport === null
       ? null
-      : money((visit.basePrice + visit.surcharge + visit.transport) * (1 + settings.taxRate / 100))
+      : money((visit.basePrice + serviceChargesTotal(appointment.selectedCharges) + visit.surcharge + visit.transport) * (1 + settings.taxRate / 100))
   return visit
 }

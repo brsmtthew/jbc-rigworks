@@ -24,7 +24,7 @@ import {
 import { createWalkInJob } from '../../src/features/services/walkInJob.ts'
 import { walkInDocumentAppointment } from '../../src/features/services/walkInDocument.ts'
 import { checkout } from '../../src/features/pos/checkoutOperations.ts'
-import { availableWindows, slotLabel } from '../../src/features/services/serviceCatalog.ts'
+import { adaptServices, availableWindows, slotLabel } from '../../src/features/services/serviceCatalog.ts'
 import { defaultShop, normalizeShop } from '../../src/lib/shopSettings.ts'
 import { read, seed } from './memory-db.mjs'
 
@@ -97,7 +97,7 @@ test('service-specific intake questions are validated and device print fields fo
 })
 
 test('pending bookings hold capacity immediately and editing moves the hold', async () => {
-  const shop = normalizeShop(defaultShop)
+  const shop = normalizeShop({ ...defaultShop, services: adaptServices() })
   seed({ 'settings/shop': shop })
   const service = shop.services.find((item) => item.workshop && item.active)
   const customer = { id: 'customer-1', name: 'Jamie', email: 'jamie@example.test', role: 'user' }
@@ -186,10 +186,12 @@ test('pending bookings hold capacity immediately and editing moves the hold', as
 })
 
 test('home and workshop appointments save the named device intake with their booking records', async () => {
-  const shop = normalizeShop(defaultShop)
-  seed({ 'settings/shop': shop })
+  const shop = normalizeShop({ ...defaultShop, services: adaptServices() })
   const offering = shop.services.find((service) => service.home && service.active)
   assert.ok(offering)
+  offering.price = '600'
+  offering.additionalCharges = [{ id: 'paste', name: 'Thermal paste replacement', price: '250' }]
+  seed({ 'settings/shop': shop })
   const date = new Date(Date.now() + 8 * 86400000)
   let windows = []
   let appointmentDate = ''
@@ -216,6 +218,7 @@ test('home and workshop appointments save the named device intake with their boo
     preferredDate: appointmentDate,
     preferredTime: slotLabel(windows[0]),
     notes: 'Cleaning requested',
+    selectedCharges: [{ id: 'paste', name: 'Thermal paste replacement', price: 250 }],
     visit: {
       mode: 'Home service',
       address: '123 Manila Street',
@@ -233,6 +236,7 @@ test('home and workshop appointments save the named device intake with their boo
     email: 'jamie@example.test',
     role: 'user',
   }
+  let workshopId = ''
   for (const [index, mode] of ['Home service', 'Workshop'].entries()) {
     const request = {
       ...booking,
@@ -240,11 +244,23 @@ test('home and workshop appointments save the named device intake with their boo
       visit: { ...booking.visit, mode, address: mode === 'Workshop' ? '' : booking.visit.address },
     }
     await assert.rejects(saveAppointment(customer, request), /Complete the device intake/)
+    await assert.rejects(saveAppointment(customer, { ...request, serviceIntake: intake, selectedCharges: [{ ...booking.selectedCharges[0], price: 1 }] }), /service charges changed/)
     const saved = await saveAppointment(customer, { ...request, serviceIntake: intake })
     assert.equal(saved.customerName, 'Jamie Santos')
     assert.equal(read(`appointments/${saved.id}`).serviceIntake.visibleCondition, 'Small scratch')
     assert.equal(read(`appointments/${saved.id}`).intakeSignedAt, undefined)
+    assert.deepEqual(saved.selectedCharges, booking.selectedCharges)
+    assert.match(renderToStaticMarkup(createElement(ServiceIntakeDocument, { appointment: saved })), /Thermal paste replacement/)
+    if (mode === 'Workshop') {
+      assert.equal(saved.visit.estimate, 850)
+      workshopId = saved.id
+    }
   }
+  await updateAppointmentStatus(admin, workshopId, 'Confirmed')
+  await recordSignedServiceIntake(admin, workshopId)
+  const job = await receiveAppointmentAsJob(admin, workshopId)
+  assert.equal(job.quote, 850)
+  assert.deepEqual(job.selectedCharges, booking.selectedCharges)
 })
 
 test('home service cannot start until staff record the signed paper intake', async () => {
@@ -363,7 +379,7 @@ test('printed workshop authorization includes the named intake and omits later p
 })
 
 test('walk-in intake checks in directly, prints with the customer name, and can be paid before signed service starts', async () => {
-  const settings = { ...normalizeShop(defaultShop), taxRate: 0 }
+  const settings = { ...normalizeShop({ ...defaultShop, services: adaptServices() }), taxRate: 0 }
   seed({ 'settings/shop': settings })
   const offering = settings.services.find((service) => service.active && service.workshop && service.deviceType === 'Desktop')
   assert.ok(offering)

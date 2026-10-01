@@ -90,11 +90,11 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
       if (
         user.role !== 'admin' ||
         !job ||
-        (status !== 'Ready for checkout' && !walkInPayNow) ||
+        (status !== 'In service' && status !== 'Ready for checkout' && !walkInPayNow) ||
         job.transactionId ||
         job.paymentStatus === 'Paid'
       )
-        throw new Error('Only an unpaid, ready service or confirmed walk-in can be sent to checkout.')
+        throw new Error('Only an unpaid service in progress or confirmed walk-in can be sent to checkout.')
       if (draft.customServices?.[0]?.unitPrice !== job.quote)
         throw new Error('The approved service quote changed. Open the service in POS again.')
     }

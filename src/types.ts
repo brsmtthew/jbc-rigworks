@@ -79,6 +79,7 @@ export type CustomerAppointment = {
   }[]
   schemaVersion?: 2
   serviceId?: string
+  selectedCharges?: SelectedServiceCharge[]
   specifications?: string
   unknownSpecifications?: boolean
   serviceIntake?: ServiceIntake
@@ -179,6 +180,7 @@ export type Job = {
   schemaVersion?: 2
   channel?: 'Walk-in' | 'Online'
   serviceId?: string
+  selectedCharges?: SelectedServiceCharge[]
   serviceIntake?: ServiceIntake
   confirmedAt?: string
   intakeSignedAt?: string
@@ -419,12 +421,15 @@ export type ServiceOffering = {
   deviceType: 'Desktop' | 'Laptop' | 'Any'
   description: string
   inclusions: string
+  image?: string
+  additionalCharges?: { id: string; name: string; price: string }[]
   price: string
   durationMinutes: number
   workshop: boolean
   home: boolean
   active: boolean
 }
+export type SelectedServiceCharge = { id: string; name: string; price: number }
 export type BookingSchedule = {
   days: number[]
   opens: string

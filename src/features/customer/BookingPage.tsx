@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Check,
   Clock3,
+  Eye,
   House,
   Laptop,
   MapPin,
@@ -26,6 +27,8 @@ import { formatPHP } from '../../lib/format'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
 import type { CustomerAppointment, ServiceIntake, ServiceOffering } from '../../types'
 import { availableWindows, slotLabel } from '../services/serviceCatalog'
+import { ServiceOfferingDetails } from '../services/ServiceOfferingDetails'
+import { selectedServiceCharges, serviceChargesTotal } from '../services/serviceCharges'
 import { priceVisit } from '../services/visitPricing'
 import { saveAppointment } from './customerOperations'
 import { ServiceIntakeFields } from './ServiceIntakeFields'
@@ -39,12 +42,15 @@ export function BookingPage() {
   const [shop, , settingsStatus] = useShopSettings()
   const [profile] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [serviceId, setServiceId] = useState<string | null>(null)
+  const [detailService, setDetailService] = useState<ServiceOffering | null>(null)
   const [intakePreview, setIntakePreview] = useState<CustomerAppointment | null>(null)
   const service = shop.services.find((item) => item.id === serviceId)
   const [deviceFilter, setDeviceFilter] = useState('All')
   const [query, setQuery] = useState('')
   const [step, setStep] = useState(1)
   const [mode, setMode] = useState<'Workshop' | 'Home service' | null>(null)
+  const [selectedChargeIds, setSelectedChargeIds] = useState<string[]>([])
+  const selectedCharges = selectedServiceCharges(service, selectedChargeIds)
   const [device, setDevice] = useState('')
   const [specs, setSpecs] = useState('')
   const [unknown, setUnknown] = useState(false)
@@ -76,6 +82,7 @@ export function BookingPage() {
           {
             service: service.name,
             serviceId: service.id,
+            selectedCharges,
             visit: {
               mode,
               address: address || 'Address pending',
@@ -102,6 +109,7 @@ export function BookingPage() {
   const steps = ['Location & device', 'Schedule', 'Device intake', 'Review']
   function choose(item: ServiceOffering) {
     setServiceId(item.id)
+    setSelectedChargeIds([])
     setSent(null)
     setIntakePreview(null)
     setStep(1)
@@ -169,6 +177,7 @@ export function BookingPage() {
         preferredTime: time,
         notes,
         serviceIntake: intake,
+        selectedCharges,
         visit: { ...visit, address: mode === 'Workshop' ? '' : address },
       })
       setSent(record)
@@ -181,6 +190,7 @@ export function BookingPage() {
       setDate('')
       setTime('')
       setNotes('')
+      setSelectedChargeIds([])
       setIntake({
         ...emptyServiceIntake,
         customerName: profile.name || user?.name || '',
@@ -289,9 +299,9 @@ export function BookingPage() {
           <div className="service-grid">
             {filtered.map((item) => (
               <article className="service-price-card" key={item.id}>
-                <div className="service-card-icon" aria-hidden="true">
+                {item.image ? <img className="service-card-image" src={item.image} alt="" /> : <div className="service-card-icon" aria-hidden="true">
                   {item.deviceType === 'Laptop' ? <Laptop size={23} /> : <Monitor size={23} />}
-                </div>
+                </div>}
                 <div className="service-card-meta">
                   <span>{item.deviceType}</span>
                   <span>
@@ -313,6 +323,7 @@ export function BookingPage() {
                     .filter(Boolean)
                     .join(' · ') || 'Contact JBC for availability'}
                 </p>
+                <button type="button" className="secondary-button service-view-details" onClick={() => setDetailService(item)}><Eye size={16} /> View details</button>
                 <button
                   className="primary-button"
                   disabled={!item.home && !item.workshop}
@@ -347,6 +358,9 @@ export function BookingPage() {
           )}
         </>
       )}
+      {detailService && <Dialog title={detailService.name} wide onClose={() => setDetailService(null)} footer={
+        <button type="button" className="primary-button" onClick={() => { choose(detailService); setDetailService(null) }}>Choose service</button>
+      }><ServiceOfferingDetails service={detailService} /></Dialog>}
       {serviceId && (
         <Dialog
           title={service?.name || 'Service unavailable'}
@@ -389,9 +403,9 @@ export function BookingPage() {
               {service?.deviceType} · {service?.durationMinutes} min
             </strong>
             <small>
-              {service?.price === ''
-                ? 'Quote after review'
-                : formatPHP(Number(service?.price)) + ' estimate'}
+              {mode && visit
+                ? visit.estimate === null ? 'Final quote after review' : `${formatPHP(visit.estimate)} estimated total`
+                : service?.price === '' ? 'Quote after review' : formatPHP(Number(service?.price)) + ' service estimate'}
             </small>
           </div>
           <ol
@@ -504,6 +518,31 @@ export function BookingPage() {
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </label>
+                {!!service?.additionalCharges?.length && (
+                  <fieldset className="booking-additional-charges">
+                    <legend>Optional additional work</legend>
+                    <p>Choose any extras you want JBC to include in your request. The final quote is confirmed after review.</p>
+                    {service.additionalCharges.map((charge) => (
+                      <label className="check-row" key={charge.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedChargeIds.includes(charge.id)}
+                          onChange={(event) => {
+                            const checked = event.target.checked
+                            setSelectedChargeIds((current) => checked
+                              ? current.includes(charge.id) ? current : [...current, charge.id]
+                              : current.filter((id) => id !== charge.id))
+                          }}
+                        />
+                        <span>{charge.name}</span>
+                        <strong>{formatPHP(Number(charge.price))}</strong>
+                      </label>
+                    ))}
+                    {!!selectedCharges.length && <p className="booking-additional-total" role="status">
+                      Selected extras: {formatPHP(serviceChargesTotal(selectedCharges))}
+                    </p>}
+                  </fieldset>
+                )}
               </>
             )}
             {step === 2 && (
@@ -619,6 +658,12 @@ export function BookingPage() {
                     <dt>Concerns</dt>
                     <dd>{notes || 'None added'}</dd>
                   </div>
+                  {!!selectedCharges.length && (
+                    <div>
+                      <dt>Requested extras</dt>
+                      <dd>{selectedCharges.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')}</dd>
+                    </div>
+                  )}
                   <>
                     <div>
                       <dt>Intake contact</dt>
@@ -683,6 +728,10 @@ export function BookingPage() {
                       {visit?.basePrice == null ? 'Quote required' : formatPHP(visit.basePrice)}
                     </dd>
                   </div>
+                  {!!selectedCharges.length && <div>
+                    <dt>Selected extras</dt>
+                    <dd>{formatPHP(serviceChargesTotal(selectedCharges))}</dd>
+                  </div>}
                   {mode === 'Home service' && (
                     <>
                       <div>

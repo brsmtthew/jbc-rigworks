@@ -369,8 +369,19 @@ test('booking capacity is enforced, check-in is idempotent, and service prices a
   assert.equal((await receiveAppointmentAsJob(admin, 'booking')).id, job.id)
   assert.equal(list('jobs').length, 1)
   await advanceService(admin, job.id, 'In service')
-  await advanceService(admin, job.id, 'Ready for checkout')
+  await assert.rejects(advanceService(admin, job.id, 'Ready for checkout'))
   await assert.rejects(advanceService(admin, job.id, 'Completed'), /Collect payment/)
+})
+test('paid services complete directly after work and legacy ready jobs remain completable', async () => {
+  const job = {
+    id: 'paid-service', customer: 'Jamie', device: 'Laptop', service: 'Cleaning',
+    due: '2099-01-05', quote: 500, status: 'In service', paymentStatus: 'Paid',
+  }
+  seed({ 'jobs/paid-service': job, 'jobs/legacy-ready': { ...job, id: 'legacy-ready', status: 'Ready for checkout' } })
+  await advanceService(admin, 'paid-service', 'Completed')
+  await advanceService(admin, 'legacy-ready', 'Completed')
+  assert.equal(read('jobs/paid-service').status, 'Completed')
+  assert.equal(read('jobs/legacy-ready').status, 'Completed')
 })
 test('confirmed rescheduling moves capacity atomically and carries the reviewed estimate', async () => {
   const morning = slotLabel(defaultShop.schedule.windows[0]),

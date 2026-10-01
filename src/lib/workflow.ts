@@ -19,7 +19,7 @@ export const serviceTransitions: Record<ServiceStatus, ServiceStatus[]> = {
   Requested: ['Confirmed', 'Cancelled'],
   Confirmed: ['Checked in', 'In service', 'Cancelled', 'No show'],
   'Checked in': ['In service'],
-  'In service': ['Ready for checkout'],
+  'In service': ['Completed'],
   'Ready for checkout': ['Completed'],
   Completed: [],
   Cancelled: [],

@@ -344,6 +344,57 @@
   font-size: 13px;
 }
 
+.customer-shell .booking-additional-charges {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 15px;
+  border: 1px solid #dce8f4;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.customer-shell .booking-additional-charges legend {
+  padding: 0 4px;
+  color: #0b315a;
+  font-weight: 750;
+}
+
+.customer-shell .booking-additional-charges p {
+  margin: 0;
+  color: #607d97;
+  font-size: 12px;
+}
+
+.customer-shell .booking-additional-charges .check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #dce8f4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.customer-shell .booking-additional-charges .check-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-shell .booking-additional-charges .check-row strong {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.customer-shell .booking-additional-charges .booking-additional-total {
+  color: #0b315a;
+  font-weight: 700;
+}
+
 .customer-shell .booking-section-heading {
   margin: 0 0 2px;
 }

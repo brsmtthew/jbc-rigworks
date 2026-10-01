@@ -36,7 +36,7 @@ export function RecordFields({
               maxLength={2000}
               min={field.type === 'number' ? 0 : undefined}
               step={field.type === 'number' ? '0.01' : undefined}
-              defaultValue={values[field.name] ?? ''}
+              defaultValue={field.type === 'number' && values[field.name] === 0 ? '' : values[field.name] ?? ''}
             />
           )}
         </label>

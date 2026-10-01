@@ -1,18 +1,22 @@
-import { ClipboardList, FileText, Pencil, Plus } from 'lucide-react'
+import { ClipboardList, Eye, FileText, Pencil, Plus, Printer } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
 import { useWorkspace } from '../../hooks/useWorkspace'
+import { useLiveCollection } from '../../hooks/useLiveData'
 import { useAuth } from '../../lib/auth-context'
 import { formatDate, formatPHP } from '../../lib/format'
 import { humanError, serviceState } from '../../lib/workflow'
-import type { Job, ServiceStatus } from '../../types'
+import type { CustomerAppointment, Job, ServiceStatus } from '../../types'
 import { RecordStatus } from '../customer/RecordStatus'
+import { ServiceIntakeDocument, ServiceIntakePrintRoot } from '../customer/ServiceIntakeDocument'
 import { RequestQueue } from './RequestQueue'
 import { ServiceIntake } from './ServiceIntake'
 import { WalkInIntakeReview } from './WalkInIntakeReview'
 import { advanceService } from './serviceOperations'
+import { jobDocumentAppointment, walkInDocumentAppointment } from './walkInDocument'
 
 export function ServiceWorkspace({ onCreate }: { onCreate: () => void }) {
   const [params] = useSearchParams()
@@ -23,11 +27,14 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
   const { jobs, loading, storageError } = useWorkspace(),
     { user } = useAuth(),
     navigate = useNavigate()
+  const appointments = useLiveCollection<CustomerAppointment>('appointments', true)
   const [params] = useSearchParams()
   const [tab, setTab] = useState(params.get('tab') ?? 'requests'),
     [query, setQuery] = useState(params.get('reference') ?? '')
   const [editing, setEditing] = useState<Job | null>(null),
+    [viewingJob, setViewingJob] = useState<Job | null>(null),
     [reviewingWalkIn, setReviewingWalkIn] = useState<Job | null>(null),
+    [printingJob, setPrintingJob] = useState<Job | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
   const [statusFilter, setStatusFilter] = useState(params.get('status') ?? 'all')
@@ -111,7 +118,7 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
               <span className="sr-only">Service status</span>
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 <option value="all">All active statuses</option>
-                {['Checked in', 'In service', 'Ready for checkout'].map((status) => (
+                {['Checked in', 'In service'].map((status) => (
                   <option key={status}>{status}</option>
                 ))}
               </select>
@@ -187,16 +194,17 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
                       aria-label={`Actions for ${job.service}, ${job.customer}`}
                     >
                       <span className="service-record-actions-label">Actions</span>
-                      {job.channel === 'Walk-in' && job.serviceIntake && (
+                      <button type="button" className="customer-record-action" aria-label="View job details" onClick={() => setViewingJob(job)}><Eye size={16} /> View</button>
+                      {status === 'Completed' || (job.channel === 'Walk-in' && job.serviceIntake) ? (
                         <button
                           type="button"
                           className="customer-record-action"
                           aria-label="Review / print intake"
-                          onClick={() => setReviewingWalkIn(job)}
+                          onClick={() => status === 'Completed' ? setPrintingJob(job) : setReviewingWalkIn(job)}
                         >
                           <FileText size={16} /> Intake form
                         </button>
-                      )}
+                      ) : null}
                       {status !== 'Completed' && job.paymentStatus !== 'Paid' && (
                         <button
                           type="button"
@@ -218,18 +226,7 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
                           Start service
                         </button>
                       )}
-                      {status === 'In service' && (
-                        <button
-                          disabled={busy}
-                          type="button"
-                          className="customer-record-action is-primary"
-                          aria-label="Mark ready for checkout"
-                          onClick={() => advance(job, 'Ready for checkout')}
-                        >
-                          Mark ready
-                        </button>
-                      )}
-                      {status === 'Ready for checkout' &&
+                      {(status === 'In service' || status === 'Ready for checkout') &&
                         (job.paymentStatus === 'Paid' ? (
                           <button
                             disabled={busy}
@@ -290,9 +287,36 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
         </section>
       )}
       {editing && <ServiceIntake job={editing} onClose={() => setEditing(null)} />}
+      {viewingJob && <Dialog title="Service job details" wide onClose={() => setViewingJob(null)}><dl className="service-job-details">
+        {([['Service', viewingJob.service], ['Customer', viewingJob.customer], ['Contact', viewingJob.contact], ['Device', viewingJob.device], ['Status', serviceState(viewingJob.status)], ['Target date', viewingJob.due ? formatDate(viewingJob.due) : 'Not scheduled'], ['Estimate', viewingJob.quote > 0 ? formatPHP(viewingJob.quote) : 'Pending review'], ['Payment', viewingJob.paymentStatus ?? 'Unpaid'], ['Requested extras', viewingJob.selectedCharges?.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')], ['Concern', viewingJob.concern], ['Intake notes', viewingJob.intakeNotes], ['Accessories', viewingJob.accessories]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}
+      </dl></Dialog>}
       {reviewingWalkIn && (
         <WalkInIntakeReview job={reviewingWalkIn} onClose={() => setReviewingWalkIn(null)} />
       )}
+      {printingJob && <CompletedIntakeReview
+        job={printingJob}
+        appointments={appointments.rows}
+        loading={appointments.loading}
+        onClose={() => setPrintingJob(null)}
+      />}
     </div>
   )
+}
+
+function CompletedIntakeReview({ job, appointments, loading, onClose }: {
+  job: Job
+  appointments: CustomerAppointment[]
+  loading: boolean
+  onClose: () => void
+}) {
+  const appointment = loading ? null : appointments.find((item) => item.id === job.appointmentId) ??
+    (job.channel === 'Walk-in' ? walkInDocumentAppointment(job) : jobDocumentAppointment(job))
+  return <>
+    <Dialog title="Customer intake & service authorization" wide onClose={onClose} footer={
+      <button type="button" className="secondary-button" disabled={!appointment} onClick={() => window.print()}><Printer size={16} /> Print form</button>
+    }>
+      {appointment ? <ServiceIntakeDocument appointment={appointment} walkIn={job.channel === 'Walk-in'} /> : <LoadingState label="Loading intake form…" />}
+    </Dialog>
+    {appointment && <ServiceIntakePrintRoot appointment={appointment} walkIn={job.channel === 'Walk-in'} />}
+  </>
 }

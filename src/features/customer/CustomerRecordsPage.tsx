@@ -473,6 +473,7 @@ export function CustomerRecordsPage({
                         <dl className="checkout-totals">
                           {[
                             ['Service', selected.visit.basePrice],
+                            ...(selected.selectedCharges ?? []).map((charge) => [charge.name, charge.price] as const),
                             ['Home surcharge', selected.visit.surcharge],
                             ['Transportation', selected.visit.transport],
                             ['Estimated total', selected.visit.estimate],
@@ -481,6 +482,7 @@ export function CustomerRecordsPage({
                               ([label, value]) =>
                                 label === 'Service' ||
                                 label === 'Estimated total' ||
+                                selected.selectedCharges?.some((charge) => charge.name === label) ||
                                 (selected.visit?.mode === 'Home service' && value !== 0),
                             )
                             .map(([label, value]) => (

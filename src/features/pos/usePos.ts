@@ -10,7 +10,7 @@ import { formatPHP } from '../../lib/format'
 import { bundlePriceAdjustment, qualifyingBundle } from '../../lib/fulfillment'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
 import { availableStock } from '../../lib/workflow'
-import type { InventoryItem, Job, ProductBundle, Sale } from '../../types'
+import type { InventoryItem, Job, ProductBundle, Sale, ServiceOffering } from '../../types'
 import { isSellable } from '../builder/pc'
 import { rejectPaymentProof } from '../finance/payments'
 import { usePaymentAccounts, usePaymentProofs } from '../finance/usePayments'
@@ -24,6 +24,7 @@ type PosProduct = {
   stock: number
   service: boolean
   item?: InventoryItem
+  offering?: ServiceOffering
 }
 
 export function usePos() {
@@ -115,6 +116,7 @@ export function usePos() {
               price: service.price === '' ? null : Number(service.price),
               stock: Infinity,
               service: true,
+              offering: service,
             })),
           ...(jobService
             ? [
@@ -182,6 +184,7 @@ export function usePos() {
       taxRate: number
     }>
   >({})
+  const [selectedChargeIds, setSelectedChargeIds] = useState<string[]>([])
   const charges = {
     labor: 0,
     delivery: 0,
@@ -249,7 +252,32 @@ export function usePos() {
           ? (b.price ?? 0) - (a.price ?? 0)
           : a.name.localeCompare(b.name),
     )
+  function removeSelectedCharges(removedIds: string[]) {
+    if (!removedIds.length) return
+    const remaining = selectedChargeIds.filter((id) => !removedIds.includes(id))
+    const allCharges = shop.services.flatMap((service) =>
+      (service.additionalCharges ?? []).map((charge) => ({
+        ...charge,
+        key: `${service.id}:${charge.id}`,
+      })),
+    )
+    const removedAmount = allCharges
+      .filter((charge) => removedIds.includes(charge.key))
+      .reduce((sum, charge) => sum + Number(charge.price), 0)
+    setSelectedChargeIds(remaining)
+    setCharges((current) => ({
+      ...current,
+      other: Math.max(0, (current.other ?? 0) - removedAmount),
+      otherLabel: allCharges
+        .filter((charge) => remaining.includes(charge.key))
+        .map((charge) => charge.name)
+        .join(', ')
+        .slice(0, 100),
+    }))
+  }
   function quantity(id: string, next: number) {
+    if (next < 1 && id.startsWith('service:'))
+      removeSelectedCharges(selectedChargeIds.filter((key) => key.startsWith(`${id.slice(8)}:`)))
     setCart((current) =>
       next < 1
         ? current.filter((line) => line.id !== id)
@@ -305,6 +333,8 @@ export function usePos() {
       setCashReceived('')
       setBundleId(undefined)
       setPcSet(false)
+      setSelectedChargeIds([])
+      setCharges({})
     })
   }
   async function selectBundle(bundle: ProductBundle) {
@@ -319,6 +349,7 @@ export function usePos() {
     )
       return
     setCart(bundle.items.map((item) => ({ id: item.inventoryId, quantity: item.quantity })))
+    removeSelectedCharges(selectedChargeIds)
     setBundleId(bundle.id)
     setPcSet(false)
     setError('')
@@ -522,6 +553,8 @@ export function usePos() {
     notes,
     setNotes,
     setCharges,
+    selectedChargeIds,
+    setSelectedChargeIds,
     charges,
     effectiveCharges,
     cashPaid,

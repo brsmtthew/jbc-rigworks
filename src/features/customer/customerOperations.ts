@@ -20,6 +20,7 @@ import {
   type AppointmentSlot,
 } from '../services/serviceCatalog'
 import { priceVisit } from '../services/visitPricing'
+import { validateRequestedServiceCharges } from '../services/serviceCharges'
 import { intakeTypeForService, validateServiceIntake } from './serviceIntake'
 
 export async function savePcQuote(
@@ -250,6 +251,7 @@ export async function saveAppointment(
       !(appointment.visit?.mode === 'Home service' ? offering.home : offering.workshop)
     )
       throw new Error('Choose an available service and visit location.')
+    const selectedCharges = validateRequestedServiceCharges(offering, appointment.selectedCharges)
     const window = settings.schedule.windows.find(
       (slot) => slotLabel(slot) === appointment.preferredTime,
     )
@@ -268,13 +270,14 @@ export async function saveAppointment(
       ).some((value) => value.id === window.id)
     )
       throw new Error('That time is now booked. Choose another appointment window.')
-    const visit = priceVisit(appointment, settings)
+    const visit = priceVisit({ ...appointment, selectedCharges }, settings)
     const serviceIntake = appointment.visit
       ? validateServiceIntake(appointment.serviceIntake)
       : undefined
     const record: CustomerAppointment = {
       ...appointment,
       schemaVersion: 2,
+      selectedCharges,
       visit,
       serviceIntake,
       slotId: slotRef!.id,

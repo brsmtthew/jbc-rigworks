@@ -1,26 +1,31 @@
-import { Clock3, House, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Clock3, Eye, House, MapPin, Pencil, Plus, Power, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
+import { NumberInput } from '../../components/ui/NumberInput'
 import { formatPHP } from '../../lib/format'
 import { useShopSettings } from '../../lib/preferences'
 import { humanError } from '../../lib/workflow'
 import type { ServiceOffering } from '../../types'
+import { ServiceOfferingDetails } from '../services/ServiceOfferingDetails'
+import { readServiceImage } from '../services/serviceImage'
 
 export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }) {
   const { confirm } = useConfirmation()
-  const [shop, saveShop] = useShopSettings()
-  const [services, setServices] = useState(shop.services),
-    [schedule, setSchedule] = useState(shop.schedule)
+  const [shop, saveShop, settingsStatus] = useShopSettings()
+  const services = shop.services
+  const [schedule, setSchedule] = useState(shop.schedule)
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('')
   const [editor, setEditor] = useState<ServiceOffering | null>(null)
+  const [viewing, setViewing] = useState<ServiceOffering | null>(null)
   const [isNew, setIsNew] = useState(false)
   function beginAdd() {
     setEditor({
       id: crypto.randomUUID(), name: '', deviceType: 'Any', description: '', inclusions: '',
       price: '', durationMinutes: 60, workshop: true, home: false, active: true,
+      image: '', additionalCharges: [],
     })
     setIsNew(true)
     setError('')
@@ -35,11 +40,23 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
     if (!editor || busy) return
     setError('')
     setMessage('')
-    const service = { ...editor, name: editor.name.trim() }
+    const service = {
+      ...editor,
+      name: editor.name.trim(),
+      additionalCharges: (editor.additionalCharges ?? []).map((charge) => ({
+        ...charge,
+        name: charge.name.trim(),
+      })),
+    }
     if (!service.name || !Number.isSafeInteger(service.durationMinutes) || service.durationMinutes < 1 ||
       (service.price !== '' && (!Number.isFinite(Number(service.price)) || Number(service.price) < 0)) ||
       (service.active && !service.workshop && !service.home)) {
       setError('Enter a name, valid price and duration, and at least one available location.')
+      return
+    }
+    if (service.additionalCharges.some((charge) => !charge.name || charge.price === '' ||
+      !Number.isFinite(Number(charge.price)) || Number(charge.price) < 0)) {
+      setError('Enter a name and valid price for each additional charge.')
       return
     }
     if (services.some((item) => item.id !== service.id && item.name.toLowerCase() === service.name.toLowerCase() && item.deviceType === service.deviceType)) {
@@ -49,8 +66,9 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
     setBusy(true)
     try {
       const next = isNew ? [...services, service] : services.map((item) => item.id === service.id ? service : item)
+      if (new TextEncoder().encode(JSON.stringify({ ...shop, services: next })).length > 900000)
+        throw new Error('The service catalog is full. Remove an image or use a smaller one before saving.')
       await saveShop({ ...shop, services: next })
-      setServices(next)
       setEditor(null)
       setMessage(isNew ? 'Service added.' : 'Service updated.')
     } catch (err) {
@@ -60,10 +78,6 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
     }
   }
   async function deleteService(service: ServiceOffering) {
-    if (services.length === 1) {
-      setError('Keep at least one service in the catalog. Deactivate it if bookings should stop.')
-      return
-    }
     if (busy || !(await confirm({
       title: 'Delete service?',
       message: `Remove ${service.name} / ${service.deviceType} from the catalog? Existing booking and sales records keep their saved details.`,
@@ -74,8 +88,25 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
     try {
       const next = services.filter((item) => item.id !== service.id)
       await saveShop({ ...shop, services: next })
-      setServices(next)
       setMessage('Service deleted.')
+    } catch (err) {
+      setError(humanError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function toggleService(service: ServiceOffering) {
+    if (busy) return
+    if (!service.active && !service.workshop && !service.home) {
+      setError('Choose at least one service location before activating this service.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const next = services.map((item) => item.id === service.id ? { ...item, active: !item.active } : item)
+      await saveShop({ ...shop, services: next })
+      setMessage(service.active ? 'Service deactivated.' : 'Service activated.')
     } catch (err) {
       setError(humanError(err))
     } finally {
@@ -244,16 +275,15 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
               </label>
               <label>
                 Capacity
-                <input
-                  type="number"
+                <NumberInput
                   min="1"
                   step="1"
                   value={slot.capacity}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setSchedule({
                       ...schedule,
-                      windows: schedule.windows.map((value, i) =>
-                        i === index ? { ...value, capacity: Number(e.target.value) } : value,
+                      windows: schedule.windows.map((slotValue, i) =>
+                        i === index ? { ...slotValue, capacity: value } : slotValue,
                       ),
                     })
                   }
@@ -333,16 +363,15 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
               </label>
               <label>
                 Available bookings
-                <input
-                  type="number"
+                <NumberInput
                   min="0"
                   step="1"
                   value={override.capacity}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setSchedule({
                       ...schedule,
-                      dateOverrides: (schedule.dateOverrides ?? []).map((value, i) =>
-                        i === index ? { ...value, capacity: Number(e.target.value) } : value,
+                      dateOverrides: (schedule.dateOverrides ?? []).map((slotValue, i) =>
+                        i === index ? { ...slotValue, capacity: value } : slotValue,
                       ),
                     })
                   }
@@ -439,7 +468,7 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
         <>
           <div className="service-catalog-toolbar">
             <p>Services here appear in customer bookings, workshop intake, and POS.</p>
-            <button type="button" className="primary-button" onClick={beginAdd}>
+            <button type="button" className="primary-button" disabled={settingsStatus.loading || busy} onClick={beginAdd}>
               <Plus size={16} /> Add service
             </button>
           </div>
@@ -450,6 +479,7 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
                   <span>{service.deviceType}</span>
                   <small className={service.active ? 'is-active' : ''}>{service.active ? 'Active' : 'Inactive'}</small>
                 </div>
+                {service.image && <img className="service-catalog-card-image" src={service.image} alt="" />}
                 <h3>{service.name}</h3>
                 <p>{service.description || 'No description added yet.'}</p>
                 <div className="service-catalog-card-meta">
@@ -461,8 +491,14 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
                   {service.home && <span><House size={14} /> Home service</span>}
                 </div>
                 <div className="service-catalog-card-actions">
+                  <button type="button" className="secondary-button" onClick={() => setViewing(service)}>
+                    <Eye size={15} /> View
+                  </button>
                   <button type="button" className="secondary-button" onClick={() => beginEdit(service)}>
                     <Pencil size={15} /> Edit
+                  </button>
+                  <button type="button" className="secondary-button" disabled={busy} onClick={() => void toggleService(service)}>
+                    <Power size={15} /> {service.active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button type="button" className="secondary-button is-danger" disabled={busy} onClick={() => void deleteService(service)}>
                     <Trash2 size={15} /> Delete
@@ -479,6 +515,7 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
           {error}
         </p>
       )}
+      {settingsStatus.error && <p role="alert" className="form-error">{settingsStatus.error}</p>}
       {message && (
         <p role="status" className="save-message">
           {message}
@@ -487,6 +524,7 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
       {scheduling && <button className="primary-button" disabled={busy} onClick={save}>
         {busy ? 'Saving…' : 'Save availability'}
       </button>}
+      {viewing && <Dialog title={viewing.name} wide onClose={() => setViewing(null)}><ServiceOfferingDetails service={viewing} /></Dialog>}
       {editor && (
         <Dialog title={isNew ? 'Add service' : 'Edit service'} onClose={() => !busy && setEditor(null)} footer={
           <>
@@ -501,10 +539,31 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
                 <option>Desktop</option><option>Laptop</option><option>Any</option>
               </select></label>
               <label>Estimated price (PHP)<input type="number" min="0" step="0.01" placeholder="Quote after review" value={editor.price} onChange={(event) => setEditor({ ...editor, price: event.target.value })} /></label>
-              <label>Duration (minutes)<input type="number" min="1" step="1" required value={editor.durationMinutes} onChange={(event) => setEditor({ ...editor, durationMinutes: Number(event.target.value) })} /></label>
+              <label>Duration (minutes)<NumberInput min="1" step="1" required value={editor.durationMinutes} onValueChange={(value) => setEditor({ ...editor, durationMinutes: value })} /></label>
             </div>
             <label>Description<textarea rows={3} maxLength={1000} value={editor.description} onChange={(event) => setEditor({ ...editor, description: event.target.value })} /></label>
             <label>Package inclusions<textarea rows={3} maxLength={2000} value={editor.inclusions} onChange={(event) => setEditor({ ...editor, inclusions: event.target.value })} /></label>
+            <label>Service image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async (event) => {
+              const file = event.target.files?.[0]
+              if (!file) return
+              try {
+                const image = await readServiceImage(file)
+                setEditor((current) => current ? { ...current, image } : current)
+              }
+              catch (err) { setError(humanError(err)) }
+            }} /></label>
+            <small className="storage-caption">JPG, PNG, or WebP up to 5 MB. Images are optimized for the catalog.</small>
+            {editor.image && <div className="upload-preview"><img src={editor.image} alt="Service image" /><button type="button" className="secondary-button" onClick={() => setEditor({ ...editor, image: '' })}>Remove image</button></div>}
+            <div className="service-additional-charges">
+              <h3>Optional additional charges</h3>
+              <p>List approved extras such as thermal paste replacement. These are shown separately from the base estimate.</p>
+              {(editor.additionalCharges ?? []).map((charge) => <div className="portal-form-grid" key={charge.id}>
+                <label>Charge name<input maxLength={100} value={charge.name} onChange={(event) => setEditor({ ...editor, additionalCharges: (editor.additionalCharges ?? []).map((item) => item.id === charge.id ? { ...item, name: event.target.value } : item) })} /></label>
+                <label>Price (PHP)<input type="number" min="0" step="0.01" value={charge.price} onChange={(event) => setEditor({ ...editor, additionalCharges: (editor.additionalCharges ?? []).map((item) => item.id === charge.id ? { ...item, price: event.target.value } : item) })} /></label>
+                <button type="button" className="text-button" onClick={() => setEditor({ ...editor, additionalCharges: (editor.additionalCharges ?? []).filter((item) => item.id !== charge.id) })}>Remove</button>
+              </div>)}
+              <button type="button" className="secondary-button" onClick={() => setEditor({ ...editor, additionalCharges: [...(editor.additionalCharges ?? []), { id: crypto.randomUUID(), name: '', price: '' }] })}><Plus size={15} /> Add charge</button>
+            </div>
             <div className="service-catalog-editor-options">
               {(['workshop', 'home', 'active'] as const).map((key) => (
                 <label className="check-row" key={key}><input type="checkbox" checked={editor[key]} onChange={(event) => setEditor({ ...editor, [key]: event.target.checked })} />{{ workshop: 'Workshop available', home: 'Home service available', active: 'Active in catalog' }[key]}</label>

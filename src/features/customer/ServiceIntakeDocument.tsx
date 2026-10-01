@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom'
+import { formatPHP } from '../../lib/format'
 import type { CustomerAppointment } from '../../types'
 import { appointmentIntake, damageOptions, intakeTypeForService } from './serviceIntake'
 
@@ -94,6 +95,10 @@ export function ServiceIntakeDocument({
         <h2>C. Requested service</h2>
         <dl className="home-intake-print-grid">
           {field('Approved service request', appointment.service)}
+          {!!appointment.selectedCharges?.length && field(
+            'Requested additional work',
+            appointment.selectedCharges.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', '),
+          )}
           {field('Customer concern / request', appointment.notes)}
           {serviceType === 'assembly' && (
             <>

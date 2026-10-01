@@ -522,7 +522,7 @@ export function InventoryPage({ onCreate }: { onCreate: () => void }) {
                 type="number"
                 min={adjusting.reserved ?? 0}
                 step="1"
-                defaultValue={adjusting.stock}
+                defaultValue={adjusting.stock === 0 ? '' : adjusting.stock}
               />
             </label>
             <label>

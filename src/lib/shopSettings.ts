@@ -1,4 +1,4 @@
-import { adaptServices, defaultSchedule } from '../features/services/serviceCatalog'
+import { defaultSchedule } from '../features/services/serviceCatalog'
 import type { BookingSchedule, Seller, ServiceOffering, Tier } from '../types'
 
 export type ShopSettings = Seller & {
@@ -66,8 +66,7 @@ export function normalizeShop(raw: Partial<ShopSettings>): ShopSettings {
     ...safe,
     taxRate: Math.min(100, safe.taxRate),
     cleaning,
-    services:
-      Array.isArray(raw.services) && raw.services.length ? raw.services : adaptServices(cleaning),
+    services: Array.isArray(raw.services) ? raw.services : [],
     schedule: { ...defaultSchedule, ...raw.schedule },
   }
 }

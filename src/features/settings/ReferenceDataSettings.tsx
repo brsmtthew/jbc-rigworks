@@ -5,6 +5,7 @@ import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { NumberInput } from '../../components/ui/NumberInput'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import {
   directoryLabels,
@@ -338,26 +339,24 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
             <div className="portal-form-grid">
               <label>
                 Default VAT / tax (%)
-                <input
-                  type="number"
+                <NumberInput
                   min="0"
                   max="100"
                   step="0.01"
                   value={defaults.taxRate}
-                  onChange={(event) =>
-                    setDefaults({ ...defaults, taxRate: Number(event.target.value) })
+                  onValueChange={(value) =>
+                    setDefaults({ ...defaults, taxRate: value })
                   }
                 />
               </label>
               <label>
                 Default labor (PHP)
-                <input
-                  type="number"
+                <NumberInput
                   min="0"
                   step="0.01"
                   value={defaults.labor}
-                  onChange={(event) =>
-                    setDefaults({ ...defaults, labor: Number(event.target.value) })
+                  onValueChange={(value) =>
+                    setDefaults({ ...defaults, labor: value })
                   }
                 />
               </label>
@@ -438,14 +437,13 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
             </label>
             <label>
               Amount or percentage
-              <input
+              <NumberInput
                 required
-                type="number"
                 min="0"
                 step="0.01"
                 max={fee.kind === 'taxRate' ? 100 : undefined}
                 value={fee.value}
-                onChange={(event) => setFee({ ...fee, value: Number(event.target.value) })}
+                onValueChange={(value) => setFee({ ...fee, value })}
               />
             </label>
             {error && (

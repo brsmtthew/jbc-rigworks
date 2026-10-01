@@ -1,5 +1,6 @@
 import { Banknote, LoaderCircle, ShoppingCart } from 'lucide-react'
 import { Dialog } from '../../components/ui/Dialog'
+import { NumberInput } from '../../components/ui/NumberInput'
 import { formatPHP } from '../../lib/format'
 import { accountAvailable } from '../finance/payments'
 import type { PosController } from './usePos'
@@ -39,6 +40,8 @@ export function CheckoutDialog({
   setReceiptEmail,
   receiptEmail,
   setCharges,
+  selectedChargeIds,
+  setSelectedChargeIds,
   charges,
   error,
   busy,
@@ -86,6 +89,8 @@ export function CheckoutDialog({
   | 'setReceiptEmail'
   | 'receiptEmail'
   | 'setCharges'
+  | 'selectedChargeIds'
+  | 'setSelectedChargeIds'
   | 'charges'
   | 'error'
   | 'busy'
@@ -98,6 +103,29 @@ export function CheckoutDialog({
   | 'setQuickCash'
   | 'cashShortcuts'
 >) {
+  const serviceCharges = shop.services
+    .filter((service) => cart.some((line) => line.id === `service:${service.id}`))
+    .flatMap((service) =>
+      (service.additionalCharges ?? []).map((charge) => ({
+        ...charge,
+        key: `${service.id}:${charge.id}`,
+      })),
+    )
+  const selectedCharges = serviceCharges.filter((charge) => selectedChargeIds.includes(charge.key))
+  function toggleServiceCharge(key: string) {
+    const nextIds = selectedChargeIds.includes(key)
+      ? selectedChargeIds.filter((id) => id !== key)
+      : [...selectedChargeIds, key]
+    const nextCharges = serviceCharges.filter((charge) => nextIds.includes(charge.key))
+    const previousTotal = selectedCharges.reduce((sum, charge) => sum + Number(charge.price), 0)
+    const nextTotal = nextCharges.reduce((sum, charge) => sum + Number(charge.price), 0)
+    setSelectedChargeIds(nextIds)
+    setCharges({
+      ...charges,
+      other: Math.max(0, charges.other - previousTotal + nextTotal),
+      otherLabel: nextCharges.map((charge) => charge.name).join(', ').slice(0, 100),
+    })
+  }
   return (
     <Dialog
       title={customerMode ? 'Review your order' : 'Checkout'}
@@ -205,6 +233,14 @@ export function CheckoutDialog({
                   ))}
                 </select>
               </label>
+              {!!serviceCharges.length && <fieldset className="pos-service-charges">
+                <legend>Optional service charges</legend>
+                {serviceCharges.map((charge) => <label className="check-row" key={charge.key}>
+                  <input type="checkbox" checked={selectedChargeIds.includes(charge.key)} onChange={() => toggleServiceCharge(charge.key)} />
+                  {charge.name} · {formatPHP(Number(charge.price))}
+                </label>)}
+                <small>Apply only charges approved by the customer.</small>
+              </fieldset>}
               <div className="portal-form-grid">
                 {(['labor', 'other', 'discount', 'taxRate'] as const).map((field) => (
                   <label key={field}>
@@ -217,13 +253,12 @@ export function CheckoutDialog({
                         taxRate: 'Tax (%)',
                       }[field]
                     }
-                    <input
-                      type="number"
+                    <NumberInput
                       min="0"
                       step="0.01"
                       max={field === 'taxRate' ? 100 : undefined}
                       value={charges[field]}
-                      onChange={(e) => setCharges({ ...charges, [field]: Number(e.target.value) })}
+                      onValueChange={(value) => setCharges({ ...charges, [field]: value })}
                     />
                   </label>
                 ))}

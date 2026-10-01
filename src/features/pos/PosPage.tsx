@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   SlidersHorizontal,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
 import { formatPHP } from '../../lib/format'
@@ -18,6 +19,7 @@ import { availableStock } from '../../lib/workflow'
 import { InvoiceDialog } from '../finance/InvoiceDialog'
 import { ProductDialog } from '../inventory/ProductDialog'
 import { RequestQueue } from '../services/RequestQueue'
+import { ServiceOfferingDetails } from '../services/ServiceOfferingDetails'
 import { BundleCatalog } from './BundleCatalog'
 import { CartPanel } from './CartPanel'
 import { CheckoutDialog } from './CheckoutDialog'
@@ -28,6 +30,7 @@ import './customer-shop.css'
 
 export function PosPage() {
   const pos = usePos()
+  const [serviceDetail, setServiceDetail] = useState<ReturnType<typeof usePos>['products'][number] | null>(null)
   const {
     productDetail,
     setProductDetail,
@@ -322,11 +325,11 @@ export function PosPage() {
                       {product.service ? <BrushCleaning size={32} /> : <Package size={32} />}
                       {customerMode && <small>Image not available</small>}
                     </span>
-                    {product.item?.image && (
+                    {(product.item?.image || product.offering?.image) && (
                       <img
                         className="product-image"
                         loading="lazy"
-                        src={product.item.image}
+                        src={product.item?.image || product.offering?.image}
                         alt={product.name}
                         onError={(event) => {
                           event.currentTarget.hidden = true
@@ -402,7 +405,9 @@ export function PosPage() {
                         : 'Add to cart'
                       : 'Add to order'}
                   </button>
-                  {!product.service && (
+                  {product.service ? (
+                    <button type="button" className="secondary-button product-inspect" aria-label={'View details for ' + product.name} onClick={() => setServiceDetail(product)}><Eye size={18} /><span>View details</span></button>
+                  ) : (
                     <button
                       className={
                         customerMode
@@ -491,6 +496,12 @@ export function PosPage() {
           onClose={() => setProductDetail(null)}
         />
       )}
+      {serviceDetail && <Dialog title={serviceDetail.name} wide onClose={() => setServiceDetail(null)} footer={
+        <button type="button" className="primary-button" disabled={serviceDetail.price === null} onClick={() => {
+          quantity(serviceDetail.id, (cart.find((line) => line.id === serviceDetail.id)?.quantity ?? 0) + 1)
+          setServiceDetail(null)
+        }}>Add to order</button>
+      }>{serviceDetail.offering ? <ServiceOfferingDetails service={serviceDetail.offering} /> : <p>{serviceDetail.name} · {serviceDetail.price === null ? 'Price not set' : formatPHP(serviceDetail.price)}</p>}</Dialog>}
       {sale && <InvoiceDialog sale={sale} onClose={() => setSale(null)} />}
       {scannerOpen && (
         <OrderScanner onSelect={openScannedOrder} onClose={() => setScannerOpen(false)} />

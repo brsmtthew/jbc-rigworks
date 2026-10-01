@@ -100,7 +100,7 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
         step={['stock', 'minimum', 'warrantyMonths'].includes(name) ? '1' : 'any'}
         required={options.required}
         maxLength={500}
-        defaultValue={String(item?.[name] ?? (['stock', 'minimum'].includes(name) ? 0 : ''))}
+        defaultValue={String(item?.[name] ?? '')}
         placeholder={options.number ? 'Not configured' : undefined}
       />
     </label>

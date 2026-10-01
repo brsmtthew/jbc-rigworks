@@ -18,6 +18,12 @@ export function AppointmentDetails({
     ['Device', appointment.device],
     ['Preferred visit', `${formatDate(appointment.preferredDate)} / ${appointment.preferredTime}`],
     ['Service location', appointment.visit?.mode ?? 'Workshop'],
+    ...(appointment.selectedCharges?.length
+      ? [[
+          'Requested additional work',
+          appointment.selectedCharges.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', '),
+        ]]
+      : []),
     ...(appointment.visit?.mode === 'Home service'
       ? [['Address', appointment.visit.address]]
       : []),

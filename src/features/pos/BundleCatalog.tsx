@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { ActionButton } from '../../components/ui/ActionButton'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
+import { NumberInput } from '../../components/ui/NumberInput'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useAuth } from '../../lib/auth-context'
 import { formatPHP } from '../../lib/format'
@@ -404,19 +405,18 @@ export function BundleCatalog({
                   <div className="directory-row" key={part.inventoryId}>
                     <label>
                       {item?.name || 'Unavailable item'}
-                      <input
+                      <NumberInput
                         aria-label={'Bundle quantity: ' + item?.name}
-                        type="number"
                         min="1"
                         max={item ? availableStock(item) : 0}
                         step="1"
                         value={part.quantity}
-                        onChange={(e) =>
+                        onValueChange={(quantity) =>
                           setDraft({
                             ...draft,
                             items: draft.items.map((value) =>
                               value.inventoryId === part.inventoryId
-                                ? { ...value, quantity: Number(e.target.value) }
+                                ? { ...value, quantity }
                                 : value,
                             ),
                           })

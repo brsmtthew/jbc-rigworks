@@ -14,6 +14,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { Dialog } from '../../components/ui/Dialog'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { NumberInput } from '../../components/ui/NumberInput'
 import { useAuth } from '../../lib/auth-context'
 import { firebaseFirestore } from '../../lib/firebase'
 import { useShopSettings } from '../../lib/preferences'
@@ -409,13 +410,12 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
                 </div>
                 <label>
                   Standard product delivery fee (PHP)
-                  <input
-                    type="number"
+                  <NumberInput
                     min="0"
                     step="0.01"
                     required
                     value={business.delivery}
-                    onChange={(e) => setBusiness({ ...business, delivery: Number(e.target.value) })}
+                    onValueChange={(value) => setBusiness({ ...business, delivery: value })}
                   />
                 </label>
                 {(['homeSurcharge', 'transportBase', 'transportPerKm'] as const).map((field) => (

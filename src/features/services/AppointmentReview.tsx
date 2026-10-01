@@ -157,7 +157,7 @@ export function AppointmentReview({
         </label>
         <p>
           The estimate carries into service intake. The final service quote is confirmed before
-          checkout.
+          checkout. Include requested extras when entering a revised estimate.
         </p>
         {(error || settings.error || slots.error) && (
           <p role="alert" className="form-error">

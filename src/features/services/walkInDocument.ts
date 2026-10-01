@@ -16,5 +16,23 @@ export function walkInDocumentAppointment(job: Job): CustomerAppointment {
     createdAt: job.confirmedAt ?? new Date().toISOString(),
     customerName: job.customer,
     serviceIntake: job.serviceIntake,
+    selectedCharges: job.selectedCharges,
+  }
+}
+
+export function jobDocumentAppointment(job: Job): CustomerAppointment {
+  return {
+    id: job.appointmentId ?? job.id,
+    serviceId: job.serviceId,
+    service: job.service,
+    device: job.device,
+    preferredDate: job.due,
+    preferredTime: '',
+    notes: job.concern ?? job.intakeNotes ?? '',
+    status: 'Completed',
+    createdAt: job.confirmedAt ?? new Date().toISOString(),
+    customerName: job.customer,
+    serviceIntake: job.serviceIntake,
+    selectedCharges: job.selectedCharges,
   }
 }

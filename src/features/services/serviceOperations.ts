@@ -2,6 +2,7 @@ import { runTransaction } from 'firebase/firestore'
 import { firestoreData, recordRef, shopRef } from '../../lib/database'
 import { firebaseFirestore } from '../../lib/firebase'
 import { today } from '../../lib/dates'
+import { money } from '../../lib/commerce'
 import { normalizeShop } from '../../lib/shopSettings'
 import { assertTransition, serviceState, serviceTransitions } from '../../lib/workflow'
 import type { AppUser, CustomerAppointment, Job, ServiceStatus } from '../../types'
@@ -15,6 +16,7 @@ import {
   type AppointmentSlot,
 } from './serviceCatalog'
 import { priceVisit } from './visitPricing'
+import { serviceChargesTotal, validateRequestedServiceCharges } from './serviceCharges'
 
 export async function updateAppointmentStatus(user: AppUser, id: string, status: ServiceStatus) {
   if (user.role !== 'admin') throw new Error('Only JBC can confirm an appointment.')
@@ -39,8 +41,9 @@ export async function updateAppointmentStatus(user: AppUser, id: string, status:
           throw new Error(
             'This service is no longer available. Review the booking with the customer.',
           )
+        updated.selectedCharges = validateRequestedServiceCharges(offering, appointment.selectedCharges)
         updated.service = `${offering.name} / ${offering.deviceType}`
-        updated.visit = priceVisit(appointment, settings)
+        updated.visit = priceVisit(updated, settings)
       }
       const window = settings.schedule.windows.find(
         (slot) => slotLabel(slot) === appointment.preferredTime,
@@ -202,11 +205,12 @@ export async function receiveAppointmentAsJob(user: AppUser, id: string) {
     const status: ServiceStatus =
       appointment.visit?.mode === 'Home service' ? 'In service' : 'Checked in'
     const visit = appointment.visit
-    const quote =
+    const quote = money(
       appointment.reviewedEstimate ??
       (visit && visit.basePrice !== null && visit.surcharge !== null && visit.transport !== null
-        ? visit.basePrice + visit.surcharge + visit.transport
-        : 0)
+        ? visit.basePrice + serviceChargesTotal(appointment.selectedCharges) + visit.surcharge + visit.transport
+        : 0),
+    )
     const job: Job = {
       schemaVersion: 2,
       id: jobRef.id,
@@ -216,6 +220,7 @@ export async function receiveAppointmentAsJob(user: AppUser, id: string) {
       appointmentId: id,
       device: appointment.device,
       service: appointment.service,
+      selectedCharges: appointment.selectedCharges,
       due: appointment.preferredDate,
       quote,
       status,
@@ -258,8 +263,8 @@ export async function advanceService(user: AppUser, id: string, next: ServiceSta
       throw new Error('Collect the signed walk-in intake before starting service.')
     if (next === 'Completed' && job.paymentStatus !== 'Paid')
       throw new Error('Collect payment through POS before releasing the device.')
-    if (next === 'Ready for checkout' && (!Number.isFinite(job.quote) || job.quote <= 0))
-      throw new Error('Enter the final approved quote before checkout.')
+    if (next === 'Completed' && (!Number.isFinite(job.quote) || job.quote <= 0))
+      throw new Error('Enter the final approved quote before completing service.')
     tx.update(ref, { status: next })
     if (job.appointmentId) tx.update(recordRef('appointments', job.appointmentId), { status: next })
     if (next === 'Completed' && job.transactionId) {
