@@ -181,6 +181,7 @@
 .admin-shell .service-catalog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .service-catalog-toolbar p { max-width: 510px; margin: 0; color: #637e98; font-size: 12px; line-height: 1.5; }
 .service-catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.service-catalog-grid.is-compact { grid-template-columns: minmax(0, 1fr); }
 .service-catalog-card { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 16px; border: 1px solid #dce8f4; border-radius: 12px; background: #fff; box-shadow: 0 5px 17px #0a315509; transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
 .service-catalog-card:hover { border-color: #a9d0f0; box-shadow: 0 9px 24px #0a315514; transform: translateY(-2px); }
 .service-catalog-card-top, .service-catalog-card-meta, .service-catalog-card-locations, .service-catalog-card-actions { display: flex; align-items: center; gap: 8px; }
@@ -200,7 +201,7 @@
 .service-catalog-empty { padding: 28px; border: 1px dashed #bfd4e8; border-radius: 12px; text-align: center; color: #647e98; }
 .service-catalog-editor { display: grid; gap: 14px; }
 .service-catalog-editor-options { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 12px; border: 1px solid #e3edf7; border-radius: 9px; background: #f8fbff; }
-.service-catalog-card { height: 400px; overflow: hidden; }
+.service-catalog-card { overflow: hidden; }
 .service-catalog-card h3, .service-catalog-card > p { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; }
 .service-catalog-card h3 { -webkit-line-clamp: 2; }
 .service-catalog-card > p { min-height: 0; -webkit-line-clamp: 2; }

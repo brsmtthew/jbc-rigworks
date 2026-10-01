@@ -472,7 +472,7 @@ export function ServiceSettings({ scheduling = false }: { scheduling?: boolean }
               <Plus size={16} /> Add service
             </button>
           </div>
-          <div className="service-catalog-grid">
+          <div className={`service-catalog-grid${services.length <= 1 ? ' is-compact' : ''}`}>
             {services.map((service) => (
               <article className="service-catalog-card" key={service.id}>
                 <div className="service-catalog-card-top">

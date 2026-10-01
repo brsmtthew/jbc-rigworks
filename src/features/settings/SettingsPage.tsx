@@ -317,7 +317,7 @@ export function SettingsPage({ embedded = false }: { embedded?: boolean }) {
       )}
 
       {section === 'catalog' && (
-        <Dialog title="Service catalog" wide onClose={() => setSection(null)}>
+        <Dialog title="Service catalog" wide={shop.services.length > 1} onClose={() => setSection(null)}>
           <ServiceSettings />
         </Dialog>
       )}
