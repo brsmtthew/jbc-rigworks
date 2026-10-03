@@ -7,6 +7,15 @@ type Column<T> = {
   numeric?: boolean
   sortValue?: (row: T) => string | number
 }
+function recordTime(row: { id: string }) {
+  const record = row as {
+    createdAt?: string
+    confirmedAt?: string
+    date?: string
+    stockHistory?: { date: string }[]
+  }
+  return record.createdAt || record.confirmedAt || record.date || record.stockHistory?.[0]?.date || ''
+}
 export function DataTable<T extends { id: string }>({
   rows,
   columns,
@@ -37,7 +46,7 @@ export function DataTable<T extends { id: string }>({
               : String(av).localeCompare(String(bv), undefined, { numeric: true })) * sort.direction
           )
         })
-      : rows
+      : [...rows].sort((a, b) => recordTime(b).localeCompare(recordTime(a)))
   if (!rows.length)
     return (
       <div className="empty-state" role="status">
@@ -63,7 +72,7 @@ export function DataTable<T extends { id: string }>({
                 )
               }
             >
-              <option value="">Record order</option>
+              <option value="">Newest first</option>
               {columns.map(
                 (column, index) =>
                   column.sortValue && (

@@ -47,10 +47,8 @@ test('admin POS catalog, cart, and dialogs fit across viewport sizes', { timeout
       assert.equal(layout.productTransition, '0s', 'reduced motion removes product card transitions')
     }
 
-    await page.getByRole('button', { name: 'Services', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Services', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    assert.ok(await page.locator('.admin-pos-product').count() > 0, 'service filter has results')
-    await page.getByRole('button', { name: 'All items', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Services', exact: true })).toHaveCount(0)
+    await expect(page.locator('.admin-pos-product').filter({ hasText: 'Workshop service' })).toHaveCount(0)
     await page.locator('.admin-pos-product .admin-pos-add:not([disabled])').first().click()
     await expect(page.locator('.admin-pos-cart .cart-line')).toHaveCount(1)
     await page.getByRole('button', { name: 'Review checkout' }).click()

@@ -33,11 +33,13 @@ test('isolated responsive pages and modal interactions', { timeout: 180000 }, as
         '/pc-building',
       ]) {
         await page.goto(`http://127.0.0.1:5187${path}`)
-        await expect(page.locator('.page-content h1')).toBeVisible()
+        await expect(page.locator('.page-content').getByRole('heading').first()).toBeVisible()
         await expect(page.getByText('Loading page...', { exact: true })).toHaveCount(0)
-        if (path.endsWith('pc-building')) {
-          if (!path.startsWith('/customer'))
-            await page.getByRole('button', { name: 'Builder tool', exact: true }).click()
+        if (path === '/customer/pc-building') {
+          await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible()
+          await expect(page.locator('.pc-3d-builder')).toHaveCount(0)
+        } else if (path === '/pc-building') {
+          await page.getByRole('button', { name: 'Builder tool', exact: true }).click()
           await expect(page.locator('.pc-3d-builder canvas')).toBeVisible({ timeout: 15000 })
           await expect(page.locator('h1')).toHaveCount(1)
         }
@@ -147,7 +149,7 @@ test('isolated responsive pages and modal interactions', { timeout: 180000 }, as
       for (const [route, button, title] of [
         ['inventory', 'Add item', 'New inventory item'],
         ['expenses', 'Record expense', 'New expense'],
-        ['jobs', 'New service job', 'New service job'],
+        ['jobs', 'Add walk-in service', 'New walk-in service'],
       ]) {
         await page.goto(`http://127.0.0.1:5187/${route}`)
         await page.getByRole('button', { name: button, exact: true }).click()
@@ -166,7 +168,7 @@ test('isolated responsive pages and modal interactions', { timeout: 180000 }, as
         .getByRole('button', { name: /^Add to cart:/ })
         .first()
         .click()
-      await page.getByRole('button', { name: /Cart \(1\)/ }).click()
+      await page.getByRole('button', { name: width > 1060 ? 'View cart' : /Cart \(1\)/ }).click()
       await page.getByRole('button', { name: 'Review checkout', exact: true }).click()
       const dialog = page.getByRole('dialog')
       await expect(dialog).toBeVisible()

@@ -3,6 +3,7 @@ export type RecordField = {
   label: string
   type?: 'text' | 'date' | 'number'
   options?: string[]
+  placeholder?: string
   list?: string
   optional?: boolean
 }
@@ -20,7 +21,12 @@ export function RecordFields({
         <label key={field.name}>
           {field.label}
           {field.options ? (
-            <select name={field.name} defaultValue={values[field.name] ?? field.options[0]}>
+            <select
+              name={field.name}
+              required={!field.optional}
+              defaultValue={values[field.name] ?? (field.placeholder ? '' : field.options[0])}
+            >
+              {field.placeholder && <option value="">{field.placeholder}</option>}
               {field.options.map((value) => (
                 <option key={value} value={value}>
                   {value || 'Not specified'}

@@ -68,13 +68,34 @@ test('admin expenses tools, filters, and ledger fit responsive layouts', { timeo
     await expect(page.getByRole('dialog', { name: 'Excel preview' })).toContainText('1 rows')
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Record expense' }).click()
-    await expect(page.getByRole('dialog', { name: 'New expense' })).toBeVisible()
+    const newExpense = page.getByRole('dialog', { name: 'New expense' })
+    await expect(newExpense).toBeVisible()
+    const category = newExpense.locator('select[name="category"]')
+    await expect(category).toHaveAttribute('required', '')
+    await category.selectOption('Supplies')
+    await expect(newExpense.getByLabel('Vendor / payee')).toHaveCount(0)
+    await expect(newExpense.getByLabel('Notes / correction reason')).toHaveCount(0)
+    await expect(newExpense.getByLabel('Repeat frequency')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Edit Workshop cleaning supplies' }).click()
-    await expect(page.getByRole('dialog', { name: 'Edit expense' })).toBeVisible()
+    const editExpense = page.getByRole('dialog', { name: 'Edit expense' })
+    await expect(editExpense).toBeVisible()
+    await expect(editExpense.locator('select[name="category"]')).toHaveValue('Supplies')
+    await expect(editExpense.getByLabel('Vendor / payee')).toHaveCount(0)
     await page.keyboard.press('Escape')
+    await page.evaluate(async () => {
+      const { collections } = await import('/tests/ui/fixtures/data.ts')
+      collections.users = [{ id: 'uid-admin', name: 'Ada Admin' }]
+      collections.expenses[0].audit = [{ at: '2026-10-03T09:41:35.000Z', by: 'uid-admin', action: 'Created' }]
+    })
     await page.getByRole('button', { name: 'Audit' }).click()
-    await expect(page.getByRole('dialog', { name: 'Expense audit history' })).toBeVisible()
+    const audit = page.getByRole('dialog', { name: 'Expense audit history' })
+    await expect(audit).toContainText('Ada Admin')
+    await expect(audit).not.toContainText('uid-admin')
+    for (const width of [900, 390, 320]) {
+      await page.setViewportSize({ width, height: 700 })
+      assert.ok(await audit.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1))
+    }
     await page.keyboard.press('Escape')
     assert.deepEqual(errors, [])
   } finally {

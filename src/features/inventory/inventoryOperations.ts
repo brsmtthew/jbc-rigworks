@@ -35,6 +35,11 @@ export async function saveInventoryItem(
     )
     const updated = {
       ...item,
+      createdAt:
+        current.data()?.createdAt ??
+        current.data()?.stockHistory?.[0]?.date ??
+        item.createdAt ??
+        new Date().toISOString(),
       sku: item.sku.trim(),
       skuKey: skuIdentity(item.sku),
       reserved: current.data()?.reserved ?? 0,

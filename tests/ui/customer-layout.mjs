@@ -21,7 +21,7 @@ test(
         ['/customer', '.customer-home-hero'],
         ['/customer/shop', '.shop-hero'],
         ['/customer/services', '.booking-intro'],
-        ['/customer/pc-building', '.pcb-hero'],
+        ['/customer/pc-building', '.customer-coming-soon'],
         ['/customer/records', '.customer-records-hero'],
       ]
       for (const width of [1440, 1024, 768, 390, 320]) {
@@ -110,7 +110,7 @@ test(
             await expect(page.getByRole('heading', { name: 'Custom build requests' })).toBeVisible()
           }
         }
-        for (const [path] of routes.slice(1))
+        for (const [path] of routes.slice(1).filter(([path]) => path !== '/customer/pc-building'))
           assert.ok(
             Math.abs(heights[path] - heights['/customer']) <= 15,
             `${path} hero size differs at ${width}: ${JSON.stringify(heights)}`,

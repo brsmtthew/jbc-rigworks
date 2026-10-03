@@ -37,7 +37,7 @@ export function AccountSettingsModal({
   onClose: () => void
   accountType?: 'customer' | 'admin'
 }) {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, signOut } = useAuth()
   const { confirm } = useConfirmation()
   const [account, saveAccount, status] = useStoredValue(accountKey(user!.id), defaultAccount)
   const [changes, setChanges] = useState<Partial<AccountSettings>>({})
@@ -379,9 +379,24 @@ export function AccountSettingsModal({
                           onChange={(e) => change({ reduceMotion: e.target.checked })}
                         />
                       </label>
+                      <label className="preference-row">
+                        <span>
+                          <strong>Larger text</strong>
+                          <small>Increase text size in navigation, forms, cards, and tables.</small>
+                        </span>
+                        <input type="checkbox" checked={profile.largeText} onChange={(e) => change({ largeText: e.target.checked })} />
+                      </label>
+                      <label className="preference-row">
+                        <span>
+                          <strong>Higher contrast</strong>
+                          <small>Strengthen text, borders, and keyboard focus indicators.</small>
+                        </span>
+                        <input type="checkbox" checked={profile.highContrast} onChange={(e) => change({ highContrast: e.target.checked })} />
+                      </label>
                       <section className="account-security">
                         <h3>Account access</h3>
-                        <p>Password reset links are requested for {user?.email}.</p>
+                        <p>Signed in as {user?.email} · {user?.emailVerified ? 'Email verified' : 'Email not verified'}</p>
+                        <p>Password reset links are sent to your sign-in email.</p>
                         <button
                           type="button"
                           className="secondary-button"
@@ -403,6 +418,9 @@ export function AccountSettingsModal({
                           }
                         >
                           Send password reset link
+                        </button>
+                        <button type="button" className="secondary-button" onClick={() => void run(async () => { await signOut() })}>
+                          Sign out of this account
                         </button>
                       </section>
                     </>

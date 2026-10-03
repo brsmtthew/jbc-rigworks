@@ -1,4 +1,4 @@
-import { History, Pencil, Plus, Repeat2 } from 'lucide-react'
+import { History, Pencil, Plus, Repeat2, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { DataTable } from '../../components/ui/DataTable'
@@ -9,6 +9,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { Panel } from '../../components/ui/Panel'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useListFilters } from '../../hooks/useListFilters'
+import { useLiveCollection } from '../../hooks/useLiveData'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useAuth } from '../../lib/auth-context'
 import { today } from '../../lib/dates'
@@ -35,6 +36,9 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
     { confirm } = useConfirmation()
   const workspace = useWorkspace(),
     { expenses } = workspace
+  const actorProfiles = useLiveCollection<{ id: string; name?: string }>('users', user?.role === 'admin').rows
+  const actorNames = Object.fromEntries(actorProfiles.map((profile) => [profile.id, profile.name?.trim() || '']))
+  const auditedExpense = expenses.find((expense) => expense.id === audit?.id) ?? audit
   const filters = useListFilters(),
     summary = getSummary('', workspace)
   const categories = [...new Set(expenses.map((expense) => expense.category))]
@@ -334,43 +338,56 @@ export function ExpensesPage({ onCreate }: { onCreate: () => void }) {
           ]}
         />
       </Panel>
-      {audit && (
-        <Dialog title="Expense audit history" onClose={() => setAudit(null)}>
-          <h3>{audit.description}</h3>
-          <p>{audit.notes}</p>
-          {audit.audit?.length ? (
-            audit.audit.map((entry, i) => (
-              <div className="form-section" key={i}>
-                <strong>
-                  {entry.action} / {new Date(entry.at).toLocaleString()}
-                </strong>
-                <p>By {entry.by}</p>
-                {entry.previous && (
-                  <dl className="detail-list">
-                    {[
-                      ['Amount', formatPHP(entry.previous.amount)],
-                      ['Description', entry.previous.description],
-                      ['Date', entry.previous.date],
-                      ['Category', entry.previous.category],
-                      ['Payment method', entry.previous.method],
-                      ['Vendor', entry.previous.vendor],
-                      ['Reference', entry.previous.reference],
-                      ['Notes', entry.previous.notes],
-                    ]
-                      .filter(([, value]) => value)
-                      .map(([label, value]) => (
-                        <div key={label}>
-                          <dt>Previous {String(label).toLowerCase()}</dt>
-                          <dd>{value}</dd>
+      {auditedExpense && (
+        <Dialog title="Expense audit history" wide onClose={() => setAudit(null)}>
+          <div className="expense-audit">
+            <header className="expense-audit-summary">
+              <span className="eyebrow">EXPENSE RECORD</span>
+              <h3>{auditedExpense.description}</h3>
+              <p>{auditedExpense.category} · {formatDate(auditedExpense.date)}</p>
+              <strong>{formatPHP(auditedExpense.amount)}</strong>
+            </header>
+            <h4>Activity timeline</h4>
+            {auditedExpense.audit?.length ? (
+              <ol className="expense-audit-timeline">
+                {[...auditedExpense.audit].reverse().map((entry, i) => {
+                  const name = entry.byName || actorNames[entry.by] || (entry.by === user?.id ? user.name : 'Former team member')
+                  const previous = entry.previous
+                  return (
+                    <li key={`${entry.at}-${i}`}>
+                      <div className="expense-audit-event">
+                        <span className="expense-audit-mark"><History size={15} /></span>
+                        <div>
+                          <strong>{entry.action}</strong>
+                          <time dateTime={entry.at}>{new Date(entry.at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}</time>
                         </div>
-                      ))}
-                  </dl>
-                )}
-              </div>
-            ))
-          ) : (
-            <p>This older expense has no recorded edits.</p>
-          )}
+                      </div>
+                      <p className="expense-audit-actor"><UserRound size={15} /> {name}</p>
+                      {previous && (
+                        <details className="expense-audit-changes">
+                          <summary>View values before this change</summary>
+                          <dl>
+                            {([
+                              ['Amount', formatPHP(previous.amount)],
+                              ['Description', previous.description],
+                              ['Date', formatDate(previous.date)],
+                              ['Category', previous.category],
+                              ['Payment method', previous.method],
+                              ['Vendor', previous.vendor],
+                              ['Reference', previous.reference],
+                              ['Notes', previous.notes],
+                            ] as const).filter(([, value]) => value).map(([label, value]) => (
+                              <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+                            ))}
+                          </dl>
+                        </details>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : <p className="expense-audit-empty">This older expense has no recorded activity.</p>}
+          </div>
         </Dialog>
       )}
       {editing && <ExpenseEditor expense={editing} onClose={() => setEditing(null)} />}

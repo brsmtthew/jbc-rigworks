@@ -70,6 +70,8 @@ export type AccountSettings = {
   address: string
   compact: boolean
   reduceMotion: boolean
+  largeText: boolean
+  highContrast: boolean
   photo: string
 }
 export const defaultAccount: AccountSettings = {
@@ -79,6 +81,8 @@ export const defaultAccount: AccountSettings = {
   address: '',
   compact: false,
   reduceMotion: false,
+  largeText: false,
+  highContrast: false,
   photo: '',
 }
 export const accountKey = (id: string) => `jbc-rigworks:account:v1:${id}`

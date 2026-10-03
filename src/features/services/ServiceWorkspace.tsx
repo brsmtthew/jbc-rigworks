@@ -45,7 +45,7 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
         : serviceState(job.status) !== 'Completed') &&
       (statusFilter === 'all' || serviceState(job.status) === statusFilter) &&
       `${job.customer} ${job.device} ${job.service}`.toLowerCase().includes(query.toLowerCase()),
-  )
+  ).sort((a, b) => (b.confirmedAt || b.due).localeCompare(a.confirmedAt || a.due))
 
   async function advance(job: Job, next: ServiceStatus) {
     if (busy) return
@@ -170,8 +170,8 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
                           <dd>{job.customer}<small>{job.contact || 'No contact recorded'}</small></dd>
                         </div>
                         <div>
-                          <dt>Target date</dt>
-                          <dd>{job.due ? formatDate(job.due) : 'Not scheduled'}</dd>
+                          <dt>{job.channel === 'Walk-in' ? 'Checked in' : 'Target date'}</dt>
+                          <dd>{job.channel === 'Walk-in' ? (job.due ? formatDate(job.due) : 'Not recorded') : job.due ? formatDate(job.due) : 'Not scheduled'}</dd>
                         </div>
                         <div>
                           <dt>Estimate</dt>
@@ -288,7 +288,7 @@ function ServiceWorkspaceContent({ onCreate }: { onCreate: () => void }) {
       )}
       {editing && <ServiceIntake job={editing} onClose={() => setEditing(null)} />}
       {viewingJob && <Dialog title="Service job details" wide onClose={() => setViewingJob(null)}><dl className="service-job-details">
-        {([['Service', viewingJob.service], ['Customer', viewingJob.customer], ['Contact', viewingJob.contact], ['Device', viewingJob.device], ['Status', serviceState(viewingJob.status)], ['Target date', viewingJob.due ? formatDate(viewingJob.due) : 'Not scheduled'], ['Estimate', viewingJob.quote > 0 ? formatPHP(viewingJob.quote) : 'Pending review'], ['Payment', viewingJob.paymentStatus ?? 'Unpaid'], ['Requested extras', viewingJob.selectedCharges?.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')], ['Concern', viewingJob.concern], ['Intake notes', viewingJob.intakeNotes], ['Accessories', viewingJob.accessories]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}
+        {([['Service', viewingJob.service], ['Customer', viewingJob.customer], ['Contact', viewingJob.contact], ['Device', viewingJob.device], ['Status', serviceState(viewingJob.status)], [viewingJob.channel === 'Walk-in' ? 'Checked in' : 'Target date', viewingJob.due ? formatDate(viewingJob.due) : 'Not recorded'], ['Estimate', viewingJob.quote > 0 ? formatPHP(viewingJob.quote) : 'Pending review'], ['Payment', viewingJob.paymentStatus ?? 'Unpaid'], ['Requested extras', viewingJob.selectedCharges?.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')], ['Concern', viewingJob.concern], ['Intake notes', viewingJob.intakeNotes], ['Accessories', viewingJob.accessories]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not recorded'}</dd></div>)}
       </dl></Dialog>}
       {reviewingWalkIn && (
         <WalkInIntakeReview job={reviewingWalkIn} onClose={() => setReviewingWalkIn(null)} />

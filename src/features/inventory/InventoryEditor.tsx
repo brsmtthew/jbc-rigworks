@@ -1,12 +1,72 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useDirectories } from '../../lib/directories'
 import { humanError } from '../../lib/workflow'
 import type { ComponentType, InventoryItem } from '../../types'
-import { compatibilityFields } from '../builder/componentFields'
+import { compatibilityFields, type CompatibilityField } from '../builder/componentFields'
 import { components, inventoryKind } from '../builder/pc'
 import { readPaymentImage } from '../finance/payments'
+
+function CompatibilityMultiSelect({
+  name,
+  label,
+  options,
+  initialValue,
+}: {
+  name: string
+  label: string
+  options: string[]
+  initialValue: string
+}) {
+  const [selected, setSelected] = useState(() =>
+    [...new Set(initialValue.split(/[,;|]/).map((value) => value.trim()).filter(Boolean))],
+  )
+  const menu = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (menu.current && event.target instanceof Node && !menu.current.contains(event.target))
+        menu.current.open = false
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [])
+  const choices = [...new Set([...options, ...selected])]
+  return (
+    <div className="inventory-directory-multi">
+      <span className="inventory-directory-label">{label}</span>
+      <details ref={menu}>
+        <summary aria-label={`Choose ${label}`}>
+          <span>{selected.length ? selected.join(', ') : `Select ${label.toLowerCase()}`}</span>
+        </summary>
+        <div className="inventory-directory-options" role="group" aria-label={label}>
+          {choices.map((option) => (
+            <label className="check-row" key={option}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() =>
+                  setSelected((current) =>
+                    current.includes(option)
+                      ? current.filter((value) => value !== option)
+                      : [...current, option],
+                  )
+                }
+              />
+              {option}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <button type="button" onClick={() => setSelected([])}>
+              Clear selection
+            </button>
+          )}
+        </div>
+      </details>
+      <input type="hidden" name={name} value={selected.join(', ')} />
+    </div>
+  )
+}
 
 export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClose: () => void }) {
   const workspace = useWorkspace(),
@@ -23,6 +83,12 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
     if (busy) return
     const form = new FormData(event.currentTarget),
       text = (key: string) => String(form.get(key) ?? '').trim()
+    const warranty = text('warranty')
+    const warrantyMatch = warranty.match(/^(\d{1,3})\s*months?\s*(?:[-–—:]\s*)?(.*)$/i)
+    if (warranty && /^\d/.test(warranty) && !warrantyMatch) {
+      setError('Start the warranty with a whole number of months, then add the terms.')
+      return
+    }
     setError('')
     setBusy(true)
     try {
@@ -40,13 +106,14 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
         price: Number(text('price')),
         cost: Number(text('cost')),
         stock,
-        minimum: Number(text('minimum')),
-        location: text('location'),
+        minimum: item?.minimum ?? 0,
+        location: item?.location ?? '',
         assetTag: text('assetTag'),
+        description: text('description'),
         specs: text('specs'),
         image,
-        warrantyMonths: text('warrantyMonths'),
-        warrantyTerms: text('warrantyTerms'),
+        warrantyMonths: warrantyMatch?.[1] ?? '',
+        warrantyTerms: warrantyMatch?.[2] ?? (warrantyMatch ? '' : warranty),
         active: item?.active ?? true,
       }
       if (!record.name || !record.sku || !record.category || (kind === 'part' && !component))
@@ -97,7 +164,7 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
         name={name}
         type={options.number ? 'number' : 'text'}
         min={options.number ? 0 : undefined}
-        step={['stock', 'minimum', 'warrantyMonths'].includes(name) ? '1' : 'any'}
+        step={name === 'stock' ? '1' : 'any'}
         required={options.required}
         maxLength={500}
         defaultValue={String(item?.[name] ?? '')}
@@ -105,6 +172,35 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
       />
     </label>
   )
+  const compatibilityField = (entry: CompatibilityField) => {
+    if (!entry.directory) return field(entry.key, entry.label, { number: entry.number })
+    const label = entry.label.replace(' (comma separated)', '')
+    const current = String(item?.[entry.key] ?? '').trim()
+    const options = directory[entry.directory]
+    if (entry.multiple)
+      return (
+        <CompatibilityMultiSelect
+          key={entry.key}
+          name={entry.key}
+          label={label}
+          options={options}
+          initialValue={current}
+        />
+      )
+    return (
+      <label key={entry.key}>
+        {label}
+        <select name={entry.key} defaultValue={current}>
+          <option value="">Select {label.toLowerCase()}</option>
+          {[...new Set([...options, current])].filter(Boolean).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+  }
   return (
     <Dialog
       title={item ? 'Edit inventory item' : 'New inventory item'}
@@ -145,26 +241,23 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
           </label>
           <label>
             Category
-            <input
-              name="category"
-              required
-              list="inventory-categories"
-              defaultValue={item?.category ?? ''}
-            />
-            <datalist id="inventory-categories">
-              {directory.categories.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </datalist>
+            <select name="category" required defaultValue={item?.category ?? ''}>
+              <option value="">Select category</option>
+              {[...new Set([...directory.categories, item?.category ?? ''])]
+                .filter(Boolean)
+                .map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+            </select>
           </label>
         </div>
         <h3>Pricing & stock</h3>
         <div className="portal-form-grid">
           {field('cost', 'Unit cost (PHP)', { number: true, required: true })}
           {field('price', 'Selling price (PHP)', { number: true, required: true })}
-          {!item && field('stock', 'Opening quantity', { number: true, required: true })}
-          {field('minimum', 'Minimum stock', { number: true })}
-          {field('location', 'Storage location')}
+          {!item && field('stock', 'Stock quantity', { number: true, required: true })}
           {kind === 'asset' && field('assetTag', 'Asset tag', { required: true })}
         </div>
         {item && (
@@ -192,16 +285,18 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
             </label>
             <div className="portal-form-grid">
               {component &&
-                compatibilityFields[component].map((value) =>
-                  field(value.key, value.label, { number: value.number }),
-                )}
+                compatibilityFields[component].map(compatibilityField)}
             </div>
           </details>
         )}
         <details className="form-section">
           <summary>Product presentation</summary>
           <label>
-            Description & specifications
+            Description
+            <textarea name="description" rows={3} maxLength={2000} defaultValue={item?.description} />
+          </label>
+          <label>
+            Specifications
             <textarea name="specs" rows={3} maxLength={4000} defaultValue={item?.specs} />
           </label>
           <label>
@@ -231,12 +326,10 @@ export function InventoryEditor({ item, onClose }: { item?: InventoryItem; onClo
         </details>
         <details className="form-section">
           <summary>Warranty overrides</summary>
-          {field('warrantyMonths', 'Warranty months (blank uses business default)', {
-            number: true,
-          })}
           <label>
-            Warranty terms
-            <textarea name="warrantyTerms" defaultValue={item?.warrantyTerms} maxLength={2000} />
+            Warranty (months and terms)
+            <textarea name="warranty" rows={2} defaultValue={[item?.warrantyMonths ? `${item.warrantyMonths} months` : '', item?.warrantyTerms].filter(Boolean).join(' — ')} maxLength={2000} placeholder="12 months — Parts and labor" />
+            <small>Leave blank to use the business default. Start with the number of months when specifying a duration.</small>
           </label>
         </details>
         {error && (

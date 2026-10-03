@@ -1,16 +1,11 @@
-import type { CustomerAppointment, ServiceIntake } from '../../types'
+import type { CustomerAppointment, ServiceIntake, ServiceOffering } from '../../types'
 
-export const damageOptions = [
-  'No visible damage',
-  'Scratches',
-  'Dents',
-  'Cracks',
-  'Damaged ports',
-  'Missing screws',
-  'Broken clips / panels',
-  'Damaged cables',
-  'Corrosion',
-] as const
+export function intakeDeviceTypeForOffering(deviceType?: ServiceOffering['deviceType']) {
+  if (deviceType === 'Laptop') return 'Laptop'
+  if (deviceType === 'Desktop') return 'Desktop PC'
+  return null
+}
+import { noVisibleDamage } from '../../lib/visibleConditions'
 
 export const emptyServiceIntake: ServiceIntake = {
   serviceType: 'general',
@@ -73,6 +68,7 @@ export function validateServiceIntake(intake: ServiceIntake | undefined) {
       Array.isArray(value) ? value : typeof value === 'string' ? value.trim() : value,
     ]),
   ) as ServiceIntake
+  delete (cleaned as ServiceIntake & { requestedService?: string }).requestedService
   if (
     !cleaned.customerName ||
     !cleaned.contactPhone ||
@@ -97,10 +93,15 @@ export function validateServiceIntake(intake: ServiceIntake | undefined) {
     !['Backed up', 'Not backed up', 'Not applicable', 'Unsure'].includes(cleaned.backupStatus) ||
     !Array.isArray(cleaned.visibleDamage) ||
     cleaned.visibleDamage.some(
-      (damage) => !damageOptions.includes(damage as (typeof damageOptions)[number]),
+      (damage) => typeof damage !== 'string' || !damage.trim() || damage.length > 100,
     )
   )
     throw new Error('Choose valid device-condition answers.')
+  if (
+    cleaned.visibleDamage.includes(noVisibleDamage) &&
+    (cleaned.visibleDamage.length > 1 || !!cleaned.otherDamage)
+  )
+    throw new Error('No visible damage cannot be combined with damage details.')
   const limits: Partial<Record<keyof ServiceIntake, number>> = {
     customerName: 120,
     contactPhone: 60,

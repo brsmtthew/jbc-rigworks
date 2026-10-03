@@ -1,0 +1,115 @@
+/* Shared dropdown surface across forms, filters, tables, and settings. */
+.app-shell {
+  --dropdown-border: #bfd2e5;
+  --dropdown-text: #123457;
+  --dropdown-surface: #fff;
+  --dropdown-hover: #86b6df;
+  --dropdown-focus: #1873cc;
+  --dropdown-ring: #1873cc26;
+  --dropdown-shadow: 0 1px 2px #0a33500a;
+  --dropdown-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23315b81' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.app-shell select:not([multiple]),
+.app-shell .portal-form select:not([multiple]),
+.app-shell .discovery-card select:not([multiple]),
+.app-shell .app-dialog .portal-form select:not([multiple]),
+.app-shell .inventory-directory-multi summary {
+  min-width: 0;
+  border: 1px solid var(--dropdown-border);
+  border-radius: 9px;
+  background-color: var(--dropdown-surface);
+  color: var(--dropdown-text);
+  box-shadow: var(--dropdown-shadow);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.app-shell select:not([multiple]),
+.app-shell .portal-form select:not([multiple]),
+.app-shell .discovery-card select:not([multiple]),
+.app-shell .app-dialog .portal-form select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: var(--dropdown-chevron);
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  cursor: pointer;
+}
+
+.app-shell select:not([multiple]):hover:not(:disabled),
+.app-shell .portal-form select:not([multiple]):hover:not(:disabled),
+.app-shell .discovery-card select:not([multiple]):hover:not(:disabled),
+.app-shell .app-dialog .portal-form select:not([multiple]):hover:not(:disabled),
+.app-shell .inventory-directory-multi summary:hover {
+  border-color: var(--dropdown-hover);
+  background-color: var(--dropdown-surface);
+}
+
+.app-shell select:not([multiple]):focus,
+.app-shell .portal-form select:not([multiple]):focus,
+.app-shell .discovery-card select:not([multiple]):focus,
+.app-shell .app-dialog .portal-form select:not([multiple]):focus,
+.app-shell .inventory-directory-multi summary:focus {
+  border-color: var(--dropdown-focus);
+  box-shadow: 0 0 0 3px var(--dropdown-ring);
+}
+
+.app-shell select:not([multiple]):focus-visible,
+.app-shell .portal-form select:not([multiple]):focus-visible,
+.app-shell .discovery-card select:not([multiple]):focus-visible,
+.app-shell .app-dialog .portal-form select:not([multiple]):focus-visible,
+.app-shell .inventory-directory-multi summary:focus-visible {
+  border-color: var(--dropdown-focus);
+  outline: 2px solid var(--dropdown-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--dropdown-ring);
+}
+
+.app-shell select:not([multiple]):disabled,
+.app-shell .portal-form select:not([multiple]):disabled,
+.app-shell .app-dialog .portal-form select:not([multiple]):disabled {
+  background-color: #f1f5f9;
+  color: #6b8298;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.app-shell select option {
+  background: #fff;
+  color: #123457;
+}
+
+.app-shell .inventory-directory-multi summary::after {
+  width: 16px;
+  height: 16px;
+  background: var(--dropdown-chevron) center / contain no-repeat;
+  content: '';
+}
+
+.app-shell .inventory-directory-options {
+  border-color: var(--dropdown-border);
+  background: var(--dropdown-surface);
+  box-shadow: 0 10px 25px #12345720;
+}
+
+.app-shell .inventory-directory-options .check-row:has(input:checked) {
+  background: #eaf4ff;
+  color: #0b4f91;
+}
+
+.app-shell.high-contrast {
+  --dropdown-border: #31597c;
+  --dropdown-text: #071c32;
+  --dropdown-hover: #135998;
+  --dropdown-focus: #044fa7;
+  --dropdown-ring: #044fa733;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell select:not([multiple]),
+  .app-shell .inventory-directory-multi summary {
+    transition: none;
+  }
+}

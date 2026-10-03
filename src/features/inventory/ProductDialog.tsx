@@ -81,6 +81,7 @@ export function ProductDialog({
             </>
           )}
           <h3>Full specifications</h3>
+          {item.description && <p className="product-description">{item.description}</p>}
           <p className="product-specs">
             {item.specs || 'Ask JBC for additional product specifications.'}
           </p>

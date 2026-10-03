@@ -158,7 +158,9 @@
 
 .customer-shell .service-price-card {
   min-width: 0;
+  height: auto;
   min-height: 345px;
+  overflow: visible;
   gap: 10px;
   padding: 22px;
   border: 1px solid #dce6f0;
@@ -398,6 +400,52 @@
 .customer-shell .booking-section-heading {
   margin: 0 0 2px;
 }
+
+.booking-time-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.booking-time-fieldset legend {
+  margin-bottom: 10px;
+  color: #385878;
+  font-size: 12px;
+  font-weight: 700;
+}
+.booking-time-fieldset > p {
+  color: #59728b;
+  font-size: 13px;
+}
+.booking-time-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.booking-time-option {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #cedfed;
+  border-radius: 9px;
+  background: #fff;
+  color: #254c72;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.booking-time-option span { min-width: 0; }
+.booking-time-option small { margin-left: auto; color: #28775a; font-size: 11px; }
+.booking-time-option[aria-pressed='true'] {
+  border-color: #0b66cf;
+  background: #eaf4ff;
+  box-shadow: 0 0 0 2px #0b66cf22;
+}
+.booking-time-option:disabled { opacity: 0.55; background: #f2f5f8; }
 
 .customer-shell .booking-section-heading .eyebrow {
   display: block;
@@ -721,10 +769,50 @@
   font-size: 12px;
 }
 
+.home-intake-no-damage.check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px solid #c4daee;
+  border-radius: 10px;
+  background: #f5faff;
+  cursor: pointer;
+}
+
+.home-intake-no-damage.check-row:has(input:checked) {
+  border-color: #73abe3;
+  background: #eaf5ff;
+}
+
+.home-intake-no-damage.check-row:focus-within {
+  outline: 2px solid #116bd0;
+  outline-offset: 2px;
+}
+
+.home-intake-no-damage span {
+  display: grid;
+  gap: 2px;
+}
+
+.home-intake-no-damage small {
+  color: #617b94;
+  font-size: 12px;
+}
+
 .home-intake-condition-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
+}
+
+.home-intake-condition-options.is-disabled {
+  opacity: 0.55;
+}
+
+.home-intake-condition-options.is-disabled .check-row {
+  cursor: not-allowed;
 }
 
 .home-intake-condition-options .check-row {
@@ -931,6 +1019,14 @@ body:has(.customer-shell) .app-dialog:has(.home-intake-review-dialog) {
 .home-intake-check-title {
   margin: 0 0 8px;
   font-weight: 700;
+}
+
+.home-intake-print-no-damage {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border: 1px solid #a9c9e6;
+  border-radius: 5px;
+  background: #f7fbff;
 }
 
 .home-intake-authorizations {

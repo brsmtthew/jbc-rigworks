@@ -57,21 +57,33 @@ test('service details, optional charges, compact cards, and completed intake act
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
     }
 
+    await page.goto('http://127.0.0.1:5187/customer/shop')
+    const shopCards = page.locator('.shop-product-card')
+    await expect(shopCards.first()).toBeVisible()
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 })
+      const measurements = await shopCards.evaluateAll((cards) => cards.map((card) => {
+        const bounds = card.getBoundingClientRect()
+        const price = card.querySelector(':scope > strong').getBoundingClientRect()
+        const action = card.querySelector('button:last-of-type').getBoundingClientRect()
+        return {
+          priceFits: price.left >= bounds.left && price.right <= bounds.right + 1 && price.bottom <= bounds.bottom + 1,
+          actionFits: action.bottom <= bounds.bottom + 1,
+          scrollFits: card.scrollHeight <= card.clientHeight + 1,
+        }
+      }))
+      assert.ok(measurements.every((card) => card.priceFits && card.actionFits && card.scrollFits))
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+    }
+
     await page.goto('http://127.0.0.1:5187/pos')
-    await page.evaluate(async () => {
-      const { shop } = await import('/tests/ui/fixtures/data.ts')
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = 2
-      shop.services[0].image = canvas.toDataURL('image/jpeg')
-    })
-    await page.getByRole('button', { name: 'Services', exact: true }).click()
-    await expect(page.locator('.admin-pos-product .product-image')).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Services', exact: true })).toHaveCount(0)
     const posCards = page.locator('.admin-pos-product')
     await expect(posCards.first().getByRole('button', { name: /View details/ })).toBeVisible()
     await posCards.first().getByRole('button', { name: /View details/ }).click()
-    await expect(page.getByRole('dialog')).toContainText('Service estimate')
+    await expect(page.getByRole('dialog')).toContainText('Specifications')
     await page.keyboard.press('Escape')
-    await posCards.first().locator('h2').evaluate((element) => { element.textContent = 'A very long POS service name '.repeat(30) })
+    await posCards.first().locator('h2').evaluate((element) => { element.textContent = 'A very long POS product name '.repeat(30) })
     for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 900 })
       const measurements = await posCards.evaluateAll((cards) => cards.map((card) => ({
@@ -83,17 +95,7 @@ test('service details, optional charges, compact cards, and completed intake act
       assert.ok(measurements.every((card) => card.buttonBottom <= card.cardBottom + 1))
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
     }
-    await page.evaluate(async () => {
-      const { shop } = await import('/tests/ui/fixtures/data.ts')
-      for (const service of shop.services)
-        service.additionalCharges = [{ id: 'paste', name: 'Thermal paste replacement', price: '250' }]
-    })
-    await posCards.first().getByRole('button', { name: /Add to order/ }).click()
-    await page.getByRole('button', { name: 'Review checkout' }).click()
-    const checkout = page.getByRole('dialog', { name: 'Checkout' })
-    await checkout.locator('.charge-details summary').click()
-    await checkout.getByRole('checkbox', { name: /Thermal paste replacement/ }).check()
-    await expect(checkout.getByLabel('Other charges (PHP)')).toHaveValue('250')
+    await expect(page.locator('.admin-pos-product').filter({ hasText: 'Workshop service' })).toHaveCount(0)
 
     await page.goto('http://127.0.0.1:5187/jobs?tab=active')
     await expect(page.getByRole('button', { name: 'Mark ready' })).toHaveCount(0)
@@ -125,6 +127,11 @@ test('service details, optional charges, compact cards, and completed intake act
     await expect(capacity).toHaveValue('')
     await capacity.fill('0')
     await expect(capacity).toHaveValue('0')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: /Reference data & taxes/ }).click()
+    const reference = page.getByRole('dialog', { name: 'Reference data & taxes' })
+    await expect(reference.getByRole('button', { name: /Visible conditions/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
     await page.getByRole('button', { name: 'Service catalog' }).click()

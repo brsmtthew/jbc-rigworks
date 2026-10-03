@@ -305,6 +305,7 @@ export async function saveServiceJob(user: AppUser, record: Job) {
     )
       throw new Error('Paid or completed services cannot be edited.')
     let serviceIntake = draft.serviceIntake
+    let selectedCharges = draft.selectedCharges
     if (!current && draft.channel === 'Walk-in') {
       const settingsDoc = await transaction.get(shopRef)
       const offering = normalizeShop(settingsDoc.data() ?? {}).services.find(
@@ -314,6 +315,12 @@ export async function saveServiceJob(user: AppUser, record: Job) {
       if (draft.service !== `${offering.name} / ${offering.deviceType}`)
         throw new Error('The selected service changed. Review the walk-in intake.')
       serviceIntake = validateServiceIntake(draft.serviceIntake)
+      selectedCharges = validateRequestedServiceCharges(offering, draft.selectedCharges)
+      const catalogQuote = offering.price === ''
+        ? 0
+        : money(Number(offering.price) + serviceChargesTotal(selectedCharges))
+      if (draft.quote !== catalogQuote)
+        throw new Error('The service price or additional charges changed. Review the walk-in service.')
       if (
         offering.deviceType !== 'Any' &&
         serviceIntake.deviceType !== `${offering.deviceType === 'Desktop' ? 'Desktop PC' : 'Laptop'}`
@@ -326,11 +333,13 @@ export async function saveServiceJob(user: AppUser, record: Job) {
       firestoreData({
         ...draft,
         serviceIntake,
+        selectedCharges,
         ...(current?.channel === 'Walk-in'
           ? {
               channel: current.channel,
               serviceId: current.serviceId,
               service: current.service,
+              selectedCharges: current.selectedCharges,
               customer: current.customer,
               contact: current.contact,
               device: current.device,

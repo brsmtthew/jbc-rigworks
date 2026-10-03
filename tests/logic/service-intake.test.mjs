@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   emptyServiceIntake,
+  intakeDeviceTypeForOffering,
   intakeTypeForService,
   validateServiceIntake,
 } from '../../src/features/customer/serviceIntake.ts'
@@ -31,6 +32,9 @@ import { read, seed } from './memory-db.mjs'
 const admin = { id: 'tech-1', role: 'admin' }
 
 test('service intake requires condition and history before it can be saved', () => {
+  assert.equal(intakeDeviceTypeForOffering('Laptop'), 'Laptop')
+  assert.equal(intakeDeviceTypeForOffering('Desktop'), 'Desktop PC')
+  assert.equal(intakeDeviceTypeForOffering('Any'), null)
   const complete = {
     ...emptyServiceIntake,
     customerName: ' Jamie Santos ',
@@ -43,6 +47,22 @@ test('service intake requires condition and history before it can be saved', () 
   assert.throws(() => validateServiceIntake({ ...complete, visibleCondition: ' ' }), /condition/)
   assert.equal(validateServiceIntake(complete).customerName, 'Jamie Santos')
   assert.equal(validateServiceIntake(complete).visibleCondition, 'Small scratch')
+  assert.deepEqual(
+    validateServiceIntake({ ...complete, visibleDamage: ['Chipped paint'] }).visibleDamage,
+    ['Chipped paint'],
+  )
+  assert.deepEqual(
+    validateServiceIntake({ ...complete, visibleDamage: ['No visible damage'] }).visibleDamage,
+    ['No visible damage'],
+  )
+  assert.throws(
+    () => validateServiceIntake({ ...complete, visibleDamage: ['No visible damage', 'Scratches'] }),
+    /cannot be combined/,
+  )
+  assert.throws(
+    () => validateServiceIntake({ ...complete, visibleDamage: ['No visible damage'], otherDamage: 'Chip' }),
+    /cannot be combined/,
+  )
 })
 
 test('service-specific intake questions are validated and device print fields follow the selected type', () => {
@@ -379,7 +399,8 @@ test('printed workshop authorization includes the named intake and omits later p
 })
 
 test('walk-in intake checks in directly, prints with the customer name, and can be paid before signed service starts', async () => {
-  const settings = { ...normalizeShop({ ...defaultShop, services: adaptServices() }), taxRate: 0 }
+  const settings = { ...normalizeShop({ ...defaultShop, services: adaptServices({ Desktop: { Low: '600' } }) }), taxRate: 0 }
+  settings.services[0].additionalCharges = [{ id: 'thermal', name: 'Thermal paste replacement', price: '199' }]
   seed({ 'settings/shop': settings })
   const offering = settings.services.find((service) => service.active && service.workshop && service.deviceType === 'Desktop')
   assert.ok(offering)
@@ -387,6 +408,7 @@ test('walk-in intake checks in directly, prints with the customer name, and can 
     ...emptyServiceIntake,
     customerName: 'Jamie Santos',
     contactPhone: '09171234567',
+    requestedService: 'Stale custom request',
     visibleCondition: 'Small scratch on case',
     reportedIssues: 'Dusty fans',
     issueHistory: 'No prior repair',
@@ -398,14 +420,23 @@ test('walk-in intake checks in directly, prints with the customer name, and can 
     device: 'ThinkCentre M720',
     due: '2099-01-05',
     quote: 799,
+    selectedCharges: [{ id: 'thermal', name: 'Thermal paste replacement', price: 199 }],
+    concern: 'Fan noise during gaming',
     confirmedAt: '2026-09-29T00:00:00.000Z',
   })
+  await assert.rejects(
+    saveServiceJob(admin, { ...job, id: 'JOB-WRONG-QUOTE', quote: 600 }),
+    /service price or additional charges changed/,
+  )
   await saveServiceJob(admin, job)
   const saved = read('jobs/JOB-WALKIN')
   assert.equal(saved.channel, 'Walk-in')
   assert.equal(saved.status, 'Checked in')
   assert.ok(saved.confirmedAt)
   assert.equal(saved.serviceIntake.visibleCondition, 'Small scratch on case')
+  assert.equal(saved.serviceIntake.requestedService, undefined)
+  assert.equal(saved.selectedCharges[0].name, 'Thermal paste replacement')
+  assert.equal(saved.concern, 'Fan noise during gaming')
   await assert.rejects(advanceService(admin, job.id, 'In service'), /signed walk-in intake/)
   const appointment = walkInDocumentAppointment(saved)
   assert.notEqual(appointment.preferredDate, job.due)
@@ -413,7 +444,30 @@ test('walk-in intake checks in directly, prints with the customer name, and can 
   assert.match(html, /Jamie Santos/)
   assert.match(html, /Method:.*Walk-in/)
   assert.match(html, /Small scratch on case/)
+  assert.match(html, /Standard Deep Cleaning/)
+  assert.doesNotMatch(html, /Stale custom request/)
+  assert.match(html, /Fan noise during gaming/)
+  assert.match(html, /Thermal paste replacement/)
   assert.doesNotMatch(html, /2099-01-05/)
+  await assert.rejects(checkout(admin, {
+    idempotencyKey: 'catalog-service-without-intake',
+    customer: saved.customer,
+    contact: saved.contact,
+    paymentMethod: 'Cash',
+    paid: 799,
+    lines: [{ id: `service:${offering.id}`, quantity: 1 }],
+    charges: { labor: 0, delivery: 0, other: 0, otherLabel: '', discount: 0, taxRate: 0 },
+  }), /completed device intake/)
+  await assert.rejects(checkout(admin, {
+    idempotencyKey: 'custom-service-without-job',
+    customer: saved.customer,
+    contact: saved.contact,
+    paymentMethod: 'Cash',
+    paid: 799,
+    lines: [{ id: 'job-service:missing', quantity: 1 }],
+    customServices: [{ id: 'job-service:missing', description: 'Cleaning', unitPrice: 799 }],
+    charges: { labor: 0, delivery: 0, other: 0, otherLabel: '', discount: 0, taxRate: 0 },
+  }), /saved device intake/)
   const sale = await checkout(admin, {
     idempotencyKey: 'walkin-payment',
     customer: saved.customer,

@@ -227,17 +227,18 @@
 .pos-service-charges { display: grid; gap: 8px; margin: 0; padding: 12px; border: 1px solid #dce8f4; border-radius: 9px; }
 .pos-service-charges legend { color: #214b70; font-size: 13px; font-weight: 700; }
 .pos-service-charges small { color: #64809a; }
-.customer-shell .service-price-card { height: 485px; min-height: 0; overflow: hidden; }
+.customer-shell .service-price-card { min-height: 485px; height: auto; overflow: visible; }
 .customer-shell .service-price-card h2, .customer-shell .service-price-card > p { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; }
 .customer-shell .service-price-card h2 { -webkit-line-clamp: 2; }
 .customer-shell .service-price-card > p { -webkit-line-clamp: 2; }
-.customer-shell .service-price-card .service-inclusions { -webkit-line-clamp: 1; }
+.customer-shell .service-price-card .service-inclusions { -webkit-line-clamp: 2; }
 .customer-shell .service-card-image { width: 100%; height: 95px; border-radius: 9px; object-fit: cover; }
 .customer-shell .service-price-card .service-view-details { width: 100%; justify-content: center; }
 .admin-shell[data-page='pos'] .admin-pos-product { height: 370px; min-height: 0; overflow: hidden; }
 .admin-shell[data-page='pos'] .admin-pos-product h2, .admin-shell[data-page='pos'] .admin-pos-product p { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.customer-shell .shop-product-card { height: 440px; overflow: hidden; }
-.customer-shell .shop-product-card > strong, .admin-shell[data-page='pos'] .admin-pos-product > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.customer-shell .shop-product-card { min-height: 440px; height: auto; overflow: visible; }
+.customer-shell .shop-product-card > strong { overflow-wrap: anywhere; }
+.admin-shell[data-page='pos'] .admin-pos-product > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-services .service-record-row { min-height: 190px; }
 @media (min-width: 901px) { .admin-services .service-record-row { height: 190px; } }
 .service-record-note, .service-record-values dd { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }

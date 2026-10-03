@@ -34,7 +34,7 @@ import { saveAppointment } from './customerOperations'
 import { ServiceIntakeFields } from './ServiceIntakeFields'
 import { ServiceIntakePrintRoot } from './ServiceIntakeDocument'
 import { ServiceIntakePreview } from './ServiceIntakePreview'
-import { emptyServiceIntake, intakeTypeForService, validateServiceIntake } from './serviceIntake'
+import { emptyServiceIntake, intakeDeviceTypeForOffering, intakeTypeForService, validateServiceIntake } from './serviceIntake'
 
 export function BookingPage() {
   const { user } = useAuth()
@@ -52,8 +52,6 @@ export function BookingPage() {
   const [selectedChargeIds, setSelectedChargeIds] = useState<string[]>([])
   const selectedCharges = selectedServiceCharges(service, selectedChargeIds)
   const [device, setDevice] = useState('')
-  const [specs, setSpecs] = useState('')
-  const [unknown, setUnknown] = useState(false)
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [notes, setNotes] = useState('')
@@ -118,7 +116,7 @@ export function BookingPage() {
       ...current,
       customerName: current.customerName || profile.name || user?.name || '',
       contactPhone: current.contactPhone || profile.phone,
-      deviceType: item.deviceType === 'Laptop' ? 'Laptop' : 'Desktop PC',
+      deviceType: intakeDeviceTypeForOffering(item.deviceType) ?? current.deviceType,
       serviceType: intakeTypeForService(item.id, item.name),
     }))
     if (mode && !(mode === 'Workshop' ? item.workshop : item.home)) setMode(null)
@@ -171,8 +169,7 @@ export function BookingPage() {
         serviceId: service.id,
         service: `${service.name} / ${service.deviceType}`,
         device,
-        specifications: unknown ? '' : specs,
-        unknownSpecifications: unknown,
+        specifications: '',
         preferredDate: date,
         preferredTime: time,
         notes,
@@ -184,8 +181,6 @@ export function BookingPage() {
       setServiceId(null)
       setMode(null)
       setDevice('')
-      setSpecs('')
-      setUnknown(false)
       setAddress(null)
       setDate('')
       setTime('')
@@ -479,23 +474,6 @@ export function BookingPage() {
                     placeholder="Your device’s brand and model"
                   />
                 </label>
-                <label>
-                  Known specifications (optional)
-                  <input
-                    disabled={unknown}
-                    maxLength={500}
-                    value={specs}
-                    onChange={(e) => setSpecs(e.target.value)}
-                  />
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    checked={unknown}
-                    onChange={(e) => setUnknown(e.target.checked)}
-                  />
-                  I’m not sure about my specifications
-                </label>
                 {mode === 'Home service' && (
                   <label>
                     Home-service address
@@ -508,16 +486,6 @@ export function BookingPage() {
                     />
                   </label>
                 )}
-                <label>
-                  Concerns or special requests
-                  <textarea
-                    rows={3}
-                    maxLength={1000}
-                    placeholder="Tell us what needs attention."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </label>
                 {!!service?.additionalCharges?.length && (
                   <fieldset className="booking-additional-charges">
                     <legend>Optional additional work</legend>
@@ -569,32 +537,34 @@ export function BookingPage() {
                       }}
                     />
                   </label>
-                  <label>
-                    Preferred time
-                    <select
-                      required
-                      disabled={!date || slots.loading}
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                    >
-                      <option value="">
-                        {slots.loading ? 'Checking availability…' : 'Choose a time'}
-                      </option>
-                      {scheduledWindows.map((slot) => (
-                        <option
-                          key={slot.id}
-                          value={slotLabel(slot)}
-                          disabled={!windows.some((available) => available.id === slot.id)}
-                        >
-                          {slotLabel(slot)} ·{' '}
-                          {windows.some((available) => available.id === slot.id)
-                            ? 'Available'
-                            : 'Booked'}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
+                <fieldset className="booking-time-fieldset" disabled={!date || slots.loading}>
+                  <legend>Preferred time</legend>
+                  {!date && <p>Choose a date to see available times.</p>}
+                  {slots.loading && <p>Checking availability…</p>}
+                  {date && !slots.loading && (
+                    <div className="booking-time-options" role="group" aria-label="Preferred time">
+                      {scheduledWindows.map((slot) => {
+                        const isAvailable = windows.some((window) => window.id === slot.id)
+                        const label = slotLabel(slot)
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            className="booking-time-option"
+                            disabled={!isAvailable}
+                            aria-pressed={time === label}
+                            onClick={() => setTime(label)}
+                          >
+                            <Clock3 size={16} aria-hidden="true" />
+                            <span>{label}</span>
+                            <small>{isAvailable ? 'Available' : 'Booked'}</small>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </fieldset>
                 {date && !slots.loading && !slots.error && !windows.length && (
                   <p className="form-error">No available times on this date. Choose another day.</p>
                 )}
@@ -611,8 +581,10 @@ export function BookingPage() {
                 onChange={setIntake}
                 service={service?.name || ''}
                 serviceId={service?.id}
+                serviceDeviceType={service?.deviceType}
                 device={device}
                 concerns={notes}
+                onConcernsChange={setNotes}
                 acknowledged={intakeAcknowledged}
                 onAcknowledge={setIntakeAcknowledged}
               />
@@ -633,7 +605,6 @@ export function BookingPage() {
                     <dt>Device</dt>
                     <dd>
                       {device}
-                      <small>{unknown ? 'Specifications unknown' : specs}</small>
                     </dd>
                   </div>
                   <div>

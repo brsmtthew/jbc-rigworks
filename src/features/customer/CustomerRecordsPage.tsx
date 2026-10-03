@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CircleCheck,
   CircleX,
+  Clock3,
   Cpu,
   Eye,
   FileQuestion,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { RecordStatus } from './RecordStatus'
 import { ActionButton } from '../../components/ui/ActionButton'
@@ -37,7 +38,7 @@ import { useCustomerRequests } from './useCustomerRequests'
 import { ServiceIntakePrintRoot } from './ServiceIntakeDocument'
 import { ServiceIntakePreview } from './ServiceIntakePreview'
 import { RecordPrintRoot } from './RecordPrintRoot'
-import { appointmentIntake } from './serviceIntake'
+import { appointmentIntake, intakeDeviceTypeForOffering } from './serviceIntake'
 import { emptyServiceIntake } from './serviceIntake'
 import { ServiceIntakeFields } from './ServiceIntakeFields'
 
@@ -54,7 +55,6 @@ export function CustomerRecordsPage({
   embedded?: boolean
 }) {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const { confirm } = useConfirmation()
   const [shop] = useShopSettings()
   const [params] = useSearchParams()
@@ -68,8 +68,6 @@ export function CustomerRecordsPage({
   const [dateChoice, setDate] = useState<string | null>(null)
   const [timeChoice, setTime] = useState<string | null>(null)
   const [deviceChoice, setDevice] = useState<string | null>(null)
-  const [specsChoice, setSpecs] = useState<string | null>(null)
-  const [unknownChoice, setUnknown] = useState<boolean | null>(null)
   const [addressChoice, setAddress] = useState<string | null>(null)
   const [intakeChoice, setIntake] = useState<ServiceIntake | null>(null)
   const [query, setQuery] = useState('')
@@ -86,13 +84,6 @@ export function CustomerRecordsPage({
   const date = dateChoice ?? (selected && 'preferredDate' in selected ? selected.preferredDate : '')
   const time = timeChoice ?? (selected && 'preferredTime' in selected ? selected.preferredTime : '')
   const device = deviceChoice ?? (selected && 'device' in selected ? selected.device : '')
-  const specs =
-    specsChoice ?? (selected && 'specifications' in selected ? (selected.specifications ?? '') : '')
-  const unknown =
-    unknownChoice ??
-    (selected && 'unknownSpecifications' in selected
-      ? (selected.unknownSpecifications ?? false)
-      : false)
   const address =
     addressChoice ?? (selected && 'visit' in selected ? (selected.visit?.address ?? '') : '')
   const intake =
@@ -149,10 +140,15 @@ export function CustomerRecordsPage({
     setDate('preferredDate' in item ? item.preferredDate : '')
     setTime('preferredDate' in item ? item.preferredTime : '')
     setDevice('device' in item ? item.device : '')
-    setSpecs('specifications' in item ? (item.specifications ?? '') : '')
-    setUnknown('unknownSpecifications' in item ? (item.unknownSpecifications ?? false) : false)
     setAddress('visit' in item ? (item.visit?.address ?? '') : '')
-    setIntake('service' in item ? (item.serviceIntake ?? emptyServiceIntake) : emptyServiceIntake)
+    const savedIntake = 'service' in item ? (item.serviceIntake ?? emptyServiceIntake) : emptyServiceIntake
+    const serviceDeviceType = 'service' in item
+      ? shop.services.find((service) => service.id === item.serviceId)?.deviceType
+      : undefined
+    setIntake({
+      ...savedIntake,
+      deviceType: intakeDeviceTypeForOffering(serviceDeviceType) ?? savedIntake.deviceType,
+    })
     setError('')
   }
 
@@ -179,9 +175,12 @@ export function CustomerRecordsPage({
           ...('service' in selected
             ? {
                 device,
-                specifications: specs,
-                unknownSpecifications: unknown,
-                serviceIntake: intake,
+                serviceIntake: {
+                  ...intake,
+                  deviceType: intakeDeviceTypeForOffering(
+                    shop.services.find((service) => service.id === selected.serviceId)?.deviceType,
+                  ) ?? intake.deviceType,
+                },
                 visitAddress: address,
               }
             : {}),
@@ -294,7 +293,7 @@ export function CustomerRecordsPage({
               to={isAppointments ? '/customer/book' : '/customer/pc-building'}
             >
               {isAppointments ? <CalendarDays size={16} /> : <Cpu size={16} />}
-              {isAppointments ? 'Book a service' : 'Start a PC pre-order'}
+              {isAppointments ? 'Book a service' : 'See PC builder status'}
             </Link>
           </div>
         ) : (
@@ -372,20 +371,18 @@ export function CustomerRecordsPage({
                   </button>
                   {
                     <>
-                      <button
-                        type="button"
-                        className="customer-record-action"
-                        aria-label={`Edit ${item.id}`}
-                        disabled={!canEditRequest(item)}
-                        title={canEditRequest(item) ? undefined : 'Locked after workshop review'}
-                        onClick={() =>
-                          'service' in item
-                            ? open(item, 'edit')
-                            : navigate(`/customer/pc-building?edit=${encodeURIComponent(item.id)}`)
-                        }
-                      >
-                        <Pencil size={16} /> Edit
-                      </button>
+                      {'service' in item && (
+                        <button
+                          type="button"
+                          className="customer-record-action"
+                          aria-label={`Edit ${item.id}`}
+                          disabled={!canEditRequest(item)}
+                          title={canEditRequest(item) ? undefined : 'Locked after workshop review'}
+                          onClick={() => open(item, 'edit')}
+                        >
+                          <Pencil size={16} /> Edit
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="customer-record-action is-danger"
@@ -505,6 +502,9 @@ export function CustomerRecordsPage({
                             {appointmentIntake(selected)?.powerStatus} ·{' '}
                             {appointmentIntake(selected)?.visibleCondition}
                           </p>
+                          {mode === 'view' && (
+                            <p>Concerns or special requests: {notes || 'None provided'}</p>
+                          )}
                           <small>
                             Review and sign the printed form with the technician before service.
                           </small>
@@ -540,24 +540,6 @@ export function CustomerRecordsPage({
                             onChange={(event) => setDevice(event.target.value)}
                           />
                         </label>
-                        <label>
-                          Known specifications (optional)
-                          <input
-                            maxLength={500}
-                            value={specs}
-                            disabled={!editable || unknown}
-                            onChange={(event) => setSpecs(event.target.value)}
-                          />
-                        </label>
-                        <label className="check-row">
-                          <input
-                            type="checkbox"
-                            checked={unknown}
-                            disabled={!editable}
-                            onChange={(event) => setUnknown(event.target.checked)}
-                          />
-                          Specifications unknown
-                        </label>
                         {selected.visit?.mode === 'Home service' && (
                           <label>
                             Home-service address
@@ -576,8 +558,10 @@ export function CustomerRecordsPage({
                             onChange={setIntake}
                             service={selected.service}
                             serviceId={selected.serviceId}
+                            serviceDeviceType={shop.services.find((service) => service.id === selected.serviceId)?.deviceType}
                             device={device}
                             concerns={notes}
+                            onConcernsChange={setNotes}
                             acknowledged
                             onAcknowledge={() => {}}
                             editing
@@ -604,21 +588,25 @@ export function CustomerRecordsPage({
                       <p>Preferred date: {date || 'Not set'}</p>
                     )}
                     {mode === 'edit' ? (
-                      <label>
-                        Preferred time
-                        <select
-                          disabled={!editable}
-                          value={time}
-                          onChange={(event) => setTime(event.target.value)}
-                        >
-                          <option value="">Choose an available time</option>
+                      <fieldset className="booking-time-fieldset" disabled={!editable || slots.loading}>
+                        <legend>Preferred time</legend>
+                        <div className="booking-time-options" role="group" aria-label="Preferred time">
                           {[...new Set([time, ...windows.map(slotLabel)])]
                             .filter(Boolean)
                             .map((value) => (
-                              <option key={value}>{value}</option>
+                              <button
+                                key={value}
+                                type="button"
+                                className="booking-time-option"
+                                aria-pressed={time === value}
+                                onClick={() => setTime(value)}
+                              >
+                                <Clock3 size={16} aria-hidden="true" />
+                                <span>{value}</span>
+                              </button>
                             ))}
-                        </select>
-                      </label>
+                        </div>
+                      </fieldset>
                     ) : (
                       <p>Preferred time: {time || 'Not set'}</p>
                     )}
@@ -627,19 +615,8 @@ export function CustomerRecordsPage({
                         {slots.error}
                       </p>
                     )}
-                    {mode === 'edit' ? (
-                      <label>
-                        Request notes
-                        <textarea
-                          rows={4}
-                          maxLength={1000}
-                          value={notes}
-                          disabled={!editable}
-                          onChange={(event) => setNotes(event.target.value)}
-                        />
-                      </label>
-                    ) : (
-                      <p>Request notes: {notes || 'None provided'}</p>
+                    {mode === 'view' && !appointmentIntake(selected) && (
+                      <p>Concerns or special requests: {notes || 'None provided'}</p>
                     )}
                   </div>
                 </div>
@@ -651,14 +628,6 @@ export function CustomerRecordsPage({
                   {selected.useCase} / Budget {selected.budget || 'Not specified'}
                 </p>
                 <p>Estimated tier: {selected.tier || 'Unclassified'}</p>
-                {editable && mode === 'view' && (
-                  <Link
-                    className="secondary-button"
-                    to={`/customer/pc-building?edit=${encodeURIComponent(selected.id)}`}
-                  >
-                    <Pencil size={16} /> Edit parts and pre-order
-                  </Link>
-                )}
                 {selected.parts?.map((part) => (
                   <p key={part.component}>
                     <strong>{part.component}:</strong>{' '}

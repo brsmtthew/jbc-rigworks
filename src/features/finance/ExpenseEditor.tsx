@@ -18,7 +18,12 @@ export function ExpenseEditor({ expense, onClose }: { expense?: Expense; onClose
   const { busy, error, run } = useAsyncAction()
   const fields: RecordField[] = [
     { name: 'description', label: 'Description' },
-    { name: 'category', label: 'Category', list: 'expense-categories' },
+    {
+      name: 'category',
+      label: 'Category',
+      options: [...new Set([...directory.expenseCategories, expense?.category ?? ''])].filter(Boolean),
+      placeholder: 'Select category',
+    },
     { name: 'date', label: 'Expense date', type: 'date' },
     { name: 'amount', label: 'Amount (PHP)', type: 'number' },
     {
@@ -26,10 +31,7 @@ export function ExpenseEditor({ expense, onClose }: { expense?: Expense; onClose
       label: 'Payment method',
       options: [...new Set([...(expense ? [expense.method] : []), ...directory.payments])],
     },
-    { name: 'vendor', label: 'Vendor / payee', optional: true },
     { name: 'reference', label: 'Receipt / reference number', optional: true },
-    { name: 'notes', label: 'Notes / correction reason', optional: true },
-    { name: 'recurrence', label: 'Repeat frequency', options: ['One-time', 'Monthly', 'Yearly'] },
   ]
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -44,10 +46,8 @@ export function ExpenseEditor({ expense, onClose }: { expense?: Expense; onClose
         date: formText(form, 'date'),
         amount: formAmount(form, 'amount'),
         method: formText(form, 'method'),
-        vendor: formText(form, 'vendor'),
         reference: formText(form, 'reference'),
-        notes: formText(form, 'notes'),
-        recurrence: formText(form, 'recurrence') as Expense['recurrence'],
+        ...(expense ? {} : { recurrence: 'One-time' as const }),
       }
       if (
         !(await confirm({
@@ -121,11 +121,6 @@ export function ExpenseEditor({ expense, onClose }: { expense?: Expense; onClose
                 : { date: today() }
             }
           />
-          <datalist id="expense-categories">
-            {directory.expenseCategories.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
         </fieldset>
         {error && (
           <p className="form-error" role="alert">
@@ -133,10 +128,6 @@ export function ExpenseEditor({ expense, onClose }: { expense?: Expense; onClose
           </p>
         )}
         <p className="storage-caption">Changes are saved to your business records.</p>
-        <p className="storage-caption">
-          Recurring expenses are never generated automatically. Use Record next occurrence to review
-          and confirm each payment.
-        </p>
       </form>
     </Dialog>
   )

@@ -20,6 +20,7 @@ import type {
   SalePayment,
 } from '../../types'
 import { isSellable } from '../builder/pc'
+import { validateServiceIntake } from '../customer/serviceIntake'
 import { accountAvailable, recordReceipt, validEmail } from '../finance/payments'
 
 export async function checkout(user: AppUser, draft: CheckoutDraft) {
@@ -95,6 +96,11 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
         job.paymentStatus === 'Paid'
       )
         throw new Error('Only an unpaid service in progress or confirmed walk-in can be sent to checkout.')
+      try {
+        validateServiceIntake(job.serviceIntake)
+      } catch {
+        throw new Error('Complete and save the device intake before taking service payment.')
+      }
       if (draft.customServices?.[0]?.unitPrice !== job.quote)
         throw new Error('The approved service quote changed. Open the service in POS again.')
     }
@@ -105,8 +111,8 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
       ids.add(line.id)
       const customService = draft.customServices?.find((service) => service.id === line.id)
       if (customService) {
-        if (user.role === 'user')
-          throw new Error('Services must be booked through the service and booking page.')
+        if (user.role !== 'admin' || !draft.jobId || line.id !== `job-service:${draft.jobId}` || line.quantity !== 1)
+          throw new Error('Services must have a saved device intake before POS checkout.')
         if (
           !customService.description.trim() ||
           !Number.isFinite(customService.unitPrice) ||
@@ -122,18 +128,7 @@ export async function checkout(user: AppUser, draft: CheckoutDraft) {
         }
       }
       if (line.id.startsWith('service:')) {
-        const service = settings.services.find(
-          (service) => `service:${service.id}` === line.id && service.active,
-        )
-        if (user.role !== 'admin' || !service || service.price === '')
-          throw new Error('This service is unavailable or needs a quote.')
-        return {
-          id: line.id,
-          description: `${service.name} / ${service.deviceType}`,
-          quantity: line.quantity,
-          unitPrice: Number(service.price),
-          unitCost: 0,
-        }
+        throw new Error('Create a service with a completed device intake before taking payment in POS.')
       }
       if (line.id.startsWith('clean:'))
         throw new Error(

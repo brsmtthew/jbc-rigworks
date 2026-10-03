@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowRight, Check, Printer, Save, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Printer, Save, Search, ShoppingCart } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dialog } from '../../components/ui/Dialog'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useAuth } from '../../lib/auth-context'
+import { money } from '../../lib/commerce'
 import { today } from '../../lib/dates'
 import { formatPHP } from '../../lib/format'
 import { useShopSettings } from '../../lib/preferences'
@@ -11,8 +12,9 @@ import { humanError } from '../../lib/workflow'
 import type { Job } from '../../types'
 import { ServiceIntakeFields } from '../customer/ServiceIntakeFields'
 import { ServiceIntakePrintRoot } from '../customer/ServiceIntakeDocument'
-import { emptyServiceIntake, intakeTypeForService, validateServiceIntake } from '../customer/serviceIntake'
+import { emptyServiceIntake, intakeDeviceTypeForOffering, intakeTypeForService, validateServiceIntake } from '../customer/serviceIntake'
 import { saveServiceJob } from './serviceOperations'
+import { selectedServiceCharges, serviceChargesTotal } from './serviceCharges'
 import { walkInDocumentAppointment } from './walkInDocument'
 import { createWalkInJob } from './walkInJob'
 
@@ -25,42 +27,53 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
   const offerings = shop.services.filter((service) => service.active && service.workshop)
   const [stage, setStage] = useState(0)
   const [serviceId, setServiceId] = useState('')
+  const [servicePickerOpen, setServicePickerOpen] = useState(false)
+  const [serviceSearch, setServiceSearch] = useState('')
+  const [selectedChargeIds, setSelectedChargeIds] = useState<string[]>([])
   const [device, setDevice] = useState('')
-  const [due, setDue] = useState(today())
-  const [quoteInput, setQuoteInput] = useState('')
+  const [concern, setConcern] = useState('')
   const [intake, setIntake] = useState({ ...emptyServiceIntake })
   const [saved, setSaved] = useState<Job | null>(null)
   const { busy, error, setError, run } = useAsyncAction()
   const offering = offerings.find((service) => service.id === serviceId)
-  const quote = quoteInput.trim() ? Number(quoteInput) : 0
-  const canPay = Number.isFinite(quote) && quote > 0
+  const matchingOfferings = offerings.filter((service) =>
+    `${service.name} ${service.deviceType} ${service.description}`
+      .toLowerCase()
+      .includes(serviceSearch.trim().toLowerCase()),
+  )
+  const selectedCharges = selectedServiceCharges(offering, selectedChargeIds)
+  const extrasTotal = serviceChargesTotal(selectedCharges)
+  const basePrice = offering && offering.price !== '' ? Number(offering.price) : null
+  const quote = basePrice === null ? 0 : money(basePrice + extrasTotal)
+  const canPay = basePrice !== null && Number.isFinite(quote) && quote > 0
 
   function chooseService(id: string) {
     const selected = offerings.find((service) => service.id === id)
     setServiceId(id)
-    setQuoteInput(selected?.price ?? '')
+    setSelectedChargeIds([])
     if (selected)
       setIntake((current) => ({
         ...current,
         serviceType: intakeTypeForService(selected.id, selected.name),
-        deviceType:
-          selected.deviceType === 'Laptop'
-            ? 'Laptop'
-            : selected.deviceType === 'Desktop'
-              ? 'Desktop PC'
-              : current.deviceType,
+        deviceType: intakeDeviceTypeForOffering(selected.deviceType) ?? current.deviceType,
       }))
     setError('')
+    setServicePickerOpen(false)
+  }
+
+  function openServicePicker() {
+    setServiceSearch('')
+    setServicePickerOpen(true)
   }
 
   function next() {
     try {
       if (stage === 0) {
-        if (!offering) throw new Error('Choose an available workshop service.')
+        if (!offering) {
+          openServicePicker()
+          return
+        }
         if (!device.trim()) throw new Error('Enter the device brand and model.')
-        if (!due || due < today()) throw new Error('Choose a current or future target date.')
-        if (!Number.isFinite(quote) || quote < 0)
-          throw new Error('Enter a valid service price before tax.')
       } else if (stage === 1) {
         validateServiceIntake(intake)
       }
@@ -79,8 +92,10 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
         offering,
         intake,
         device,
-        due,
+        due: today(),
         quote,
+        selectedCharges,
+        concern,
         confirmedAt: new Date().toISOString(),
       })
       if (openPos && record.quote <= 0)
@@ -163,7 +178,8 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
               </p>
               <dl>
                 <div><dt>Device</dt><dd>{saved.device}</dd></div>
-                <div><dt>Service price</dt><dd>{saved.quote > 0 ? formatPHP(saved.quote) : 'Pending quote'}</dd></div>
+                <div><dt>Service total before tax</dt><dd>{saved.quote > 0 ? formatPHP(saved.quote) : 'Pending quote'}</dd></div>
+                {!!saved.selectedCharges?.length && <div><dt>Additional work</dt><dd>{saved.selectedCharges.map((charge) => charge.name).join(', ')}</dd></div>}
                 <div><dt>Reference</dt><dd>{saved.id}</dd></div>
               </dl>
               {saved.quote <= 0 && <p className="walkin-price-note">Enter an approved price in the service record before taking payment in POS.</p>}
@@ -185,38 +201,62 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
               </div>
               {stage === 0 && (
                 <div className="walkin-form-section">
-                  <div className="walkin-form-grid">
-                    <label>
-                      Workshop service
-                      <select required value={serviceId} onChange={(event) => chooseService(event.target.value)}>
-                        <option value="">Choose an available service</option>
-                        {offerings.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name} / {service.deviceType}
-                          </option>
+                  <div className="walkin-service-picker-row">
+                    <div>
+                      <strong>Workshop service</strong>
+                      <p>Choose the service that matches the customer's device. Record their concerns in the intake.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={openServicePicker} disabled={!offerings.length}>
+                      {offering ? 'Change service' : 'Choose service'} <ArrowRight size={16} />
+                    </button>
+                  </div>
+                  {offering ? (
+                    <div className="walkin-service-selection">
+                      <div>
+                        <strong>{offering.name}</strong>
+                        <small>{offering.deviceType} · {offering.durationMinutes} min</small>
+                      </div>
+                      <b>{offering.price === '' ? 'Quote after review' : formatPHP(Number(offering.price))}</b>
+                      {offering.description && <p>{offering.description}</p>}
+                    </div>
+                  ) : (
+                    <p className="walkin-service-empty">
+                      {offerings.length ? 'No service selected yet.' : 'No active workshop services are available. Add one in Services settings.'}
+                    </p>
+                  )}
+                  {!!offering?.additionalCharges?.length && (
+                    <fieldset className="walkin-additional-charges">
+                      <legend>Optional additional work</legend>
+                      <p>Select work the customer requests. These charges are included in the service total.</p>
+                      <div className="walkin-additional-options">
+                        {offering.additionalCharges.map((charge) => (
+                          <label className="walkin-additional-option" key={charge.id}>
+                            <input
+                              type="checkbox"
+                              checked={selectedChargeIds.includes(charge.id)}
+                              onChange={(event) => setSelectedChargeIds((current) =>
+                                event.target.checked
+                                  ? [...current, charge.id]
+                                  : current.filter((id) => id !== charge.id),
+                              )}
+                            />
+                            <span>{charge.name}</span>
+                            <strong>{formatPHP(Number(charge.price))}</strong>
+                          </label>
                         ))}
-                      </select>
-                    </label>
+                      </div>
+                      <p className="walkin-additional-total" role="status">
+                        {selectedCharges.length} selected · {formatPHP(extrasTotal)} additional
+                        {basePrice !== null && ` · ${formatPHP(quote)} service total before tax`}
+                      </p>
+                    </fieldset>
+                  )}
+                  <div className="walkin-form-grid">
                     <label>
                       Device brand / model
                       <input required maxLength={160} value={device} onChange={(event) => setDevice(event.target.value)} placeholder="e.g. Lenovo ThinkPad T14" />
                     </label>
-                    <label>
-                      Target completion date
-                      <input type="date" required min={today()} value={due} onChange={(event) => setDue(event.target.value)} />
-                    </label>
-                    <label>
-                      Approved service price before tax (PHP)
-                      <input type="number" min="0" step="0.01" value={quoteInput} onChange={(event) => setQuoteInput(event.target.value)} placeholder={offering?.price === '' ? 'Quote after review' : '0.00'} />
-                    </label>
                   </div>
-                  {offering && (
-                    <div className="walkin-service-selection">
-                      <strong>{offering.name} · {offering.deviceType}</strong>
-                      <p>{offering.description}</p>
-                      <small>{offering.price === '' ? 'Price requires review before POS payment.' : `Catalog price ${formatPHP(Number(offering.price))} before tax.`}</small>
-                    </div>
-                  )}
                 </div>
               )}
               {stage === 1 && offering && (
@@ -226,8 +266,10 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
                     onChange={setIntake}
                     service={offering.name}
                     serviceId={offering.id}
+                    serviceDeviceType={offering.deviceType}
                     device={device}
-                    concerns={intake.reportedIssues || intake.diagnosisSymptoms || ''}
+                    concerns={concern}
+                    onConcernsChange={setConcern}
                     acknowledged={false}
                     onAcknowledge={() => {}}
                     editing
@@ -244,9 +286,11 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
                     <div><dt>Customer</dt><dd>{intake.customerName}</dd></div>
                     <div><dt>Phone</dt><dd>{intake.contactPhone}</dd></div>
                     <div><dt>Service</dt><dd>{offering.name} / {offering.deviceType}</dd></div>
+                    <div><dt>Customer concern / request</dt><dd>{concern || 'None added'}</dd></div>
+                    {!!selectedCharges.length && <div><dt>Additional work</dt><dd>{selectedCharges.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')}</dd></div>}
                     <div><dt>Device</dt><dd>{device}</dd></div>
                     <div><dt>Condition</dt><dd>{intake.visibleCondition}</dd></div>
-                    <div><dt>Service price</dt><dd>{canPay ? formatPHP(quote) : 'Pending quote'}</dd></div>
+                    <div><dt>Service total before tax</dt><dd>{canPay ? formatPHP(quote) : 'Pending quote'}</dd></div>
                   </dl>
                   <p>Print the saved intake and service authorization. The customer and JBC representative sign it before work begins.</p>
                   {!canPay && <p className="walkin-price-note">Add an approved price to enable the POS payment button.</p>}
@@ -257,6 +301,42 @@ export function WalkInServiceIntake({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </Dialog>
+      {servicePickerOpen && (
+        <Dialog title="Choose workshop service" wide onClose={() => setServicePickerOpen(false)}>
+          <div className="walkin-service-picker">
+            <p>Search the workshop catalog and select one service for this device.</p>
+            <label className="walkin-service-search">
+              <Search size={17} aria-hidden="true" />
+              <span className="sr-only">Search workshop services</span>
+              <input
+                autoFocus
+                type="search"
+                value={serviceSearch}
+                onChange={(event) => setServiceSearch(event.target.value)}
+                placeholder="Search services or device types"
+              />
+            </label>
+            <span className="walkin-service-count" role="status">
+              {matchingOfferings.length} {matchingOfferings.length === 1 ? 'service' : 'services'} available
+            </span>
+            <div className="walkin-service-options">
+              {matchingOfferings.map((service) => (
+                <button
+                  type="button"
+                  key={service.id}
+                  className={serviceId === service.id ? 'walkin-service-option is-selected' : 'walkin-service-option'}
+                  aria-pressed={serviceId === service.id}
+                  onClick={() => chooseService(service.id)}
+                >
+                  <span><strong>{service.name}</strong><small>{service.deviceType} · {service.durationMinutes} min</small></span>
+                  <b>{service.price === '' ? 'Quote after review' : formatPHP(Number(service.price))}</b>
+                </button>
+              ))}
+              {!matchingOfferings.length && <p className="walkin-service-no-results">No matching services. Try another name or device type.</p>}
+            </div>
+          </div>
+        </Dialog>
+      )}
       {printAppointment && <ServiceIntakePrintRoot appointment={printAppointment} walkIn />}
     </>
   )

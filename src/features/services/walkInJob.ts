@@ -1,5 +1,7 @@
-import type { Job, ServiceIntake, ServiceOffering } from '../../types'
+import { money } from '../../lib/commerce'
+import type { Job, SelectedServiceCharge, ServiceIntake, ServiceOffering } from '../../types'
 import { validateServiceIntake } from '../customer/serviceIntake'
+import { serviceChargesTotal, validateRequestedServiceCharges } from './serviceCharges'
 
 export function createWalkInJob({
   id,
@@ -8,6 +10,8 @@ export function createWalkInJob({
   device,
   due,
   quote,
+  selectedCharges = [],
+  concern = '',
   confirmedAt,
 }: {
   id: string
@@ -16,6 +20,8 @@ export function createWalkInJob({
   device: string
   due: string
   quote: number
+  selectedCharges?: SelectedServiceCharge[]
+  concern?: string
   confirmedAt: string
 }): Job {
   if (!offering.active || !offering.workshop)
@@ -24,6 +30,14 @@ export function createWalkInJob({
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) throw new Error('Choose a target date.')
   if (!Number.isFinite(quote) || quote < 0)
     throw new Error('Enter a valid approved service price.')
+  const charges = validateRequestedServiceCharges(offering, selectedCharges)
+  const expectedQuote = offering.price === ''
+    ? 0
+    : money(Number(offering.price) + serviceChargesTotal(charges))
+  if (quote !== expectedQuote)
+    throw new Error('The service price or additional charges changed. Review the walk-in service.')
+  if (typeof concern !== 'string' || concern.length > 1000)
+    throw new Error('Keep the customer concern within 1,000 characters.')
   const cleaned = validateServiceIntake(intake)
   if (
     offering.deviceType !== 'Any' &&
@@ -36,6 +50,7 @@ export function createWalkInJob({
     channel: 'Walk-in',
     serviceId: offering.id,
     service: `${offering.name} / ${offering.deviceType}`,
+    selectedCharges: charges,
     serviceIntake: cleaned,
     confirmedAt,
     customer: cleaned.customerName,
@@ -45,11 +60,7 @@ export function createWalkInJob({
     quote,
     status: 'Checked in',
     paymentStatus: 'Unpaid',
-    concern:
-      cleaned.reportedIssues ||
-      cleaned.diagnosisSymptoms ||
-      cleaned.upgradeTarget ||
-      cleaned.assemblyGoal,
+    concern: concern.trim(),
     intakeNotes: cleaned.visibleCondition,
     accessories: cleaned.accessories,
   }

@@ -1,4 +1,5 @@
 import { useStoredValue } from './preferences'
+import { defaultVisibleConditions, noVisibleDamage } from './visibleConditions'
 
 export const directoryLabels = {
   categories: 'Inventory categories',
@@ -6,8 +7,12 @@ export const directoryLabels = {
   payments: 'Expense payment methods',
   sockets: 'CPU sockets',
   memory: 'Memory generations',
+  formFactors: 'Motherboard form factors',
+  powerSupplyFormFactors: 'Power supply form factors',
+  storageInterfaces: 'Storage interfaces',
   services: 'Booking services',
   times: 'Appointment times',
+  visibleConditions: 'Visible conditions',
   uses: 'Build purposes',
 }
 export type DirectoryGroup = keyof typeof directoryLabels
@@ -33,6 +38,9 @@ export const directoryDefaults = {
   payments: ['Cash', 'GCash', 'Bank transfer', 'Card'],
   sockets: ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
   memory: ['DDR3', 'DDR4', 'DDR5'],
+  formFactors: ['ATX', 'Micro-ATX', 'Mini-ITX', 'E-ATX'],
+  powerSupplyFormFactors: ['ATX', 'SFX', 'SFX-L', 'TFX'],
+  storageInterfaces: ['SATA', 'NVMe', 'M.2 SATA', 'PCIe'],
   services: [
     'PC deep cleaning',
     'Laptop deep cleaning',
@@ -41,6 +49,7 @@ export const directoryDefaults = {
     'PC assembly',
   ],
   times: ['9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM'],
+  visibleConditions: defaultVisibleConditions,
   uses: ['Gaming', 'Work & study', 'Content creation', 'General use'],
   fees: [] as FeePreset[],
   inactive: {} as Partial<Record<DirectoryGroup, string[]>>,
@@ -55,6 +64,9 @@ export function useDirectories(includeInactive = false) {
       raw[key].every((value) => typeof value === 'string' && value.trim())
         ? raw[key]
         : directoryDefaults[key]
+  // Older saved directories included this exclusive answer among the damage issues.
+  data.visibleConditions = data.visibleConditions.filter((value) => value !== noVisibleDamage)
+  if (!data.visibleConditions.length) data.visibleConditions = directoryDefaults.visibleConditions
   data.fees = Array.isArray(raw.fees)
     ? raw.fees.filter(
         (fee) =>

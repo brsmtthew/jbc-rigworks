@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useConfirmation } from '../../components/ui/confirmation-context'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useWorkspace } from '../../hooks/useWorkspace'
@@ -10,7 +10,7 @@ import { formatPHP } from '../../lib/format'
 import { bundlePriceAdjustment, qualifyingBundle } from '../../lib/fulfillment'
 import { accountKey, defaultAccount, useShopSettings, useStoredValue } from '../../lib/preferences'
 import { availableStock } from '../../lib/workflow'
-import type { InventoryItem, Job, ProductBundle, Sale, ServiceOffering } from '../../types'
+import type { InventoryItem, Job, ProductBundle, Sale } from '../../types'
 import { isSellable } from '../builder/pc'
 import { rejectPaymentProof } from '../finance/payments'
 import { usePaymentAccounts, usePaymentProofs } from '../finance/usePayments'
@@ -24,7 +24,6 @@ type PosProduct = {
   stock: number
   service: boolean
   item?: InventoryItem
-  offering?: ServiceOffering
 }
 
 export function usePos() {
@@ -60,7 +59,6 @@ export function usePos() {
   const workspace = useWorkspace()
   const [shop] = useShopSettings()
   const [profile] = useStoredValue(accountKey(user!.id), defaultAccount)
-  const [params] = useSearchParams()
   const jobDraft = location.state?.job as Job | undefined
   const collectSaleId =
     typeof location.state?.collectSaleId === 'string' ? location.state.collectSaleId : null
@@ -107,17 +105,6 @@ export function usePos() {
       })),
     ...(!customerMode
       ? [
-          ...shop.services
-            .filter((service) => service.active && service.workshop)
-            .map((service) => ({
-              id: `service:${service.id}`,
-              name: `${service.name} / ${service.deviceType}`,
-              category: 'Services',
-              price: service.price === '' ? null : Number(service.price),
-              stock: Infinity,
-              service: true,
-              offering: service,
-            })),
           ...(jobService
             ? [
                 {
@@ -137,8 +124,7 @@ export function usePos() {
     if (jobService) return [{ id: jobService.id, quantity: 1 }]
     const parts = location.state?.parts as string[] | undefined
     if (Array.isArray(parts)) return [...new Set(parts)].map((id) => ({ id, quantity: 1 }))
-    const service = customerMode ? null : params.get('service')
-    return service ? [{ id: service, quantity: 1 }] : []
+    return []
   })
   const [bundleId, setBundleId] = useState<string | undefined>()
   const [pcSet, setPcSet] = useState(Boolean(location.state?.pcSet))
@@ -236,12 +222,12 @@ export function usePos() {
   const filtered = products
     .filter(
       (product) =>
-        (filter === 'All' || (filter === 'Services' ? product.service : !product.service)) &&
+        !product.service &&
         (category === 'All' || product.category === category) &&
         (brand === 'All' || product.item?.brand === brand) &&
         (availability === 'All' || product.stock > 0) &&
         (!maxPrice || (product.price ?? Infinity) <= Number(maxPrice)) &&
-        `${product.name} ${product.category} ${product.item?.specs || ''}`
+        `${product.name} ${product.category} ${product.item?.description || ''} ${product.item?.specs || ''}`
           .toLowerCase()
           .includes(query.toLowerCase()),
     )
@@ -276,6 +262,10 @@ export function usePos() {
     }))
   }
   function quantity(id: string, next: number) {
+    if (id.startsWith('service:')) {
+      setError('Create a walk-in service and complete its device intake before taking payment.')
+      return
+    }
     if (next < 1 && id.startsWith('service:'))
       removeSelectedCharges(selectedChargeIds.filter((key) => key.startsWith(`${id.slice(8)}:`)))
     setCart((current) =>

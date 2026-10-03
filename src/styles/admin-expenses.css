@@ -279,3 +279,24 @@
 .admin-shell.reduce-motion .admin-expenses-page :is(.admin-expenses-hero-actions .primary-button, .admin-expenses-hero-actions .secondary-button, .admin-expenses-metrics > div, .admin-expenses-ledger .data-table tbody tr, .admin-expenses-row-actions .secondary-button) { transition: none; }
 .admin-shell.reduce-motion .admin-expenses-metrics > div:hover,
 .admin-shell.reduce-motion .admin-expenses-hero-actions :is(.primary-button, .secondary-button):hover { transform: none; }
+.expense-audit { display: grid; gap: 18px; color: #153b61; }
+.expense-audit-summary { display: grid; gap: 5px; padding: 20px; border: 1px solid #cee1f1; border-radius: 12px; background: linear-gradient(135deg, #f2f8ff, #fff); }
+.expense-audit-summary h3 { margin: 0; font-size: 19px; }
+.expense-audit-summary p { margin: 0; color: #55738f; }
+.expense-audit-summary > strong { margin-top: 5px; color: #0759b5; font-size: 22px; }
+.expense-audit h4 { margin: 0; font-size: 14px; }
+.expense-audit-timeline { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.expense-audit-timeline > li { padding: 16px 18px; border: 1px solid #d9e5f1; border-left: 3px solid #1471cf; border-radius: 10px; background: #fff; }
+.expense-audit-event { display: flex; gap: 12px; align-items: start; }
+.expense-audit-event > div { display: grid; gap: 3px; }
+.expense-audit-event strong { color: #10395f; }
+.expense-audit-event time { color: #617f99; font-size: 12px; }
+.expense-audit-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e9f4ff; color: #0759b5; }
+.expense-audit-actor { display: flex; align-items: center; gap: 7px; margin: 11px 0 0 40px; color: #3d6284; font-size: 13px; }
+.expense-audit-changes { margin: 14px 0 0 40px; border-top: 1px solid #e2ebf4; padding-top: 10px; }
+.expense-audit-changes summary { color: #0759b5; font-weight: 700; cursor: pointer; }
+.expense-audit-changes dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; margin: 13px 0 0; }
+.expense-audit-changes dt { color: #6a859e; font-size: 11px; }
+.expense-audit-changes dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.expense-audit-empty { padding: 20px; border-radius: 10px; background: #f6faff; }
+@media (max-width: 600px) { .expense-audit-changes dl { grid-template-columns: minmax(0, 1fr); } }

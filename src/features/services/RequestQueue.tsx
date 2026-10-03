@@ -96,7 +96,7 @@ function RequestQueueContent({
       `${item.service} ${item.device} ${item.customerName} ${item.customerEmail} ${item.id}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
-  )
+  ).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const buildFilters = [
     { id: 'all', label: 'All requests', statuses: [] },
     { id: 'review', label: 'Needs review', statuses: ['Quote requested', 'Under review'] },
@@ -122,7 +122,7 @@ function RequestQueueContent({
     `${item.id} ${item.customerName ?? ''} ${item.customerEmail ?? ''} ${item.useCase} ${item.status} ${item.parts?.map((part) => part.model).join(' ') ?? ''}`
       .toLowerCase()
       .includes(buildQuery.trim().toLowerCase()),
-  )
+  ).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const orders = workspace.orders.filter((item) => !item.buildId && !item.serviceJobId)
   const filteredOrders = orders.filter((item) => {
     const status = item.orderStatus ?? 'Requested'
@@ -132,7 +132,7 @@ function RequestQueueContent({
       (orderFilter === 'closed' && ['Completed', 'Cancelled', 'Declined'].includes(status))
     return matchesStatus && `${item.customer} ${item.detail} ${item.id} ${status}`
       .toLowerCase().includes(orderQuery.trim().toLowerCase())
-  })
+  }).sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date))
   const empty =
     scope === 'appointments'
       ? !bookings.length

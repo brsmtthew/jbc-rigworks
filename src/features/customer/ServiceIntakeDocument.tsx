@@ -1,7 +1,8 @@
 import { createPortal } from 'react-dom'
 import { formatPHP } from '../../lib/format'
+import { defaultVisibleConditions, noVisibleDamage } from '../../lib/visibleConditions'
 import type { CustomerAppointment } from '../../types'
-import { appointmentIntake, damageOptions, intakeTypeForService } from './serviceIntake'
+import { appointmentIntake, intakeTypeForService } from './serviceIntake'
 
 const entry = (value?: string) => value?.trim() || '________________________'
 
@@ -13,6 +14,8 @@ export function ServiceIntakeDocument({
   walkIn?: boolean
 }) {
   const intake = appointmentIntake(appointment)
+  const damageOptions = [...new Set([...defaultVisibleConditions, ...(intake?.visibleDamage ?? [])])]
+    .filter((option) => option !== noVisibleDamage)
   const deviceType =
     intake?.deviceType ||
     (appointment.service.toLowerCase().includes('laptop') ? 'Laptop' : 'Desktop PC')
@@ -84,10 +87,6 @@ export function ServiceIntakeDocument({
               {field('Display condition', intake?.laptopDisplay)}
             </>
           )}
-          {field(
-            'Other known specifications',
-            appointment.unknownSpecifications ? 'Unknown' : appointment.specifications,
-          )}
           {field('Accessories received / handled', intake?.accessories)}
         </dl>
       </section>
@@ -127,6 +126,9 @@ export function ServiceIntakeDocument({
       <section>
         <h2>D. Initial condition / existing issues</h2>
         <p className="home-intake-check-title">Visible condition</p>
+        <p className="home-intake-print-no-damage">
+          {intake?.visibleDamage?.includes(noVisibleDamage) ? '☑' : '☐'} {noVisibleDamage}
+        </p>
         <div className="home-intake-checks">
           {damageOptions.map((option) => (
             <span key={option}>

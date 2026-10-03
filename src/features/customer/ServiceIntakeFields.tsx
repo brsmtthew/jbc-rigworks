@@ -1,13 +1,17 @@
-import type { ServiceIntake } from '../../types'
-import { damageOptions, intakeTypeForService } from './serviceIntake'
+import type { ServiceIntake, ServiceOffering } from '../../types'
+import { useDirectories } from '../../lib/directories'
+import { noVisibleDamage } from '../../lib/visibleConditions'
+import { intakeDeviceTypeForOffering, intakeTypeForService } from './serviceIntake'
 
 export function ServiceIntakeFields({
   value,
   onChange,
   service,
   serviceId,
+  serviceDeviceType,
   device,
   concerns,
+  onConcernsChange,
   acknowledged,
   onAcknowledge,
   editing = false,
@@ -17,23 +21,37 @@ export function ServiceIntakeFields({
   onChange: (value: ServiceIntake) => void
   service: string
   serviceId?: string
+  serviceDeviceType?: ServiceOffering['deviceType']
   device: string
   concerns: string
+  onConcernsChange: (value: string) => void
   acknowledged: boolean
   onAcknowledge: (value: boolean) => void
   editing?: boolean
   walkIn?: boolean
 }) {
+  const [directories] = useDirectories()
+  const noDamageSelected = value.visibleDamage.includes(noVisibleDamage)
+  const lockedDeviceType = intakeDeviceTypeForOffering(serviceDeviceType)
+  const deviceType = lockedDeviceType ?? value.deviceType
+  const damageOptions = [...new Set([...directories.visibleConditions, ...value.visibleDamage])]
+    .filter((option) => option !== noVisibleDamage)
+  const selectedDamageCount = value.visibleDamage.filter((option) => option !== noVisibleDamage).length
   function update<K extends keyof ServiceIntake>(key: K, next: ServiceIntake[K]) {
-    onChange({ ...value, [key]: next })
+    onChange({ ...value, [key]: next, ...(lockedDeviceType ? { deviceType: lockedDeviceType } : {}) })
   }
   function toggleDamage(option: string) {
     const visibleDamage = value.visibleDamage.includes(option)
       ? value.visibleDamage.filter((item) => item !== option)
-      : option === 'No visible damage'
-        ? [option]
-        : [...value.visibleDamage.filter((item) => item !== 'No visible damage'), option]
+      : [...value.visibleDamage.filter((item) => item !== noVisibleDamage), option]
     update('visibleDamage', visibleDamage)
+  }
+  function toggleNoVisibleDamage() {
+    onChange({
+      ...value,
+      visibleDamage: noDamageSelected ? [] : [noVisibleDamage],
+      otherDamage: noDamageSelected ? value.otherDamage : '',
+    })
   }
   const serviceType = value.serviceType ?? intakeTypeForService(serviceId, service)
   const detailFields = [
@@ -41,7 +59,7 @@ export function ServiceIntakeFields({
     ['GPU', 'gpu'],
     ['RAM', 'ram'],
     ['Storage', 'storage'],
-    ...(value.deviceType === 'Desktop PC'
+    ...(deviceType === 'Desktop PC'
       ? ([
           ['Motherboard', 'motherboard'],
           ['Power supply', 'psuOrCharger'],
@@ -110,12 +128,14 @@ export function ServiceIntakeFields({
           <label>
             Device type
             <select
-              value={value.deviceType}
+              value={deviceType}
+              disabled={!!lockedDeviceType}
               onChange={(e) => update('deviceType', e.target.value as ServiceIntake['deviceType'])}
             >
               <option>Desktop PC</option>
               <option>Laptop</option>
             </select>
+            {lockedDeviceType && <small>Set by the selected service.</small>}
           </label>
           <label>
             Serial number / asset tag (optional)
@@ -148,12 +168,17 @@ export function ServiceIntakeFields({
       </div>
       <div className="home-intake-group">
         <h4>C. Requested service</h4>
-        <p className="home-intake-selected">
-          <strong>{service}</strong>
-        </p>
-        <p className="home-intake-selected">
-          Customer concern / request: {concerns || 'None added'}
-        </p>
+        <p className="home-intake-selected"><strong>{service}</strong></p>
+        <label>
+          Customer concern / request
+          <textarea
+            rows={3}
+            maxLength={1000}
+            placeholder="Tell us what needs attention."
+            value={concerns}
+            onChange={(event) => onConcernsChange(event.target.value)}
+          />
+        </label>
         {serviceType === 'assembly' && (
           <div className="portal-form-grid home-intake-specialty">
             <label>
@@ -256,17 +281,34 @@ export function ServiceIntakeFields({
       </div>
       <div className="home-intake-group">
         <h4>D. Initial condition & existing issues</h4>
+        <label className="home-intake-no-damage check-row">
+          <input
+            type="checkbox"
+            checked={noDamageSelected}
+            onChange={toggleNoVisibleDamage}
+          />
+          <span>
+            <strong>{noVisibleDamage}</strong>
+            <small>No scratches, dents, or other visible issues observed.</small>
+          </span>
+        </label>
         <fieldset className="home-intake-condition-list">
           <legend>Visible condition</legend>
-          <p className="home-intake-condition-help">
-            Select all that apply. You can choose more than one issue.
+          <p className="home-intake-condition-help" id="home-intake-damage-help">
+            {noDamageSelected
+              ? 'Clear No visible damage to select a specific issue.'
+              : 'Visible damage or issues: select all that apply.'}
           </p>
-          <div className="home-intake-condition-options">
+          <div
+            className={`home-intake-condition-options${noDamageSelected ? ' is-disabled' : ''}`}
+            aria-describedby="home-intake-damage-help"
+          >
             {damageOptions.map((option) => (
               <label className="check-row" key={option}>
                 <input
                   type="checkbox"
                   checked={value.visibleDamage.includes(option)}
+                  disabled={noDamageSelected}
                   onChange={() => toggleDamage(option)}
                 />
                 {option}
@@ -274,7 +316,9 @@ export function ServiceIntakeFields({
             ))}
           </div>
           <div className="home-intake-condition-footer">
-            <span role="status">{value.visibleDamage.length} selected</span>
+            <span role="status">
+              {noDamageSelected ? 'No visible damage selected' : `${selectedDamageCount} selected`}
+            </span>
             {value.visibleDamage.length > 0 && (
               <button type="button" onClick={() => update('visibleDamage', [])}>
                 Clear selection
@@ -287,6 +331,7 @@ export function ServiceIntakeFields({
           <input
             maxLength={300}
             value={value.otherDamage}
+            disabled={noDamageSelected}
             onChange={(e) => update('otherDamage', e.target.value)}
           />
         </label>

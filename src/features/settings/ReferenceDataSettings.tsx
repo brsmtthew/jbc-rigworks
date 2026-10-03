@@ -20,8 +20,8 @@ import { useAllRequests } from '../customer/useCustomerRequests'
 export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean }) {
   const workspace = useWorkspace()
   const requests = useAllRequests(true)
-  const referencesTo = (value: string) =>
-    [
+  const referencesTo = (value: string, group: DirectoryGroup) => {
+    const records = [
       ...workspace.inventory,
       ...workspace.expenses,
       ...workspace.jobs,
@@ -29,7 +29,25 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
       ...requests.appointments,
       ...requests.requests,
       ...workspace.sales.flatMap((sale) => sale.lines ?? []),
-    ].filter((record) => Object.values(record).includes(value)).length
+    ]
+    const listField =
+      group === 'sockets'
+        ? 'supportedSockets'
+        : group === 'formFactors'
+          ? 'supportedFormFactors'
+          : group === 'storageInterfaces'
+            ? 'storageInterfaces'
+            : null
+    const exactMatches = records.filter((record) => Object.values(record).includes(value)).length
+    if (!listField) return exactMatches
+    const listMatches = workspace.inventory.filter((item) => {
+      if (Object.values(item).includes(value)) return false
+      const list = item[listField]
+      return typeof list === 'string' &&
+        list.split(/[,;|]/).some((entry) => entry.trim() === value)
+    }).length
+    return exactMatches + listMatches
+  }
   const [data, save, directoryStatus] = useDirectories(true)
   const [shop, saveShop, shopStatus] = useShopSettings()
   const { confirm } = useConfirmation()
@@ -53,7 +71,7 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
   async function storeOption() {
     if (!group || requests.loading || workspace.loading) return
     const next = value.trim()
-    if (editing && editing !== next && referencesTo(editing) > 0) {
+    if (editing && editing !== next && referencesTo(editing, group) > 0) {
       setError(
         'This value is in use. Deactivate it and add a new value to preserve historical records.',
       )
@@ -64,6 +82,10 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
       data[group].some((item) => item.toLowerCase() === next.toLowerCase() && item !== editing)
     ) {
       setError('Enter a unique, nonempty value.')
+      return
+    }
+    if (['sockets', 'formFactors', 'storageInterfaces'].includes(group) && /[,;|]/.test(next)) {
+      setError('This compatibility value cannot contain commas, semicolons, or vertical bars.')
       return
     }
     if (
@@ -90,7 +112,7 @@ export function ReferenceDataSettings({ embedded = false }: { embedded?: boolean
 
   async function removeOption(item: string) {
     if (!group || requests.loading || workspace.loading) return
-    const references = referencesTo(item)
+    const references = referencesTo(item, group)
     if (references) {
       setError(`${item} is used by ${references} records. Deactivate it instead of deleting it.`)
       return

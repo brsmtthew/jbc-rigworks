@@ -2,7 +2,6 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import {
   ArrowRight,
   Boxes,
-  BrushCleaning,
   CircleCheck,
   Eye,
   Package,
@@ -11,7 +10,6 @@ import {
   ShoppingCart,
   SlidersHorizontal,
 } from 'lucide-react'
-import { useState } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
 import { SearchField } from '../../components/ui/Filters'
 import { formatPHP } from '../../lib/format'
@@ -19,7 +17,6 @@ import { availableStock } from '../../lib/workflow'
 import { InvoiceDialog } from '../finance/InvoiceDialog'
 import { ProductDialog } from '../inventory/ProductDialog'
 import { RequestQueue } from '../services/RequestQueue'
-import { ServiceOfferingDetails } from '../services/ServiceOfferingDetails'
 import { BundleCatalog } from './BundleCatalog'
 import { CartPanel } from './CartPanel'
 import { CheckoutDialog } from './CheckoutDialog'
@@ -30,7 +27,6 @@ import './customer-shop.css'
 
 export function PosPage() {
   const pos = usePos()
-  const [serviceDetail, setServiceDetail] = useState<ReturnType<typeof usePos>['products'][number] | null>(null)
   const {
     productDetail,
     setProductDetail,
@@ -141,10 +137,6 @@ export function PosPage() {
                 <span>Products in stock</span>
               </div>
               <div>
-                <strong>{products.filter((product) => product.service).length}</strong>
-                <span>Services</span>
-              </div>
-              <div>
                 <strong>{cartCount}</strong>
                 <span>In this order</span>
               </div>
@@ -172,7 +164,7 @@ export function PosPage() {
           <div className="admin-pos-discovery-heading">
             <div>
               <span className="eyebrow">CATALOG</span>
-              <h2>Find items and services</h2>
+              <h2>Find items</h2>
             </div>
             <span className="admin-pos-results discovery-card-count" aria-live="polite">
               {workspace.loading
@@ -191,7 +183,7 @@ export function PosPage() {
           ) : (
             <div className="toolbar-field">
               <span className="toolbar-field-label">Search</span>
-              <SearchField label="Search products and services" value={query} onChange={setQuery} />
+              <SearchField label="Search products" value={query} onChange={setQuery} />
             </div>
           )}
           {customerMode && (
@@ -208,7 +200,7 @@ export function PosPage() {
             <div className="toolbar-field admin-pos-filter-field">
               <span className="toolbar-field-label">Item type</span>
               <div className="admin-pos-type-filter" role="group" aria-label="Product type">
-                {['All', 'Products', 'Services', 'Bundles'].map((value) => (
+                {['All', 'Bundles'].map((value) => (
                   <button
                     type="button"
                     key={value}
@@ -322,14 +314,14 @@ export function PosPage() {
                 >
                   <div className="product-visual">
                     <span className="service-icon">
-                      {product.service ? <BrushCleaning size={32} /> : <Package size={32} />}
+                      <Package size={32} />
                       {customerMode && <small>Image not available</small>}
                     </span>
-                    {(product.item?.image || product.offering?.image) && (
+                    {product.item?.image && (
                       <img
                         className="product-image"
                         loading="lazy"
-                        src={product.item?.image || product.offering?.image}
+                        src={product.item.image}
                         alt={product.name}
                         onError={(event) => {
                           event.currentTarget.hidden = true
@@ -351,14 +343,10 @@ export function PosPage() {
                     {!customerMode && (
                       <>
                         <span className="admin-pos-product-category">
-                          {product.service ? 'Service' : product.category}
+                          {product.category}
                         </span>
                         <span className={`admin-pos-stock ${product.stock <= 0 ? 'is-empty' : ''}`}>
-                          {product.service
-                            ? 'Workshop'
-                            : product.stock > 0
-                              ? `${product.stock} in stock`
-                              : 'Out of stock'}
+                          {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                         </span>
                       </>
                     )}
@@ -366,15 +354,13 @@ export function PosPage() {
                   <h2>{product.name}</h2>
                   {!customerMode && (
                     <p>
-                      {product.service
-                        ? 'Workshop service'
-                        : `${product.item?.brand ? product.item.brand + (product.item.model ? ` / ${product.item.model}` : '') + ' · ' : ''}${product.stock} in stock`}
+                      {`${product.item?.brand ? product.item.brand + (product.item.model ? ` / ${product.item.model}` : '') + ' · ' : ''}${product.stock} in stock`}
                     </p>
                   )}
-                  {product.item?.specs && <p className="shop-card-specs">{product.item.specs}</p>}
+                  {(product.item?.description || product.item?.specs) && <p className="shop-card-specs">{product.item.description || product.item.specs}</p>}
                   {!customerMode && (
                     <span className="admin-pos-price-label">
-                      {product.service ? 'Service price' : 'Unit price'}
+                      Unit price
                     </span>
                   )}
                   <strong>
@@ -405,9 +391,6 @@ export function PosPage() {
                         : 'Add to cart'
                       : 'Add to order'}
                   </button>
-                  {product.service ? (
-                    <button type="button" className="secondary-button product-inspect" aria-label={'View details for ' + product.name} onClick={() => setServiceDetail(product)}><Eye size={18} /><span>View details</span></button>
-                  ) : (
                     <button
                       className={
                         customerMode
@@ -422,7 +405,6 @@ export function PosPage() {
                       <span>{customerMode ? 'Details & specs' : 'View details'}</span>
                       {customerMode && <ArrowRight className="shop-detail-arrow" size={15} />}
                     </button>
-                  )}
                 </article>
               ))}
           </div>
@@ -441,9 +423,9 @@ export function PosPage() {
                   ? products.length
                     ? 'Try a different search or clear your filters.'
                     : 'No products are available yet. Please check back.'
-                  : products.length
+                  : products.some((product) => !product.service)
                     ? 'Try another search or choose a different product type.'
-                    : 'Add inventory or workshop services to make them available here.'}
+                    : 'Add inventory to make products available here.'}
               </p>
             </div>
           )}
@@ -496,12 +478,6 @@ export function PosPage() {
           onClose={() => setProductDetail(null)}
         />
       )}
-      {serviceDetail && <Dialog title={serviceDetail.name} wide onClose={() => setServiceDetail(null)} footer={
-        <button type="button" className="primary-button" disabled={serviceDetail.price === null} onClick={() => {
-          quantity(serviceDetail.id, (cart.find((line) => line.id === serviceDetail.id)?.quantity ?? 0) + 1)
-          setServiceDetail(null)
-        }}>Add to order</button>
-      }>{serviceDetail.offering ? <ServiceOfferingDetails service={serviceDetail.offering} /> : <p>{serviceDetail.name} · {serviceDetail.price === null ? 'Price not set' : formatPHP(serviceDetail.price)}</p>}</Dialog>}
       {sale && <InvoiceDialog sale={sale} onClose={() => setSale(null)} />}
       {scannerOpen && (
         <OrderScanner onSelect={openScannedOrder} onClose={() => setScannerOpen(false)} />

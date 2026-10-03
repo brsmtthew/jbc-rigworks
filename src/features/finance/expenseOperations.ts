@@ -60,7 +60,7 @@ export async function recordNextExpense(user: AppUser, sourceId: string, expecte
       createdBy: user.id,
       updatedAt: at,
       updatedBy: user.id,
-      audit: [{ at, by: user.id, action: 'Recurring occurrence recorded' }],
+      audit: [{ at, by: user.id, byName: user.name, action: 'Recurring occurrence recorded' }],
     }
     tx.set(ref, firestoreData(next))
     return next
@@ -93,6 +93,7 @@ export async function saveExpense(user: AppUser, record: Expense) {
           {
             at,
             by: user.id,
+            byName: user.name,
             action: expense.voided ? 'Voided' : old ? 'Edited' : 'Created',
             ...(old ? { previous: snapshot } : {}),
           },

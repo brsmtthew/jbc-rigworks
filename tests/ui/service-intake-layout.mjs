@@ -35,23 +35,34 @@ test(
           for (let day = 8; day < 25 && !hasTime; day++) {
             const next = new Date(Date.now() + day * 86400000).toISOString().slice(0, 10)
             await date.fill(next)
-            hasTime = (await dialog.locator('select option').count()) > 1
+            hasTime = (await dialog.locator('.booking-time-option:not([disabled])').count()) > 0
           }
           assert.ok(hasTime, 'an appointment window is available')
-          await dialog.locator('select').selectOption({ index: 1 })
+          await dialog.locator('.booking-time-option:not([disabled])').first().click()
           await dialog.getByRole('button', { name: 'Continue' }).click()
           await expect(
             dialog.getByRole('heading', { name: 'Tell us about your device' }),
           ).toBeVisible()
+          await expect(dialog.locator('.home-intake-group').filter({ hasText: 'C. Requested service' })).toContainText('Standard Deep Cleaning')
+          await expect(dialog.getByLabel('Requested service')).toHaveCount(0)
+          await dialog.getByLabel('Customer concern / request').fill('Fan noise during gaming')
           await expect(dialog.locator('.booking-steps li')).toHaveCount(4)
-          await dialog.locator('.home-intake-fields select').first().selectOption('Laptop')
-          await expect(dialog.getByLabel('Battery condition (if known)')).toBeVisible()
-          await expect(dialog.getByLabel('Display condition (if known)')).toBeVisible()
-          await expect(dialog.getByLabel('Motherboard (if known)')).toHaveCount(0)
-          await dialog.locator('.home-intake-fields select').first().selectOption('Desktop PC')
+          const deviceType = dialog.locator('.home-intake-fields select').first()
+          await expect(deviceType).toHaveValue('Desktop PC')
+          await expect(deviceType).toBeDisabled()
+          await expect(dialog.getByText('I’m not sure about my specifications')).toHaveCount(0)
           await expect(dialog.getByLabel('Motherboard (if known)')).toBeVisible()
           await expect(dialog.getByLabel('Power supply (if known)')).toBeVisible()
           await expect(dialog.getByLabel('Battery condition (if known)')).toHaveCount(0)
+          const noDamage = dialog.locator('.home-intake-no-damage').getByRole('checkbox')
+          const issues = dialog.locator('.home-intake-condition-options')
+          await expect(noDamage).toBeVisible()
+          await expect(dialog.locator('.home-intake-condition-list .home-intake-no-damage')).toHaveCount(0)
+          await expect(issues.getByRole('checkbox', { name: 'No visible damage' })).toHaveCount(0)
+          await noDamage.check()
+          await expect(issues.getByRole('checkbox', { name: 'Scratches' })).toBeDisabled()
+          await noDamage.uncheck()
+          await expect(issues.getByRole('checkbox', { name: 'Scratches' })).toBeEnabled()
           const sizes = await page.evaluate(() => ({
             viewport: innerWidth,
             page: document.documentElement.scrollWidth,
@@ -95,12 +106,10 @@ test(
         for (let day = 8; day < 20 && !foundDate; day++) {
           const next = new Date(Date.now() + day * 86400000).toISOString().slice(0, 10)
           await dialog.getByLabel('Preferred date').fill(next)
-          foundDate =
-            (await dialog.getByLabel('Preferred time').locator('option:not([disabled])').count()) >
-            1
+          foundDate = (await dialog.locator('.booking-time-option:not([disabled])').count()) > 0
         }
         assert.ok(foundDate, `${serviceName} has no available date`)
-        await dialog.getByLabel('Preferred time').selectOption({ index: 1 })
+        await dialog.locator('.booking-time-option:not([disabled])').first().click()
         await dialog.getByRole('button', { name: 'Continue' }).click()
         await expect(dialog.getByLabel(fieldName)).toBeVisible()
         const fits = await dialog.evaluate(
@@ -108,6 +117,26 @@ test(
         )
         assert.ok(fits, `${serviceName} intake overflows at 390px`)
       }
+      await page.goto('http://127.0.0.1:5187/customer/services')
+      await page.locator('.service-device-filter').getByRole('button', { name: 'Laptop' }).click()
+      await page.getByRole('button', { name: 'Choose service' }).first().click()
+      const laptopDialog = page.getByRole('dialog')
+      await laptopDialog.getByRole('button', { name: /Workshop Bring/ }).click()
+      await laptopDialog.getByLabel('Device brand / model').fill('ThinkPad T14')
+      await laptopDialog.getByRole('button', { name: 'Continue' }).click()
+      let laptopDate = false
+      for (let day = 8; day < 20 && !laptopDate; day++) {
+        const next = new Date(Date.now() + day * 86400000).toISOString().slice(0, 10)
+        await laptopDialog.getByLabel('Preferred date').fill(next)
+        laptopDate = (await laptopDialog.locator('.booking-time-option:not([disabled])').count()) > 0
+      }
+      assert.ok(laptopDate, 'laptop service has an available date')
+      await laptopDialog.locator('.booking-time-option:not([disabled])').first().click()
+      await laptopDialog.getByRole('button', { name: 'Continue' }).click()
+      await expect(laptopDialog.locator('.home-intake-fields select').first()).toHaveValue('Laptop')
+      await expect(laptopDialog.locator('.home-intake-fields select').first()).toBeDisabled()
+      await expect(laptopDialog.getByLabel('Battery condition (if known)')).toBeVisible()
+      await expect(laptopDialog.getByLabel('Motherboard (if known)')).toHaveCount(0)
       await page.setViewportSize({ width: 794, height: 1123 })
       await page.goto('http://127.0.0.1:5187/tests/ui/fixtures/intake-print.html')
       await page.emulateMedia({ media: 'print' })

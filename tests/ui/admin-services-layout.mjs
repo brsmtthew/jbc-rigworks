@@ -192,7 +192,10 @@ test('admin services uses responsive record rows and keeps its workflows availab
     await page.getByRole('button', { name: 'Add walk-in service' }).click()
     const walkIn = page.getByRole('dialog', { name: 'New walk-in service' })
     await expect(walkIn).toBeVisible()
-    await expect(walkIn.getByLabel('Workshop service')).toBeVisible()
+    await expect(walkIn.getByRole('button', { name: 'Choose service' })).toBeVisible()
+    await expect(walkIn.locator('.walkin-service-options')).toHaveCount(0)
+    await expect(walkIn.getByLabel('Target completion date')).toHaveCount(0)
+    await expect(walkIn.getByLabel('Approved service price before tax (PHP)')).toHaveCount(0)
     await expect(walkIn.getByText('WALK-IN CUSTOMER')).toBeVisible()
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 760 })
@@ -204,10 +207,62 @@ test('admin services uses responsive record rows and keeps its workflows availab
       assert.ok(layout.documentWidth <= width + 1, `Walk-in form overflows at ${width}px`)
       assert.ok(layout.dialogRight <= width + 1 && layout.footerBottom <= 761, `Walk-in dialog is clipped at ${width}px`)
     }
-    await walkIn.getByLabel('Workshop service').selectOption({ label: 'Standard Deep Cleaning / Desktop' })
+    await page.mouse.click(2, 2)
+    await expect(walkIn).toBeVisible()
+    await page.evaluate(async () => {
+      const { shop } = await import('/tests/ui/fixtures/data.ts')
+      const service = shop.services.find((item) => item.active && item.workshop)
+      service.additionalCharges = [
+        { id: 'thermal', name: 'Thermal paste replacement', price: '199' },
+        ...Array.from({ length: 12 }, (_, index) => ({ id: `extra-${index}`, name: `Optional work ${index}`, price: '50' })),
+      ]
+      for (let index = 0; index < 24; index++)
+        shop.services.push({ ...service, id: `future-service-${index}`, name: `Future maintenance ${index}` })
+    })
+    await walkIn.getByRole('button', { name: 'Choose service' }).click()
+    const picker = page.getByRole('dialog', { name: 'Choose workshop service' })
+    await expect(picker.locator('.walkin-service-option')).toHaveCount(33)
+    await page.mouse.click(2, 2)
+    await expect(picker).toBeVisible()
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 760 })
+      const layout = await picker.evaluate((dialog) => {
+        const options = dialog.querySelector('.walkin-service-options')
+        return {
+          right: dialog.getBoundingClientRect().right,
+          scrollWidth: dialog.scrollWidth,
+          clientWidth: dialog.clientWidth,
+          optionsScrollHeight: options.scrollHeight,
+          optionsClientHeight: options.clientHeight,
+        }
+      })
+      assert.ok(layout.right <= width + 1 && layout.scrollWidth <= layout.clientWidth + 1, `Service picker overflows at ${width}px`)
+      assert.ok(layout.optionsScrollHeight > layout.optionsClientHeight, `Service picker must scroll at ${width}px`)
+    }
+    await picker.getByRole('button', { name: 'Close Choose workshop service' }).click()
+    await expect(picker).toHaveCount(0)
+    await expect(walkIn).toBeVisible()
+    await walkIn.getByRole('button', { name: 'Choose service' }).click()
+    await picker.getByRole('searchbox', { name: 'Search workshop services' }).fill('Standard Deep Cleaning Desktop')
+    await expect(picker.locator('.walkin-service-option')).toHaveCount(1)
+    await picker.locator('.walkin-service-option').click()
+    await expect(picker).toHaveCount(0)
+    await expect(walkIn.getByRole('button', { name: 'Change service' })).toBeVisible()
+    await walkIn.getByRole('checkbox', { name: /Thermal paste replacement/ }).check()
+    await expect(walkIn.locator('.walkin-additional-total')).toContainText('₱799.00 service total before tax')
+    const extrasLayout = await walkIn.locator('.walkin-additional-options').evaluate((element) => ({
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      documentWidth: document.documentElement.scrollWidth,
+    }))
+    assert.ok(extrasLayout.scrollHeight > extrasLayout.clientHeight)
+    assert.ok(extrasLayout.documentWidth <= 321)
     await walkIn.getByLabel('Device brand / model').fill('Lenovo ThinkCentre M720')
     await walkIn.getByRole('button', { name: 'Continue' }).click()
     await expect(walkIn.getByRole('heading', { name: 'Device intake' })).toBeVisible()
+    await expect(walkIn.locator('.home-intake-group').filter({ hasText: 'C. Requested service' })).toContainText('Standard Deep Cleaning')
+    await expect(walkIn.getByLabel('Requested service')).toHaveCount(0)
+    await walkIn.getByLabel('Customer concern / request').fill('Fan noise during gaming')
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 760 })
       const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth)
@@ -220,6 +275,8 @@ test('admin services uses responsive record rows and keeps its workflows availab
     await walkIn.getByLabel('Condition and issue history').fill('No previous repair')
     await walkIn.getByRole('button', { name: 'Continue' }).click()
     await expect(walkIn.getByRole('heading', { name: 'Review & save' })).toBeVisible()
+    await expect(walkIn).toContainText('Fan noise during gaming')
+    await expect(walkIn).toContainText('Thermal paste replacement (₱199.00)')
     for (const width of [1440, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 760 })
       const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth)
@@ -227,7 +284,10 @@ test('admin services uses responsive record rows and keeps its workflows availab
     }
     await expect(walkIn.getByText('No online appointment approval is needed.')).toBeVisible()
     await expect(walkIn.getByRole('button', { name: 'Save & open POS' })).toBeEnabled()
-    await page.keyboard.press('Escape')
+    await walkIn.getByRole('button', { name: 'Back' }).click()
+    await walkIn.getByRole('button', { name: 'Back' }).click()
+    await walkIn.getByRole('button', { name: 'Cancel' }).click()
+    await expect(walkIn).toHaveCount(0)
     assert.deepEqual(errors, [])
   } finally {
     await browser?.close()

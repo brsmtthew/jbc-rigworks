@@ -5,6 +5,15 @@ import { LoadingState } from './components/ui/LoadingState'
 import { useAuth } from './lib/auth-context'
 
 type EntryType = 'job' | 'item' | 'expense'
+function CustomerBuilderComingSoon() {
+  return (
+    <section className="customer-coming-soon jbc-blue-hero" role="status" aria-labelledby="builder-coming-soon-title">
+      <span className="eyebrow">PC BUILDER</span>
+      <h1 id="builder-coming-soon-title">Coming soon</h1>
+      <p>We’re preparing the PC builder for customers. Check back soon to plan your build.</p>
+    </section>
+  )
+}
 const ServiceIntake = lazy(() =>
   import('./features/services/ServiceIntake').then((module) => ({ default: module.ServiceIntake })),
 )
@@ -91,7 +100,7 @@ function WorkspaceRoutes() {
               path="/customer/directory"
               element={<Navigate to="/customer/pc-building" replace />}
             />
-            <Route path="/customer/pc-building" element={<PcBuildingPage />} />
+            <Route path="/customer/pc-building" element={<CustomerBuilderComingSoon />} />
             <Route path="/customer/shop" element={<PosPage />} />
             <Route path="/customer/records" element={<RecordsPage />} />
             <Route

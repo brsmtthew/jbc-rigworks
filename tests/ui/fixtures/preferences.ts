@@ -18,6 +18,10 @@ export const defaultAccount = {
 export const accountKey = (id: string) => `jbc-rigworks:account:v1:${id}`
 const values = new Map<string, unknown>()
 const listeners = new Map<string, Set<() => void>>()
+export function setStoredValue<T>(key: string, value: T) {
+  values.set(key, value)
+  listeners.get(key)?.forEach((listener) => listener())
+}
 export function useStoredValue<T>(key: string, fallback: T) {
   const subscribe = useCallback((listener: () => void) => {
     const group = listeners.get(key) ?? new Set<() => void>()
@@ -34,8 +38,7 @@ export function useStoredValue<T>(key: string, fallback: T) {
   )
   const value = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   const save = async (next: T) => {
-    values.set(key, next)
-    listeners.get(key)?.forEach((listener) => listener())
+    setStoredValue(key, next)
   }
   return [value, save, { loading: false, error: '' }] as const
 }

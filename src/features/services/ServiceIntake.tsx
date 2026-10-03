@@ -6,6 +6,7 @@ import { RecordFields, type RecordField } from '../../components/ui/RecordFields
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useAuth } from '../../lib/auth-context'
 import { today } from '../../lib/dates'
+import { formatPHP } from '../../lib/format'
 import { formAmount, formText } from '../../lib/forms'
 import { useShopSettings } from '../../lib/preferences'
 import type { Job } from '../../types'
@@ -34,7 +35,13 @@ function EditServiceJob({ job, onClose }: { job: Job; onClose: () => void }) {
   const [shop] = useShopSettings()
   const { busy, error, run } = useAsyncAction()
   const walkIn = job.channel === 'Walk-in'
-  const editableFields = walkIn ? fields.filter((field) => ['due', 'quote'].includes(field.name)) : fields
+  const editableFields = walkIn
+    ? fields.filter((field) => ['due', 'quote'].includes(field.name)).map((field) =>
+        field.name === 'quote'
+          ? { ...field, label: 'Approved service total before tax (PHP)' }
+          : field,
+      )
+    : fields
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
@@ -90,7 +97,12 @@ function EditServiceJob({ job, onClose }: { job: Job; onClose: () => void }) {
       }
     >
       <form id="service-intake" className="portal-form entry-form" onSubmit={submit}>
-        {walkIn && <p className="storage-caption">The customer and device details are stored in the printable intake. Update the target date or approved price here.</p>}
+        {walkIn && <p className="storage-caption">The customer and device details are stored in the printable intake. The approved total below includes all selected additional work.</p>}
+        {walkIn && !!job.selectedCharges?.length && (
+          <p className="storage-caption">
+            Selected additional work: {job.selectedCharges.map((charge) => `${charge.name} (${formatPHP(charge.price)})`).join(', ')}.
+          </p>
+        )}
         <fieldset disabled={busy} className="record-fields">
           <RecordFields
             fields={editableFields}

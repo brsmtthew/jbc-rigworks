@@ -210,15 +210,14 @@ test('V2 customer, service, build, stock and POS workflows', { timeout: 300000 }
       brand: 'Test',
       model: 'CPU',
       sku: 'CPU-001',
-      category: 'Processor',
       stock: '4',
-      minimum: '1',
       cost: '60',
       price: '100',
     }))
       await itemForm.locator(`[name="${name}"]`).fill(value)
-    await itemForm.getByLabel('PC component', { exact: true }).selectOption('Processor')
-    await itemForm.getByLabel('CPU socket', { exact: true }).fill('AM5')
+    await itemForm.locator('select[name="category"]').selectOption('Processor')
+    await itemForm.locator('select[name="component"]').selectOption('Processor')
+    await itemForm.locator('select[name="socket"]').selectOption('AM5')
     await itemForm.getByRole('button', { name: 'Save item', exact: true }).click()
     await expect(itemForm).toHaveCount(0)
     const item = (await list('inventory'))[0]
@@ -295,7 +294,7 @@ test('V2 customer, service, build, stock and POS workflows', { timeout: 300000 }
     const bookingForm = buyer.getByRole('dialog', { name: 'Appointment details' })
     await bookingForm.getByLabel('Device brand/model').fill('ASUS desktop')
     await bookingForm.getByLabel('Preferred date').fill(appointmentDate)
-    await bookingForm.getByLabel('Preferred time').selectOption({ index: 1 })
+    await bookingForm.locator('.booking-time-option:not([disabled])').first().click()
     await bookingForm.getByRole('button', { name: 'Submit request' }).click()
     await expect(bookingForm).toHaveCount(0)
     const appointment = (await list('appointments'))[0]

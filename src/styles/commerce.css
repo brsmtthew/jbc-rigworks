@@ -442,6 +442,14 @@
   transition: none !important;
   scroll-behavior: auto !important;
 }
+.app-shell.text-large :is(.app-main, .app-sidebar, .app-dialog) { font-size: 17px; }
+.app-shell.text-large :is(.data-table, .portal-form, .settings-fields, .nav-item, .pos-product, .service-record-row, .preference-row, .admin-expenses-page) { font-size: 1.05rem; }
+.app-shell.text-large :is(input, select, textarea, button, small, label) { font-size: max(1rem, 1em); }
+.app-shell.high-contrast { color: #071c32; }
+.app-shell.high-contrast :is(.panel, .pos-product, .service-record-row, .app-dialog, .discovery-card) { border-color: #31597c; }
+.app-shell.high-contrast :is(input, select, textarea) { border-color: #31597c; color: #071c32; }
+.app-shell.high-contrast :is(small, .storage-caption, .form-hint, .toolbar-field-label) { color: #294d6d; }
+.app-shell.high-contrast :focus-visible { outline: 3px solid #044fa7; outline-offset: 3px; }
 @media (max-width: 1200px) {
   .pos-layout {
     grid-template-columns: minmax(0, 1fr) 330px;

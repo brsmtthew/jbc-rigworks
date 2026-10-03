@@ -340,6 +340,7 @@ export type InvoiceCharges = {
 export type Seller = { name: string; address: string; phone: string; email: string; footer: string }
 
 export type InventoryItem = {
+  createdAt?: string
   skuKey?: string
   reserved?: number
   active?: boolean
@@ -364,6 +365,7 @@ export type InventoryItem = {
   price: number
   cost: number
   image?: string
+  description?: string
   specs?: string
   stockHistory?: { date: string; before: number; after: number; reason: string }[]
   component?: ComponentType | ''
@@ -394,7 +396,7 @@ export type Expense = {
   createdBy?: string
   updatedAt?: string
   updatedBy?: string
-  audit?: { at: string; by: string; action: string; previous?: Omit<Expense, 'audit'> }[]
+  audit?: { at: string; by: string; byName?: string; action: string; previous?: Omit<Expense, 'audit'> }[]
   id: string
   description: string
   category: string

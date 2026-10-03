@@ -93,7 +93,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   }
   return (
     <div
-      className={`app-shell ${isCustomer ? 'customer-shell' : 'admin-shell'} ${preferences.compact ? 'density-compact' : ''} ${preferences.reduceMotion ? 'reduce-motion' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+      className={`app-shell ${isCustomer ? 'customer-shell' : 'admin-shell'} ${preferences.compact ? 'density-compact' : ''} ${preferences.reduceMotion ? 'reduce-motion' : ''} ${preferences.largeText ? 'text-large' : ''} ${preferences.highContrast ? 'high-contrast' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
       data-page={location.pathname.split('/')[1]}
     >
       <a className="skip-link" href="#main-content">

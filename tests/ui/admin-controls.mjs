@@ -21,12 +21,12 @@ test(
       await mkdir('test-results/ui', { recursive: true })
       await page.goto('http://127.0.0.1:5187/dashboard')
       await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-      await expect(page.locator('.app-sidebar')).toHaveCSS('width', '78px')
+      await expect(page.locator('.app-sidebar')).toHaveCSS('width', '76px')
       await page.setViewportSize({ width: 390, height: 844 })
       await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
       const drawer = page.getByRole('dialog', { name: 'Navigation', exact: true })
       await expect(
-        drawer.getByRole('link', { name: 'Inventory', exact: true }).locator('span'),
+        drawer.getByRole('link', { name: 'Inventory', exact: true }).locator('.nav-item-label'),
       ).toBeVisible()
       await drawer.getByRole('link', { name: 'Inventory', exact: true }).click()
       await expect(drawer).toHaveCount(0)

@@ -464,6 +464,21 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 20px;
 }
+.app-shell .page-transition .jbc-blue-hero.customer-coming-soon {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  min-height: 260px;
+  padding: clamp(28px, 5vw, 60px);
+  border-radius: 18px;
+}
+.app-shell .page-transition .jbc-blue-hero.customer-coming-soon h1 {
+  font-size: clamp(30px, 5vw, 52px);
+}
+.app-shell .page-transition .jbc-blue-hero.customer-coming-soon p {
+  max-width: 520px;
+  line-height: 1.6;
+}
 .customer-shell .service-price-card {
   padding: 24px;
   gap: 12px;

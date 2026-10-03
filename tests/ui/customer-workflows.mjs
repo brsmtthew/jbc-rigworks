@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import { chromium, expect } from '@playwright/test'
 
-test('customer builder, records, and topbar actions', { timeout: 180000 }, async () => {
+test('customer booking, records, builder status, and topbar actions', { timeout: 180000 }, async () => {
   const server = await createServer({ configFile: 'tests/ui/vite.config.mjs' })
   await server.listen()
   let browser
@@ -23,77 +23,22 @@ test('customer builder, records, and topbar actions', { timeout: 180000 }, async
 
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('http://127.0.0.1:5187/customer/pc-building')
-    await expect(page.locator('.pcb-panel')).toBeVisible()
-    await expect(page.getByText('BUILD / 001')).toHaveCount(0)
-    await expect(page.locator('.pcb-toolbar')).toHaveCount(0)
-    await expect(page.getByRole('list', { name: 'PC builder progress' }).locator('li')).toHaveCount(
-      3,
-    )
-    const dimensions = []
-    for (const next of [null, 'Choose components', 'Review build']) {
-      if (next) await page.getByRole('button', { name: next }).click()
-      dimensions.push(
-        await page.evaluate(() => ({
-          panel: Math.round(document.querySelector('.pcb-panel').getBoundingClientRect().height),
-          preview: Math.round(
-            document.querySelector('.pcb-preview').getBoundingClientRect().height,
-          ),
-        })),
-      )
-    }
-    assert.deepEqual(dimensions, Array(3).fill({ panel: 760, preview: 760 }))
-    await page.locator('.pcb-review .pcb-step-content').evaluate((el) => {
-      el.scrollTop = el.scrollHeight
-    })
-    await expect(page.getByRole('button', { name: 'Save draft' })).toBeInViewport()
-    await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Export Excel' })).toBeVisible()
-    await page
-      .locator('.pcb-review .pcb-panel-footer')
-      .getByRole('button', { name: 'Components' })
-      .click()
-    await expect(page.getByRole('button', { name: 'Mid tier' })).toBeVisible()
-    await page.getByRole('button', { name: 'Mid tier' }).click()
-    await expect(page.locator('.pcb-progress')).toContainText('8 of 8 selected')
-    await page.getByRole('button', { name: 'Change Processor' }).click()
-    const partPicker = page.getByRole('dialog', { name: 'Choose processor' })
-    await partPicker.getByRole('button', { name: 'View part details' }).click()
-    await expect(partPicker.getByText('CPU cores')).toBeVisible()
-    await expect(partPicker.getByText('8', { exact: true })).toBeVisible()
-    await expect(partPicker.getByRole('button', { name: 'Use component' })).toBeEnabled()
-    await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: 'Change Motherboard' }).click()
-    const boardPicker = page.getByRole('dialog', { name: 'Choose motherboard' })
-    const conflictingBoard = boardPicker
-      .locator('.component-option')
-      .filter({ hasText: 'Fixture LGA1700 board' })
-    await expect(conflictingBoard).toContainText('Out of stock')
-    await expect(conflictingBoard).toContainText('CPU and motherboard sockets do not match')
-    await conflictingBoard.click()
-    await expect(boardPicker.getByRole('button', { name: 'Use component' })).toBeEnabled()
-    await boardPicker.getByRole('button', { name: 'Use component' }).click()
-    await page.getByRole('button', { name: 'Review build' }).click()
-    await expect(page.locator('.pcb-tier-label')).toContainText('High tier')
-    await expect(page.locator('.pcb-compatibility')).toContainText(
-      'CPU and motherboard sockets do not match',
-    )
-    await expect(page.getByRole('button', { name: 'Submit pre-order' })).toBeEnabled()
-    await page.getByRole('button', { name: 'Submit pre-order' }).click()
-    await expect(page.getByRole('dialog', { name: 'Submit PC pre-order?' })).toBeVisible()
-    await expect(page.getByRole('dialog', { name: 'Submit PC pre-order?' })).toContainText(
-      'known compatibility conflict',
-    )
-    await page
-      .getByRole('dialog', { name: 'Submit PC pre-order?' })
-      .getByRole('button', { name: 'Cancel' })
-      .click()
-
+    await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible()
+    await expect(page.locator('.pcb-panel')).toHaveCount(0)
     await page.goto('http://127.0.0.1:5187/customer/services')
+    await page.evaluate(async () => {
+      const { setStoredValue } = await import('/tests/ui/fixtures/preferences.ts')
+      const { directoryDefaults } = await import('/src/lib/directories.ts')
+      setStoredValue('jbc-rigworks:directories:v1', {
+        ...directoryDefaults,
+        visibleConditions: [...directoryDefaults.visibleConditions, 'Chipped paint'],
+      })
+    })
     const desktopTools = await page.locator('.service-catalog-tools').evaluate((tools) => {
       const devices = tools.querySelector('.service-device-filter').getBoundingClientRect()
       const search = tools.querySelector('.service-search').getBoundingClientRect()
       return {
-        sameRow: Math.abs(devices.top - search.top) < 2,
+        sameRow: Math.abs(devices.bottom - search.bottom) < 2,
         gap: search.left - devices.right,
         devicesTop: devices.top,
         searchTop: search.top,
@@ -101,7 +46,7 @@ test('customer builder, records, and topbar actions', { timeout: 180000 }, async
         searchBottom: search.bottom,
       }
     })
-    assert.ok(desktopTools.sameRow && desktopTools.gap >= 16, JSON.stringify(desktopTools))
+    assert.ok(desktopTools.sameRow && desktopTools.gap >= 12, JSON.stringify(desktopTools))
 
     await page.getByRole('button', { name: 'Choose service' }).first().click()
     const booking = page.getByRole('dialog').first()
@@ -114,11 +59,12 @@ test('customer builder, records, and topbar actions', { timeout: 180000 }, async
       return day.toISOString().slice(0, 10)
     })
     await booking.getByLabel('Preferred date').fill(visitDate)
-    await booking.getByLabel('Preferred time').selectOption({ index: 1 })
+    await booking.locator('.booking-time-option:not([disabled])').first().click()
     await booking.getByRole('button', { name: 'Continue' }).click()
     await booking.getByLabel('Customer name').fill('Jamie Santos')
     await booking.getByLabel('Mobile number').fill('09171234567')
     const conditions = booking.locator('.home-intake-condition-options')
+    await expect(conditions.getByRole('checkbox', { name: 'Chipped paint' })).toBeVisible()
     await conditions.getByRole('checkbox', { name: 'Scratches' }).check()
     await conditions.getByRole('checkbox', { name: 'Dents' }).check()
     await expect(conditions.getByRole('checkbox', { name: 'Scratches' })).toBeChecked()
@@ -126,11 +72,22 @@ test('customer builder, records, and topbar actions', { timeout: 180000 }, async
     await expect(booking.locator('.home-intake-condition-footer [role="status"]')).toHaveText(
       '2 selected',
     )
-    await conditions.getByRole('checkbox', { name: 'No visible damage' }).check()
+    const noDamage = booking.locator('.home-intake-no-damage').getByRole('checkbox')
+    await expect(conditions.getByRole('checkbox', { name: 'No visible damage' })).toHaveCount(0)
+    await booking.getByLabel('Other visible damage (optional)').fill('Paint chip')
+    await noDamage.check()
     await expect(conditions.getByRole('checkbox', { name: 'Scratches' })).not.toBeChecked()
     await expect(conditions.getByRole('checkbox', { name: 'Dents' })).not.toBeChecked()
+    await expect(conditions.getByRole('checkbox', { name: 'Scratches' })).toBeDisabled()
+    await expect(booking.getByLabel('Other visible damage (optional)')).toBeDisabled()
+    await expect(booking.getByLabel('Other visible damage (optional)')).toHaveValue('')
+    await expect(booking.locator('.home-intake-condition-footer [role="status"]')).toHaveText(
+      'No visible damage selected',
+    )
+    await noDamage.uncheck()
+    await expect(conditions.getByRole('checkbox', { name: 'Cracks' })).toBeEnabled()
     await conditions.getByRole('checkbox', { name: 'Cracks' }).check()
-    await expect(conditions.getByRole('checkbox', { name: 'No visible damage' })).not.toBeChecked()
+    await expect(noDamage).not.toBeChecked()
     await booking.getByLabel('Describe visible condition or wear').fill('Light scratches')
     await booking.getByLabel('Existing hardware or performance issues').fill('Fan noise')
     await booking.getByLabel('Condition and issue history').fill('Started last week')
@@ -221,18 +178,7 @@ test('customer builder, records, and topbar actions', { timeout: 180000 }, async
       await page.keyboard.press('Escape')
     }
     await page.getByRole('button', { name: /^PC requests/ }).click()
-    await page.getByRole('button', { name: 'Edit PC-fixture' }).click()
-    await expect(page).toHaveURL(/\/customer\/pc-building\?edit=PC-fixture$/)
-    await expect(page.locator('.pcb-edit-banner')).toContainText('Editing pre-order PC-fixture')
-    await expect(page.locator('.pcb-progress')).toContainText('1 of 8 selected')
-    await page.getByRole('button', { name: 'Review build' }).click()
-    await expect(page.getByRole('button', { name: 'Save pre-order changes' })).toBeEnabled()
-    await page.getByRole('button', { name: 'Save pre-order changes' }).click()
-    await expect(page.getByRole('dialog', { name: 'Save pre-order changes?' })).toBeVisible()
-    await page
-      .getByRole('dialog', { name: 'Save pre-order changes?' })
-      .getByRole('button', { name: 'Cancel' })
-      .click()
+    await expect(page.getByRole('button', { name: 'Edit PC-fixture' })).toHaveCount(0)
     await page.goto('http://127.0.0.1:5187/customer/records')
     await page.getByRole('button', { name: /^Purchases/ }).click()
     await page

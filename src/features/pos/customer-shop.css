@@ -326,6 +326,9 @@
   align-items: stretch;
   gap: 0;
   min-width: 0;
+  height: auto;
+  min-height: 440px;
+  overflow: visible;
   padding: 13px;
   border: 1px solid #dce5ef;
   border-radius: 13px;
@@ -443,6 +446,7 @@
   font-family: var(--font-heading);
   font-size: 22px;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 .customer-shell .shop-product-card > strong::before {
   content: 'PRICE';
